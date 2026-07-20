@@ -1,0 +1,52 @@
+[project]
+name = "goldberg-system"
+version = "0.1.0"
+description = "Pipeline and tooling for the Goldberg document analysis platform (ingest -> extract -> summarize -> index -> wiki)"
+authors = [
+  { name = "Salim Fadhley", email = "salimfadhley@gmail.com" },
+]
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "click>=8.1.7",
+    "pyyaml>=6.0.2",
+    "python-frontmatter>=1.0.0",
+    "pydantic>=2.7",
+    "openai>=1.99.3",
+    "anthropic>=0.64.0",
+    "elasticsearch>=8.0.0,<9.0.0",
+    "nats-py>=2.11.0",
+    "ragie>=0.1.0",
+    "requests>=2.32.5",
+    "python-dotenv>=1.1.1",
+    "rich>=13.7.1",
+]
+
+# Mind of Steele supplies the reusable llm_support + elasticsearch modules.
+# It lives on the Mac (see config/projects.yaml -> reuse.mind_of_steele), not on
+# Halob, so it is intentionally NOT a hard dependency yet. Resolve as a git source
+# or vendored package when the pipeline modules are wired in (doc/architecture.md).
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "black>=24.4",
+    "mypy>=1.10",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+goldberg = "goldberg_system.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

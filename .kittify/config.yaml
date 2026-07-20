@@ -1,0 +1,15 @@
+project:
+  uuid: 9eeb3e59-3e63-40d7-8e80-478dadb4b75f
+  slug: goldberg-system
+  node_id: f3e2d94d0fa7
+  build_id: 0fc50577-0b4d-5c0f-885c-5a93824364e1
+vcs:
+  type: git
+agents:
+  available:
+  - copilot
+  - claude
+  - gemini
+  - codex
+  auto_commit: true
+  lint_on_edit: false

@@ -1,0 +1,57 @@
+# projects.yaml — the single source of truth for where the Goldberg platform's
+# sibling projects and services live. Read by goldberg_system.config.
+#
+# All four working repos are checked out under a common parent on Halob, which is
+# SMB-mounted on the Mac as /Volumes/Home (maps to Halob /share/home/...).
+
+root: /Volumes/Home/work/project_goldberg
+
+projects:
+  system:
+    path: /Volumes/Home/work/project_goldberg/goldberg-system
+    repo: git@github.com:salimfadhley/goldberg-system.git
+    role: code — the pipeline and tooling (this project)
+  raw:
+    path: /Volumes/Home/work/project_goldberg/goldberg-raw
+    repo: git@github.com:salimfadhley/goldberg-raw.git
+    role: immutable original documents; push triggers the pipeline
+  extracted:
+    path: /Volumes/Home/work/project_goldberg/goldberg-extracted
+    repo: git@github.com:salimfadhley/goldberg-extracted.git
+    role: machine-generated markdown + metadata (regenerable)
+  casework:
+    path: /Volumes/Home/work/project_goldberg/goldberg-casework
+    repo: git@github.com:salimfadhley/goldberg-casework.git
+    role: authored work product (briefings, applications, analysis, research)
+
+# Frozen predecessor — rollback / archive. DO NOT MODIFY. Source for migration.
+archive:
+  path: "/Volumes/ext2/YT Dropbox/Salim Fadhley/sal/rag/the_goldberg_files"
+  role: frozen legacy repo (original data + extractions + code mixed together)
+
+# Reused code. Mind of Steele supplies the pipeline building blocks.
+reuse:
+  mind_of_steele:
+    path: /Users/salimfadhley/workspace/mind_of_steele
+    modules:
+      - common.llm_support        # generate summary, extract keywords, YAML header
+      - elasticsearch             # chunker + indexer
+      - ragie_uploader            # RAG sink
+    note: >
+      Lives on the Mac, not on Halob. Resolve as a git source or vendored package
+      when the pipeline modules are wired in (see doc/architecture.md).
+
+# Halob services (see doc/servers/halob.md). Halob = 192.168.86.31.
+halob:
+  host: halob
+  ssh: sal@halob
+  elasticsearch: http://halob:9200
+  elasticsearch_index: goldberg_files
+  nats: nats://halob:4222
+  nats_subjects:
+    ingested: goldberg.raw.ingested     # published when raw content is pushed
+    indexed: goldberg.indexed           # published when a doc is fully processed
+  # Candidate LLM-wiki sinks (decision pending — see doc/workflow.md "open decisions")
+  wiki:
+    ragie: null
+    obsidian: /share/Docker/Obsidian/config
