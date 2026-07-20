@@ -69,6 +69,13 @@ M8 migrates the corpus in.
 
 ## M2 — Extraction (wire Papra + Docling; build only the gaps)
 
+**Status: ✅ Mostly delivered (2026-07-20).** Docling deployed on Halob and Papra
+pointed at it (validated: scanned PDFs that were OCR-garbage now extract cleanly);
+`src/goldberg_system/{extract,papra}` built (eml→markdown, passthrough, Papra
+ingest-folder writer, Papra REST client) — 64 tests, gates clean. **Remaining:**
+provision a Papra API key for the live REST path, and the `document:created`
+webhook→NATS bridge (belongs with M6/M5).
+
 *Rescoped by [ADR 0003](./decisions/0003-document-management-papra-integration.md):
 the existing Papra deployment (backed by self-hosted Docling) handles OCR / PDF /
 docx / layout+tables, so we no longer hand-build those extractors.*
