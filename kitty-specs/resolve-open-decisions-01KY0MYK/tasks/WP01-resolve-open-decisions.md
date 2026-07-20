@@ -31,7 +31,7 @@ create_intent:
 - doc/decisions/README.md
 - doc/decisions/0001-wiki-rag-sink-backend.md
 - doc/decisions/0002-large-binary-handling.md
-execution_mode: doc_change
+execution_mode: code_change
 owned_files:
 - doc/**
 tags: []
