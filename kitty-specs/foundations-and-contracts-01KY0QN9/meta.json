@@ -1,0 +1,15 @@
+{
+  "coordination_branch": "kitty/mission-foundations-and-contracts-01KY0QN9",
+  "created_at": "2026-07-20T21:42:06.161084+00:00",
+  "flattened": false,
+  "friendly_name": "M1: Foundations & Contracts",
+  "mission_id": "01KY0QN90G1EDM84VW4F0HXEFQ",
+  "mission_number": null,
+  "mission_slug": "foundations-and-contracts-01KY0QN9",
+  "mission_type": "software-dev",
+  "purpose_context": "Before any pipeline stage is built, the platform needs stable, tested contracts so the parallel missions (extract, enrich, sinks, trigger) build against fixed definitions instead of inventing their own. M1 delivers pure, mockable library code: a typed metadata schema (two-tier population, directory inheritance, legal-handling flags defaulting safe, plus the Papra cross-store mapping from ADR 0003), the goldberg.raw.ingested/goldberg.indexed event contracts, the sink interface, the deterministic doc-id + content-hash staleness rule, and resolution of how Mind of Steele is imported.",
+  "purpose_tldr": "The shared, tested foundation library every pipeline mission builds on: the metadata schema, NATS event contracts, the sink interface, deterministic doc-id + staleness, and Mind of Steele reuse resolution.",
+  "slug": "foundations-and-contracts-01KY0QN9",
+  "target_branch": "feat/foundations-and-contracts",
+  "topology": "coord"
+}
