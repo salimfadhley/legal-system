@@ -42,6 +42,8 @@ M8 migrates the corpus in.
 
 ## M1 — Foundations & contracts
 
+**Status: ✅ Delivered (2026-07-20)** — `src/goldberg_system/{metadata,events,sinks,identity,enrichment}`; 47 tests; ruff/black/mypy clean. MoS resolution recorded in [`doc/reuse/mind_of_steele.md`](./reuse/mind_of_steele.md).
+
 - **Goal:** the shared library everything else builds on. Pure code, tested
   against mocks — no external services required.
 - **Deliverables:**
