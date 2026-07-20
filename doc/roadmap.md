@@ -32,7 +32,10 @@ M8 migrates the corpus in.
   plain git vs git-LFS.
 - **Already resolved (record, don't re-litigate):** trigger locus = Halob-local
   filesystem watcher; data boundary = cloud LLM/Ragie permitted (logged exception).
-- **Deliverable:** `doc/decisions/` ADRs with a recommendation per decision.
+- **Deliverable:** `doc/decisions/` ADRs with a recommendation per decision —
+  [ADR 0001 wiki/RAG sink](./decisions/0001-wiki-rag-sink-backend.md) →
+  RAG-on-Elasticsearch (Ragie pluggable); [ADR 0002 large binaries](./decisions/0002-large-binary-handling.md)
+  → git-LFS (selective).
 - **Process:** **lightweight** — a short research spike producing the two ADRs,
   *not* the full spec→plan→tasks→implement→review ceremony.
 - **Acceptance:** each open decision has a chosen option + rationale; no code.
