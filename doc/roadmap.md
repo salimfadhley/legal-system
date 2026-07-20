@@ -58,19 +58,34 @@ M8 migrates the corpus in.
   - **Deterministic doc-id** scheme + **content-hash staleness** check.
   - **Mind of Steele reuse resolution** — resolve MoS as a git source / vendored
     package (it lives on the Mac, not Halob).
+  - **Papra cross-store mapping** ([ADR 0003](./decisions/0003-document-management-papra-integration.md)):
+    schema carries a Papra `documentId` ↔ `raw_path`/`raw_commit` mapping so the
+    git-raw ↔ Papra link is first-class.
 - **Depends on:** M0 (for interface choices).
 - **Acceptance:** schema round-trips + inheritance rules covered by tests;
   event/id/staleness logic tested; MoS importable.
 
-## M2 — Extractors
+## M2 — Extraction (wire Papra + Docling; build only the gaps)
 
-- **Goal:** raw file → markdown, dispatched by mime type.
-- **Scope:** `pdftotext` (text PDF) · `tesseract` OCR (scanned PDF/image) ·
-  eml-to-md (**recurse into `attachments/`**) · `pandoc` (docx) · readability
-  (url) · passthrough (txt/md). Leaf-directory aware.
-- **Depends on:** M1.
-- **Acceptance:** table-driven tests with fixtures per mime type; failures raise
-  cleanly (feed the dead-letter path later).
+*Rescoped by [ADR 0003](./decisions/0003-document-management-papra-integration.md):
+the existing Papra deployment (backed by self-hosted Docling) handles OCR / PDF /
+docx / layout+tables, so we no longer hand-build those extractors.*
+
+- **Goal:** get raw files to layout-aware markdown, reusing Papra + Docling for the
+  heavy lifting; build only what Papra can't do.
+- **Offloaded to Papra + Docling:** `pdftotext`, `tesseract` OCR, `pandoc` (docx),
+  and table/layout extraction.
+- **Still build (Papra gaps):** eml-to-md (**recurse into `attachments/`**),
+  readability (url), passthrough (txt/md).
+- **New adapters:** a **Papra API client** (push original into the `legal` org;
+  `GET …/documents/:id` for `content` + metadata; stamp `raw_path`/`raw_commit` as
+  custom-properties); a **`document:created` webhook → NATS bridge**.
+- **Depends on:** M0 (ADR 0003), M1. **Pre-req:** verify Docling's MIT license +
+  Papra external-extraction integration before starting.
+- **Acceptance:** for a sample leaf, the original lands in git-raw and Papra, Papra
+  returns Docling-extracted markdown via the API, and provenance is cross-stamped;
+  eml/passthrough covered by fixture tests; failures dead-letter without touching
+  raw.
 
 ## M3 — Enrich (claim-aware)
 
@@ -79,6 +94,9 @@ M8 migrates the corpus in.
   entities, **`author`/`source_party`**, and **attributed assertions** in a
   comparable form — powering both attributed Q&A *and* contradiction detection.
   Assemble markdown with YAML frontmatter matching the M1 schema.
+  *(Per [ADR 0003](./decisions/0003-document-management-papra-integration.md), the
+  extracted-markdown input now arrives from Papra's `content` field; enrichment
+  itself is unchanged.)*
 - **Depends on:** M1, MoS resolved.
 - **Acceptance:** enrichment output validates against the schema; claim extraction
   covered by fixture tests (mocked LLM).
@@ -109,7 +127,10 @@ M8 migrates the corpus in.
 - **Goal:** detect raw changes on Halob and publish `goldberg.raw.ingested`.
 - **Scope:** filesystem watcher on the goldberg-raw (and input) tree; **coalesce to
   leaf-directory granularity + debounce** so a multi-file document save fires one
-  job after writes settle.
+  job after writes settle. Also pushes the original into Papra's `legal` org.
+  *(Per [ADR 0003](./decisions/0003-document-management-papra-integration.md), a
+  second trigger source exists — Papra's `document:created` webhook bridged to
+  `goldberg.raw.ingested` — which may be preferred for the Papra-mediated path.)*
 - **Depends on:** M1 (event contract).
 - **Acceptance:** simulated multi-file save produces exactly one event per leaf.
 
