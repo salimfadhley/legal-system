@@ -5,6 +5,10 @@ The build order for taking the pipeline in [design.md](./design.md) /
 **Spec Kitty mission** (`/spec-kitty.specify` → plan → tasks → implement → review
 → merge). TDD is mandatory throughout; nothing here is implemented yet.
 
+**Build order (reviewed + locked 2026-07-20): foundations-first.** M1–M7 build the
+complete, robust pipeline before M8 migrates the corpus in — chosen over a
+time-to-value "walking skeleton" for rigour. Migration (M8) stays last.
+
 ## Sequencing
 
 ```
@@ -29,6 +33,8 @@ M8 migrates the corpus in.
 - **Already resolved (record, don't re-litigate):** trigger locus = Halob-local
   filesystem watcher; data boundary = cloud LLM/Ragie permitted (logged exception).
 - **Deliverable:** `doc/decisions/` ADRs with a recommendation per decision.
+- **Process:** **lightweight** — a short research spike producing the two ADRs,
+  *not* the full spec→plan→tasks→implement→review ceremony.
 - **Acceptance:** each open decision has a chosen option + rationale; no code.
 
 ## M1 — Foundations & contracts
