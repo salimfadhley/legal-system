@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "mission_slug": "foundations-and-contracts-01KY0QN9",
+  "mission_id": "01KY0QN90G1EDM84VW4F0HXEFQ",
+  "mission_branch": "kitty/mission-foundations-and-contracts-01KY0QN9",
+  "target_branch": "feat/foundations-and-contracts",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01"
+      ],
+      "write_scope": [
+        "doc/reuse/**",
+        "src/**",
+        "tests/**"
+      ],
+      "predicted_surfaces": [],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-07-20T21:45:27.654542+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": []
+}
