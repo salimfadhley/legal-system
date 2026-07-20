@@ -12,5 +12,7 @@
   "purpose_tldr": "The shared, tested foundation library every pipeline mission builds on: the metadata schema, NATS event contracts, the sink interface, deterministic doc-id + staleness, and Mind of Steele reuse resolution.",
   "slug": "foundations-and-contracts-01KY0QN9",
   "target_branch": "feat/foundations-and-contracts",
-  "topology": "coord"
+  "topology": "coord",
+  "vcs": "git",
+  "vcs_locked_at": "2026-07-20T21:46:14.543521+00:00"
 }

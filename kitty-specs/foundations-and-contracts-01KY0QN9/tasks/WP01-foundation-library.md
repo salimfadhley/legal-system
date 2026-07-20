@@ -27,7 +27,8 @@ subtasks:
 - T007
 phase: Phase 1 - Foundations
 assignee: ''
-agent: ''
+agent: "claude"
+shell_pid: "16976"
 history:
 - timestamp: '2026-07-20T21:15:00Z'
   agent: system
@@ -79,3 +80,7 @@ and `doc/design.md`. TDD: a failing test precedes each unit.
 
 - Pure library — no network/external services. TDD (failing test first). Reuse
   goldberg-meta inheritance semantics; provenance fields first-class.
+
+## Activity Log
+
+- 2026-07-20T21:46:28Z – claude – shell_pid=16976 – Assigned agent via action command
