@@ -12,5 +12,7 @@
   "purpose_tldr": "Resolve the two remaining open architecture decisions (wiki/RAG sink backend and large-binary handling) so downstream pipeline missions are unblocked.",
   "slug": "resolve-open-decisions-01KY0MYK",
   "target_branch": "feat/resolve-open-decisions",
-  "topology": "coord"
+  "topology": "coord",
+  "vcs": "git",
+  "vcs_locked_at": "2026-07-20T21:04:02.861396+00:00"
 }

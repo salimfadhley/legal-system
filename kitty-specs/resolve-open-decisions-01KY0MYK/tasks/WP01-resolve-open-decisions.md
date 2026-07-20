@@ -21,7 +21,8 @@ subtasks:
 - T005
 phase: Phase 1 - Decisions
 assignee: ''
-agent: ''
+agent: "claude"
+shell_pid: "11980"
 history:
 - timestamp: '2026-07-20T20:59:00Z'
   agent: system
@@ -84,3 +85,10 @@ Deliverables:
 - Respect charter risk boundaries (provenance preservable; `goldberg-raw`
   immutable). Do not re-litigate already-settled decisions (trigger locus; data
   boundary). No production code.
+
+## Activity Log
+
+- 2026-07-20T21:04:14Z – claude – shell_pid=10964 – Assigned agent via action command
+- 2026-07-20T21:07:16Z – claude – shell_pid=10964 – ADRs 0001 + 0002 written, docs wired, committed in lane-a
+- 2026-07-20T21:07:34Z – claude – shell_pid=11980 – Started review via action command
+- 2026-07-20T21:08:18Z – user – shell_pid=11980 – Review passed: both ADRs complete (single recommendation + rationale + consequences each), cite constraints + downstream missions (M4/M8), consistent template, discoverable from doc/index.md. No unresolved markers.
