@@ -7,6 +7,7 @@
   "mission_number": null,
   "mission_slug": "resolve-open-decisions-01KY0MYK",
   "mission_type": "software-dev",
+  "pr_bound": true,
   "purpose_context": "Before building the ingestion pipeline, two architecture decisions remain open and block later work: which backend the searchable wiki/RAG sink uses, and how large binary documents are stored in the raw repository. This mission is a lightweight research spike that produces a documented recommendation (an ADR) for each decision, so the foundations mission and everything downstream can proceed on settled ground.",
   "purpose_tldr": "Resolve the two remaining open architecture decisions (wiki/RAG sink backend and large-binary handling) so downstream pipeline missions are unblocked.",
   "slug": "resolve-open-decisions-01KY0MYK",

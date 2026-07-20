@@ -26,11 +26,14 @@ history:
 - timestamp: '2026-07-20T20:59:00Z'
   agent: system
   action: Prompt generated via /spec-kitty.tasks
-authoritative_surface: src/
-create_intent: []
-execution_mode: code_change
+authoritative_surface: doc/
+create_intent:
+- doc/decisions/README.md
+- doc/decisions/0001-wiki-rag-sink-backend.md
+- doc/decisions/0002-large-binary-handling.md
+execution_mode: doc_change
 owned_files:
-- src/**
+- doc/**
 tags: []
 ---
 
