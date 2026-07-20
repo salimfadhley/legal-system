@@ -27,7 +27,9 @@ def config() -> None:
     halob = cfg.get("halob", {})
     if halob:
         click.echo("\nHalob services:")
-        click.echo(f"  elasticsearch  {halob.get('elasticsearch')}  (index: {halob.get('elasticsearch_index')})")
+        click.echo(
+            f"  elasticsearch  {halob.get('elasticsearch')}  (index: {halob.get('elasticsearch_index')})"
+        )
         click.echo(f"  nats           {halob.get('nats')}")
 
 

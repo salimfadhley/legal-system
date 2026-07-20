@@ -28,7 +28,7 @@ subtasks:
 phase: Phase 1 - Foundations
 assignee: ''
 agent: "claude"
-shell_pid: "16976"
+shell_pid: "20040"
 history:
 - timestamp: '2026-07-20T21:15:00Z'
   agent: system
@@ -84,3 +84,6 @@ and `doc/design.md`. TDD: a failing test precedes each unit.
 ## Activity Log
 
 - 2026-07-20T21:46:28Z – claude – shell_pid=16976 – Assigned agent via action command
+- 2026-07-20T22:00:00Z – claude – shell_pid=16976 – Foundation library complete: 47 tests pass, ruff/black/mypy clean
+- 2026-07-20T22:00:26Z – claude – shell_pid=20040 – Started review via action command
+- 2026-07-20T22:01:23Z – user – shell_pid=20040 – Review passed: schema/inheritance/events/sinks/doc-id/adapter implemented per plan; 47 tests pass; ruff/black/mypy clean; FR-001..010 covered.
