@@ -55,3 +55,6 @@ venv/
 
 # IDE
 .idea/
+
+# Spec Kitty runtime worktrees
+.worktrees/

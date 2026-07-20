@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "mission_slug": "resolve-open-decisions-01KY0MYK",
+  "mission_id": "01KY0MYK78JTET56NBG4S2N8SX",
+  "mission_branch": "kitty/mission-resolve-open-decisions-01KY0MYK",
+  "target_branch": "feat/resolve-open-decisions",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01"
+      ],
+      "write_scope": [
+        "src/**"
+      ],
+      "predicted_surfaces": [
+        "artifact-rendering"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    }
+  ],
+  "computed_at": "2026-07-20T21:00:47.476830+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": []
+}
