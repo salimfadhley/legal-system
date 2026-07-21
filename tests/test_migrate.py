@@ -111,6 +111,22 @@ def test_manifest_sha256_and_matters(tmp_path: Path) -> None:
     assert by_path["reports/r1.md"].matters == []
     # metadata.yaml files themselves are not manifest entries
     assert not any(e.raw_path.endswith("metadata.yaml") for e in entries)
+    # only allowlisted trees are manifested, even when non-allowlisted trees exist
+    # in the walked root (defensive: tmp/ is excluded)
+    assert not any(e.raw_path.startswith("tmp/") for e in entries)
+
+
+def test_manifest_ignores_non_allowlisted_trees_in_root(tmp_path: Path) -> None:
+    # Point build_manifest at a root that also contains an excluded tree with a file.
+    arch, raw = tmp_path / "arch", tmp_path / "raw"
+    _make_archive(arch)
+    al = _allowlist(tmp_path)
+    populate_raw(arch, raw, al)
+    # inject a stray file under an excluded tree name directly into raw
+    (raw / "tmp").mkdir(exist_ok=True)
+    (raw / "tmp" / "stray.md").write_text("should not be manifested")
+    entries = build_manifest(raw, al, with_commit=False)
+    assert not any(e.raw_path.startswith("tmp/") for e in entries)
 
 
 def test_manifest_raw_commit_populated_after_commit(tmp_path: Path) -> None:

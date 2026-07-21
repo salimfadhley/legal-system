@@ -208,12 +208,24 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   an `.eml` with many attachments (each attachment is arguably its own exhibit), a
   PDF that is a print-out of several separate email messages, a scanned bundle of
   distinct documents. One raw file → several extracted documents.
-- **Scope (to be analysed):** detect document boundaries within a composite;
-  split into constituent documents; give each its own doc-id + frontmatter while
-  preserving provenance back to the parent raw file (and the position within it);
-  decide how attachments relate to their carrier email.
-- **Status:** deferred — analyse and spec later. Note: the M2 eml extractor already
-  produces an *attachment manifest* (a foundation this can build on).
+- **Shape (user, 2026-07-21) — three stages, applied at the goldberg-raw ingest
+  boundary (before Papra/Docling):**
+  a. **Detect** whether an ingested item is a composite — an `.eml` carrying
+     attachments (structural: MIME parts), or a PDF that is a compilation of many
+     documents / email print-outs (unstructured: needs content-based boundary
+     detection — `From:/To:/Subject:` headers, page breaks, likely LLM-assisted).
+  b. **Decompose** by a type-aware strategy into component documents, materialised
+     as a leaf-directory unit (`raw.eml` / carrier preserved + `body.md` +
+     `attachments/…` + shared `metadata.yaml`); each component gets its own
+     SHA-256, doc-id, and frontmatter, with `relates_to` back to the parent.
+  c. **Trigger** the normal pipeline for each component (upload → Docling → enrich
+     → index). **Recursive:** a component may itself be composite (a PDF attachment
+     that is itself a bundle), so decomposition re-runs on each component.
+- **First case = `.eml`** (structural, easiest): reuse the M2 `eml_to_markdown`
+  (`ExtractedEmail` + `AttachmentRef`) to *write* the decomposed files instead of
+  returning flattened markdown. The PDF-compilation case (unstructured boundaries)
+  is the harder follow-on. See ADR 0006 for where this sits in ingestion.
+- **Status:** deferred — do immediately after the M8 slice (user sequencing).
 
 ### M10 — Dense-vector semantic RAG (stretch goal)
 

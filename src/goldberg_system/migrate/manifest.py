@@ -88,8 +88,10 @@ def build_manifest(
             continue
         if rel.name == "metadata.yaml" or allowlist.is_excluded_file(rel):
             continue
-        chain = _resolve_chain(rel, root)
         tree = allowlist.tree_for(rel)
+        if tree is None:  # only files under an allowlisted tree get a manifest entry
+            continue
+        chain = _resolve_chain(rel, root)
         case_number = chain.get("case_number")
         entries.append(
             ManifestEntry(
