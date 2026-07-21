@@ -61,17 +61,22 @@ class _FakePapra:
         )
 
 
+def _proc(papra: _FakePapra, sink: _FakeSink) -> Processor:
+    # small poll budget + no-op sleep so tests don't wait
+    return Processor(
+        papra, _FakeEnricher(), [sink], content_poll_attempts=2, sleep=lambda *_: None
+    )
+
+
 def test_processor_indexes_document_with_content() -> None:
     sink = _FakeSink()
-    proc = Processor(_FakePapra("Body."), _FakeEnricher(), [sink])
-    assert proc.process("doc_1") is True
+    assert _proc(_FakePapra("Body."), sink).process("doc_1") is True
     assert sink.written[0].metadata.papra_document_id == "doc_1"
 
 
-def test_processor_skips_empty_content() -> None:
+def test_processor_skips_empty_content_after_polling() -> None:
     sink = _FakeSink()
-    proc = Processor(_FakePapra("   "), _FakeEnricher(), [sink])
-    assert proc.process("doc_1") is False
+    assert _proc(_FakePapra("   "), sink).process("doc_1") is False
     assert sink.written == []
 
 
