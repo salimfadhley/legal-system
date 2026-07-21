@@ -10,7 +10,7 @@ the service is M5 proper; this runnable core also powers backfill (M8).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from goldberg_system.enrichment.adapter import EnrichmentAdapter, EnrichmentRequest
 from goldberg_system.enrichment.assemble import merge_enrichment
@@ -19,6 +19,9 @@ from goldberg_system.metadata.schema import DocumentMetadata
 from goldberg_system.papra.client import PapraClient, PapraDocument
 from goldberg_system.provenance import now_iso
 from goldberg_system.sinks.base import EnrichedDocument, Sink, SinkResult
+
+if TYPE_CHECKING:
+    from goldberg_system.migrate.manifest import Manifest
 
 
 def build_enriched_document(
@@ -60,6 +63,7 @@ class BackfillReport:
     indexed: int = 0
     skipped_empty: int = 0
     failures: int = 0
+    with_provenance: int = 0  # docs matched to a manifest entry (real raw_path/matters)
 
 
 def backfill_from_papra(
@@ -69,9 +73,14 @@ def backfill_from_papra(
     *,
     page_size: int = 100,
     max_docs: int | None = None,
+    manifest: "Manifest | None" = None,
     on_doc: Callable[[PapraDocument, str], None] | None = None,
 ) -> BackfillReport:
-    """Enrich + write every Papra document with extracted content to ``sinks``."""
+    """Enrich + write every Papra document with extracted content to ``sinks``.
+
+    When ``manifest`` is given, each document is joined to goldberg-raw by content
+    SHA-256 to attach real provenance (raw_path/raw_commit) and matters (ADR 0006).
+    """
     report = BackfillReport()
     for stub in papra.list_documents(page_size=page_size):
         if max_docs is not None and report.processed >= max_docs:
@@ -85,7 +94,10 @@ def backfill_from_papra(
                 if on_doc:
                     on_doc(stub, "skipped-empty")
                 continue
-            document = build_enriched_document(full, content, enricher)
+            base = manifest.base_for(full) if manifest else None
+            if base is not None:
+                report.with_provenance += 1
+            document = build_enriched_document(full, content, enricher, base=base)
             results = write_to_sinks(document, sinks)
             if all(r.ok for r in results):
                 report.indexed += 1

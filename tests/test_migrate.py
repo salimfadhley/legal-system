@@ -140,6 +140,38 @@ def test_write_manifest_keyed_by_sha(tmp_path: Path) -> None:
     assert all("raw_path" in v and "matters" in v for v in data.values())
 
 
+class _FakePapraDoc:
+    def __init__(self, sha: str | None) -> None:
+        self.original_sha256_hash = sha
+
+
+def test_manifest_base_for_joins_by_sha256(tmp_path: Path) -> None:
+    from goldberg_system.migrate.manifest import Manifest
+
+    arch, raw = tmp_path / "arch", tmp_path / "raw"
+    _make_archive(arch)
+    al = _allowlist(tmp_path)
+    populate_raw(arch, raw, al)
+    entries = build_manifest(raw, al, with_commit=False)
+    manifest = Manifest(  # keyed by sha
+        __import__("json").loads(write_manifest(entries, tmp_path / "m.json").read_text())
+    )
+
+    letter_sha = hashlib.sha256(b"a received letter").hexdigest()
+    base = manifest.base_for(_FakePapraDoc(letter_sha))
+    assert base is not None
+    assert base.raw_path == "evidence/letter.md"
+    assert base.matters == ["422500059892"]
+    assert base.primary_matter == "422500059892"
+    assert base.origin.value == "received"
+
+    # SHA-256 is case-insensitive on lookup
+    assert manifest.base_for(_FakePapraDoc(letter_sha.upper())) is not None
+    # unknown hash → no provenance (pipeline falls back gracefully)
+    assert manifest.base_for(_FakePapraDoc("deadbeef")) is None
+    assert manifest.base_for(_FakePapraDoc(None)) is None
+
+
 def test_gitattributes_covers_common_binaries() -> None:
     content = gitattributes_content()
     for ext in ("pdf", "png", "jpg", "mp4", "zip"):

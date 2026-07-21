@@ -106,6 +106,49 @@ def build_manifest(
     return entries
 
 
+class Manifest:
+    """A loaded provenance manifest, queried by content SHA-256 (ADR 0006 join key)."""
+
+    def __init__(self, by_sha: dict[str, dict]) -> None:
+        self._by_sha = {k.lower(): v for k, v in by_sha.items()}
+
+    @classmethod
+    def load(cls, path: Path | str) -> "Manifest":
+        return cls(json.loads(Path(path).read_text()))
+
+    def __len__(self) -> int:
+        return len(self._by_sha)
+
+    def entry_for_sha(self, sha256: str | None) -> dict | None:
+        return self._by_sha.get((sha256 or "").lower()) if sha256 else None
+
+    def base_for(self, papra_doc: "PapraDocumentLike") -> "DocumentMetadata | None":
+        """Resolve real provenance + matters for a Papra document, or None if unknown.
+
+        Joins on ``original_sha256_hash`` == the raw file's SHA-256 (spike §1).
+        """
+        from goldberg_system.metadata.schema import DocumentMetadata, Origin
+
+        entry = self.entry_for_sha(getattr(papra_doc, "original_sha256_hash", None))
+        if entry is None:
+            return None
+        matters = list(entry.get("matters") or [])
+        origin = entry.get("origin")
+        return DocumentMetadata(
+            raw_path=entry.get("raw_path"),
+            raw_commit=entry.get("raw_commit") or None,
+            matters=matters,
+            primary_matter=matters[0] if matters else None,
+            origin=Origin(origin) if origin in ("received", "authored") else None,
+            document_type=entry.get("document_type"),
+            party_role=entry.get("party_role"),
+        )
+
+
+class PapraDocumentLike:  # pragma: no cover - typing aid only
+    original_sha256_hash: str | None
+
+
 def write_manifest(entries: list[ManifestEntry], dest: Path | str) -> Path:
     """Write the manifest as JSON keyed by SHA-256 (the Papra join key)."""
     out = Path(dest)

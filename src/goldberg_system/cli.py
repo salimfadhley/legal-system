@@ -142,9 +142,16 @@ def facets() -> None:
     default=None,
     help="Also write frontmatter .md files under this root.",
 )
-def reindex(max_docs, extracted_root) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--manifest",
+    "manifest_path",
+    default=None,
+    help="Provenance manifest (JSON) to attach real raw_path/matters by SHA-256.",
+)
+def reindex(max_docs, extracted_root, manifest_path) -> None:  # type: ignore[no-untyped-def]
     """Backfill the ES index from documents already in Papra (enrich + index)."""
     from goldberg_system.enrichment import OpenAIEnricher
+    from goldberg_system.migrate.manifest import Manifest
     from goldberg_system.papra import PapraClient
     from goldberg_system.pipeline import backfill_from_papra
     from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
@@ -156,14 +163,18 @@ def reindex(max_docs, extracted_root) -> None:  # type: ignore[no-untyped-def]
     sinks: list = [indexer]
     if extracted_root:
         sinks.append(ExtractedRepoWriter(extracted_root))
+    manifest = Manifest.load(manifest_path) if manifest_path else None
+    if manifest is not None:
+        click.echo(f"Using provenance manifest ({len(manifest)} entries)")
 
     def on_doc(stub, status) -> None:  # type: ignore[no-untyped-def]
         click.echo(f"  [{status}] {stub.original_name or stub.id}")
 
     click.echo(f"Backfilling into {indexer.index} …")
     report = backfill_from_papra(
-        papra, enricher, sinks, max_docs=max_docs, on_doc=on_doc
+        papra, enricher, sinks, max_docs=max_docs, manifest=manifest, on_doc=on_doc
     )
+    click.echo(f"  with real provenance: {report.with_provenance}")
     click.echo(
         f"\nprocessed={report.processed} indexed={report.indexed} "
         f"skipped_empty={report.skipped_empty} failures={report.failures}"
