@@ -17,6 +17,16 @@ no live index, no OpenAI cost) — it gates the bulk re-ingest. Synthesize adver
 documents (`goldberg_system.testing.synthetic`) to probe limits before a real
 document exposes them. See `doc/runbooks/hard-case-testing.md`.
 
+- **End-to-end tests for major components (mandatory):** every major component — the
+extraction path, the enrichment/index pipeline, the query layer, the observability
+surface, the MCP server — must have an end-to-end test in addition to its unit tests.
+The E2E test **exercises the component against its real integrations** (Docling,
+Elasticsearch, the manifest — an isolated `*_test` index, never the live corpus) to
+prove the pieces fit together, and it **guards performance**: it records timing and
+fails (or flags) on a major regression, so a change that silently makes ingestion or
+query dramatically slower is caught. Unit tests prove the logic; E2E tests prove the
+integration and the speed.
+
 
 ## Quality Gates
 
