@@ -30,7 +30,9 @@ def _state() -> dict:
 
 def render(state: SystemState) -> None:
     """Render the dashboard from a SystemState (pure w.r.t. the model → testable-ish)."""
-    st.set_page_config(page_title="Goldberg — system status", page_icon="📊", layout="wide")
+    st.set_page_config(
+        page_title="Goldberg — system status", page_icon="📊", layout="wide"
+    )
     st.title("Goldberg pipeline — operations")
 
     health = state.health
@@ -66,7 +68,9 @@ def render(state: SystemState) -> None:
     with st.expander("LLM-readable state (YAML) — the same data"):
         st.code(state.to_yaml(), language="yaml")
 
-    st.caption(f"generated {state.generated_at} · last indexed {state.pipeline['last_indexed_at']}")
+    st.caption(
+        f"generated {state.generated_at} · last indexed {state.pipeline['last_indexed_at']}"
+    )
 
 
 def main() -> None:

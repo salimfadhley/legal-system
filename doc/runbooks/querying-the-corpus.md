@@ -140,6 +140,28 @@ goldberg dlq [--status failed] [--status skipped]   # what failed/skipped, and w
 shows every stage event in order — the stop point is the answer. `dlq` lists the
 failed/skipped documents from the event projection.
 
+### `goldberg alert` — proactive gap/failure check (scheduled)
+
+```
+goldberg alert [--manifest <provenance-manifest.json>] [--max-failures N] [--json]
+```
+
+The reduced M12 phase 4 (ADR 0008): evaluates health + pipeline failures + (with a
+manifest) completeness, prints the alerts, and **exits non-zero** — `2` critical,
+`1` warning, `0` clear. Drive it from a scheduler so silent drops surface without
+anyone running `goldberg audit`. Example cron on Halob (notify on non-zero):
+
+```cron
+*/30 * * * * cd /share/home/sal/.../goldberg-system && \
+  uv run goldberg alert --manifest config/provenance-manifest.json \
+  || mail -s "goldberg: corpus gap/failure" sal@halob < /dev/null
+```
+
+Or as a Jenkins job on the existing server — the build fails on non-zero exit and
+Jenkins emails. Deliberately *not* built (overkill for a single-user LAN tool):
+OpenTelemetry/Grafana and the durable NATS JetStream DLQ (the ES projection +
+idempotent `reindex` cover reprocessing).
+
 ## How to answer a question
 
 1. **Pick the tool.** Attribution / "who said" → `claims`. Topic / keyword →

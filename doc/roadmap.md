@@ -319,13 +319,17 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   for querying (per-doc "why", status). NATS gives durability + DLQ + replay; ES gives
   the query surface. (Resolves the earlier open decision: use both, each for its
   strength.)
-- **Phases:** (1) event schema + DLQ/errors JetStream streams + emit stage events from
-  the live service/backfill/wiki sink → ES projection; (2) reconciliation CLI
-  (expected vs actual → gaps); (3) per-doc trace + status summary; (4) stretch: OTel
-  metrics/tracing + alerting. **Core = phases 1–3** (de-risks M8).
-- **Status:** **spec'd — see [ADR 0008](./decisions/0008-observability-architecture.md)**.
-  Recommended before the M8 full migration so the migration is self-verifying (every
-  failure captured + reprocessable; a closing `goldberg audit` proves 0 missing).
+- **Phases:** (1) event schema + emit stage events → ES projection; (2) reconciliation
+  CLI (expected vs actual → gaps); (3) per-doc trace + status summary; (4) **reduced**:
+  alerting only.
+- **Status:** ✅ **core delivered + reduced phase 4** ([ADR 0008](./decisions/0008-observability-architecture.md)).
+  `goldberg audit` (reconciliation), `trace` (per-doc timeline via the `raw_sha256`
+  correlation ID), `status [--yaml]` (health), `dlq` (failed/skipped view), and
+  `alert` (schedulable gap/failure check, exit-code driven). Events emit to
+  `goldberg_pipeline_events` from backfill. **Deliberately deferred** (low value for a
+  single-user LAN tool, user 2026-07-21): OpenTelemetry/Grafana, and the durable NATS
+  JetStream DLQ/errors streams (the ES projection + idempotent `reindex` cover
+  reprocessing). The core makes the M8 migration self-verifying.
 
 ### M13 — Live operations dashboard (Streamlit)
 

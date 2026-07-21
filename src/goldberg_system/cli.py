@@ -220,6 +220,50 @@ def audit(manifest_path, show_missing, show_extra) -> None:  # type: ignore[no-u
 
 @main.command()
 @click.option(
+    "--manifest",
+    "manifest_path",
+    default=None,
+    help="Also check completeness against this provenance manifest.",
+)
+@click.option(
+    "--max-failures",
+    default=0,
+    show_default=True,
+    help="Allowed pipeline failures before alerting.",
+)
+@click.option(
+    "--alert-on-skipped", is_flag=True, help="Also alert on skipped documents."
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit alerts as JSON.")
+def alert(manifest_path, max_failures, alert_on_skipped, as_json) -> None:  # type: ignore[no-untyped-def]
+    """Proactive check — exits non-zero when the corpus has gaps or failures (M12).
+
+    Drive it from a scheduler (cron on Halob / Jenkins) so silent drops surface
+    without anyone running `goldberg audit`. Exit 2 = critical, 1 = warning, 0 = clear.
+    """
+    from goldberg_system.observability.alerts import evaluate_alerts, exit_code
+    from goldberg_system.observability.reconcile import Reconciler
+    from goldberg_system.observability.state import aggregate
+
+    q = _query()
+    state = aggregate(q.client)
+    recon = Reconciler(q.client, q.index).run(manifest_path) if manifest_path else None
+    alerts = evaluate_alerts(
+        state, recon, max_failures=max_failures, alert_on_skipped=alert_on_skipped
+    )
+    if as_json:
+        click.echo(json.dumps([a.model_dump() for a in alerts], indent=2))
+    elif not alerts:
+        click.echo("✓ all clear — no gaps or failures")
+    else:
+        for a in alerts:
+            mark = "✗" if a.level == "critical" else "⚠"
+            click.echo(f"{mark} [{a.level}] {a.code}: {a.message}")
+    raise SystemExit(exit_code(alerts))
+
+
+@main.command()
+@click.option(
     "--yaml", "as_yaml", is_flag=True, help="Emit the LLM-readable YAML mode."
 )
 def status(as_yaml) -> None:  # type: ignore[no-untyped-def]
