@@ -19,9 +19,32 @@ from goldberg_system.migrate.allowlist import Allowlist
 
 # Binary types tracked by git-LFS (ADR 0002: large/binary → LFS, text stays in git).
 LFS_EXTENSIONS: tuple[str, ...] = (
-    "pdf", "png", "jpg", "jpeg", "gif", "tiff", "tif", "webp", "bmp", "heic",
-    "mp4", "mov", "avi", "mkv", "webm", "mp3", "wav", "m4a", "ogg",
-    "zip", "gz", "tar", "docx", "xlsx", "pptx", "odt",
+    "pdf",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "tiff",
+    "tif",
+    "webp",
+    "bmp",
+    "heic",
+    "mp4",
+    "mov",
+    "avi",
+    "mkv",
+    "webm",
+    "mp3",
+    "wav",
+    "m4a",
+    "ogg",
+    "zip",
+    "gz",
+    "tar",
+    "docx",
+    "xlsx",
+    "pptx",
+    "odt",
 )
 
 

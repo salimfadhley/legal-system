@@ -13,7 +13,9 @@ from pathlib import Path
 
 import yaml
 
-_DEFAULT_CONFIG = Path(__file__).resolve().parents[3] / "config" / "evidence-allowlist.yaml"
+_DEFAULT_CONFIG = (
+    Path(__file__).resolve().parents[3] / "config" / "evidence-allowlist.yaml"
+)
 
 
 @dataclass(frozen=True)
@@ -44,7 +46,9 @@ class Allowlist:
             )
             for name, spec in (data.get("include") or {}).items()
         }
-        excluded = {name: str(reason) for name, reason in (data.get("exclude") or {}).items()}
+        excluded = {
+            name: str(reason) for name, reason in (data.get("exclude") or {}).items()
+        }
         globs = tuple(str(g) for g in (data.get("exclude_globs") or ()))
         return cls(included=included, excluded=excluded, exclude_globs=globs)
 

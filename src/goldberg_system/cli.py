@@ -219,6 +219,31 @@ def audit(manifest_path, show_missing, show_extra) -> None:  # type: ignore[no-u
 
 
 @main.command()
+@click.argument("key")
+def trace(key) -> None:  # type: ignore[no-untyped-def]
+    """Show one document's pipeline timeline — why did X (not) ingest.
+
+    KEY matches a doc_id, raw_path, or sha256 (M12 / ADR 0008).
+    """
+    from goldberg_system.observability.trace import read_trace
+
+    events = read_trace(_query().client, key)
+    if not events:
+        click.echo(f"(no pipeline events for {key})")
+        return
+    for e in events:
+        mark = {"ok": "✓", "skipped": "⊘", "failed": "✗", "started": "…"}.get(
+            e.status, "?"
+        )
+        line = f"  {e.ts}  {mark} {e.stage}/{e.status}"
+        if e.reason:
+            line += f"  — {e.reason}"
+        click.echo(line)
+        if e.error:
+            click.echo(f"       error: {e.error}")
+
+
+@main.command()
 @click.option(
     "--max", "max_docs", type=int, default=None, help="Limit documents processed."
 )
@@ -233,12 +258,19 @@ def audit(manifest_path, show_missing, show_extra) -> None:  # type: ignore[no-u
     default=None,
     help="Provenance manifest (JSON) to attach real raw_path/matters by SHA-256.",
 )
-def reindex(max_docs, extracted_root, manifest_path) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--events/--no-events",
+    default=True,
+    help="Emit pipeline audit events to goldberg_pipeline_events (M12).",
+)
+def reindex(max_docs, extracted_root, manifest_path, events) -> None:  # type: ignore[no-untyped-def]
     """Backfill the ES index from documents already in Papra (enrich + index)."""
     from goldberg_system.enrichment import OpenAIEnricher
     from goldberg_system.migrate.manifest import Manifest
+    from goldberg_system.observability.events import ElasticsearchEventSink
     from goldberg_system.papra import PapraClient
     from goldberg_system.pipeline import backfill_from_papra
+    from goldberg_system.provenance import now_iso
     from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
 
     papra = PapraClient.from_env()
@@ -251,13 +283,27 @@ def reindex(max_docs, extracted_root, manifest_path) -> None:  # type: ignore[no
     manifest = Manifest.load(manifest_path) if manifest_path else None
     if manifest is not None:
         click.echo(f"Using provenance manifest ({len(manifest)} entries)")
+    event_sink = None
+    run_id = None
+    if events:
+        event_sink = ElasticsearchEventSink.from_env()
+        event_sink.ensure_index()
+        run_id = f"reindex-{now_iso()}"
+        click.echo(f"Emitting audit events (run {run_id}) → {event_sink.index}")
 
     def on_doc(stub, status) -> None:  # type: ignore[no-untyped-def]
         click.echo(f"  [{status}] {stub.original_name or stub.id}")
 
     click.echo(f"Backfilling into {indexer.index} …")
     report = backfill_from_papra(
-        papra, enricher, sinks, max_docs=max_docs, manifest=manifest, on_doc=on_doc
+        papra,
+        enricher,
+        sinks,
+        max_docs=max_docs,
+        manifest=manifest,
+        events=event_sink,
+        run_id=run_id,
+        on_doc=on_doc,
     )
     click.echo(f"  with real provenance: {report.with_provenance}")
     click.echo(

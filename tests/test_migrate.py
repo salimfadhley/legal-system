@@ -33,10 +33,14 @@ def _allowlist(tmp_path: Path) -> Allowlist:
 def _make_archive(root: Path) -> None:
     # evidence tree: carries a case_number in metadata.yaml, plus a nested matter
     (root / "evidence").mkdir(parents=True)
-    (root / "evidence" / "metadata.yaml").write_text("case_number: '422500059892'\ndocument_type: evidence\n")
+    (root / "evidence" / "metadata.yaml").write_text(
+        "case_number: '422500059892'\ndocument_type: evidence\n"
+    )
     (root / "evidence" / "letter.md").write_text("a received letter")
     (root / "evidence" / "deacon").mkdir()
-    (root / "evidence" / "deacon" / "metadata.yaml").write_text("case_number: L00SS179\n")
+    (root / "evidence" / "deacon" / "metadata.yaml").write_text(
+        "case_number: L00SS179\n"
+    )
     (root / "evidence" / "deacon" / "claim.pdf").write_bytes(b"%PDF-1.4 fake")
     # reports tree: no case_number, authored origin
     (root / "reports").mkdir()
@@ -77,7 +81,10 @@ def test_populate_copies_only_allowlisted(tmp_path: Path) -> None:
     ev_meta = yaml.safe_load((raw / "evidence" / "metadata.yaml").read_text())
     assert ev_meta["origin"] == "received" and ev_meta["role"] == "input"
     assert ev_meta["case_number"] == "422500059892"
-    assert yaml.safe_load((raw / "reports" / "metadata.yaml").read_text())["origin"] == "authored"
+    assert (
+        yaml.safe_load((raw / "reports" / "metadata.yaml").read_text())["origin"]
+        == "authored"
+    )
     assert report.files_copied == 5  # 3 content + 2 metadata.yaml
     assert report.skipped_excluded == 2
 
@@ -136,8 +143,19 @@ def test_manifest_raw_commit_populated_after_commit(tmp_path: Path) -> None:
     populate_raw(arch, raw, al)
     for cmd in (["init", "-q"], ["add", "-A"]):
         subprocess.run(["git", "-C", str(raw), *cmd], check=True, capture_output=True)
-    env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", "PATH": __import__("os").environ["PATH"]}
-    subprocess.run(["git", "-C", str(raw), "commit", "-qm", "seed"], check=True, capture_output=True, env=env)
+    env = {
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@t",
+        "PATH": __import__("os").environ["PATH"],
+    }
+    subprocess.run(
+        ["git", "-C", str(raw), "commit", "-qm", "seed"],
+        check=True,
+        capture_output=True,
+        env=env,
+    )
     entries = build_manifest(raw, al, with_commit=True)
     assert all(len(e.raw_commit) == 40 for e in entries)
 
@@ -170,7 +188,9 @@ def test_manifest_base_for_joins_by_sha256(tmp_path: Path) -> None:
     populate_raw(arch, raw, al)
     entries = build_manifest(raw, al, with_commit=False)
     manifest = Manifest(  # keyed by sha
-        __import__("json").loads(write_manifest(entries, tmp_path / "m.json").read_text())
+        __import__("json").loads(
+            write_manifest(entries, tmp_path / "m.json").read_text()
+        )
     )
 
     letter_sha = hashlib.sha256(b"a received letter").hexdigest()

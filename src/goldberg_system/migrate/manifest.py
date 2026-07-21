@@ -15,10 +15,14 @@ import json
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING, Protocol
 
 import yaml
 
 from goldberg_system.migrate.allowlist import Allowlist
+
+if TYPE_CHECKING:
+    from goldberg_system.metadata.schema import DocumentMetadata
 
 
 @dataclass(frozen=True)
@@ -147,7 +151,7 @@ class Manifest:
         )
 
 
-class PapraDocumentLike:  # pragma: no cover - typing aid only
+class PapraDocumentLike(Protocol):  # pragma: no cover - typing aid only
     original_sha256_hash: str | None
 
 

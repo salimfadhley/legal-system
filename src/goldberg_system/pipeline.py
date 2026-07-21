@@ -10,7 +10,7 @@ the service is M5 proper; this runnable core also powers backfill (M8).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from goldberg_system.enrichment.adapter import EnrichmentAdapter, EnrichmentRequest
 from goldberg_system.enrichment.assemble import merge_enrichment
@@ -22,6 +22,7 @@ from goldberg_system.sinks.base import EnrichedDocument, Sink, SinkResult
 
 if TYPE_CHECKING:
     from goldberg_system.migrate.manifest import Manifest
+    from goldberg_system.observability.events import EventSink
 
 
 def build_enriched_document(
@@ -74,23 +75,44 @@ def backfill_from_papra(
     page_size: int = 100,
     max_docs: int | None = None,
     manifest: "Manifest | None" = None,
+    events: "EventSink | None" = None,
+    run_id: str | None = None,
     on_doc: Callable[[PapraDocument, str], None] | None = None,
 ) -> BackfillReport:
     """Enrich + write every Papra document with extracted content to ``sinks``.
 
     When ``manifest`` is given, each document is joined to goldberg-raw by content
     SHA-256 to attach real provenance (raw_path/raw_commit) and matters (ADR 0006).
+    When ``events`` is given, each document emits a stage audit event (ADR 0008) so
+    reconciliation gaps can be explained ("why did X not ingest").
     """
+    from goldberg_system.observability.events import PipelineEvent, safe_emit
+
+    def _emit(stage: str, status: str, stub: PapraDocument, **kw: Any) -> None:
+        if events is None:
+            return
+        fields: dict[str, Any] = {
+            "run_id": run_id,
+            "sha256": stub.original_sha256_hash,
+            "raw_path": stub.original_name or None,
+            **kw,  # explicit doc_id/raw_path/reason/error override the stub defaults
+        }
+        safe_emit(events, PipelineEvent.make("backfill", stage, status, **fields))
+
     report = BackfillReport()
     for stub in papra.list_documents(page_size=page_size):
         if max_docs is not None and report.processed >= max_docs:
             break
         report.processed += 1
+        _emit("received", "ok", stub)
         try:
             full = papra.get_document(stub.id)
             content = full.content or ""
             if not content.strip():
                 report.skipped_empty += 1
+                _emit(
+                    "extracted", "skipped", stub, reason="no content from Papra/Docling"
+                )
                 if on_doc:
                     on_doc(stub, "skipped-empty")
                 continue
@@ -101,14 +123,32 @@ def backfill_from_papra(
             results = write_to_sinks(document, sinks)
             if all(r.ok for r in results):
                 report.indexed += 1
+                _emit(
+                    "indexed",
+                    "ok",
+                    stub,
+                    doc_id=document.doc_id,
+                    raw_path=document.raw_path,
+                )
                 if on_doc:
                     on_doc(stub, "indexed")
             else:
                 report.failures += 1
+                bad = "; ".join(r.detail for r in results if not r.ok and r.detail)
+                _emit(
+                    "indexed",
+                    "failed",
+                    stub,
+                    doc_id=document.doc_id,
+                    raw_path=document.raw_path,
+                    reason="sink write failed",
+                    error=bad,
+                )
                 if on_doc:
                     on_doc(stub, "sink-failed")
         except Exception as exc:  # noqa: BLE001 - one bad doc must not stop backfill
             report.failures += 1
+            _emit("enriched", "failed", stub, reason="pipeline error", error=str(exc))
             if on_doc:
                 on_doc(stub, f"error: {exc}")
     return report
