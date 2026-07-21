@@ -120,7 +120,10 @@ class PapraClient:
         (or the webhook payload) when the text is needed.
         """
         # Papra caps pageSize at 100.
-        params: dict[str, Any] = {"pageIndex": page_index, "pageSize": min(page_size, 100)}
+        params: dict[str, Any] = {
+            "pageIndex": page_index,
+            "pageSize": min(page_size, 100),
+        }
         if search:
             params["searchQuery"] = search
         resp = self._http.request(
