@@ -87,8 +87,23 @@ class HandlingFlags(BaseModel):
         )
 
 
+class Claim(BaseModel):
+    """An attributed assertion extracted from a document.
+
+    Comparable across the corpus so contradictions (a party's account shifting
+    over time) become queryable. Lives in the document frontmatter (ADR 0004).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    subject: str
+    predicate: str
+    object: str
+    asserted_by: str | None = None  # the speaker/author making the claim
+
+
 class DocumentMetadata(BaseModel):
-    """The metadata carried by (or inherited onto) a single document."""
+    """The metadata carried in a document's YAML frontmatter (ADR 0004)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -100,6 +115,7 @@ class DocumentMetadata(BaseModel):
     date: str | None = None
     topic: str | None = None
     summary: str | None = None
+    long_summary: str | None = None
     skip: bool = False
     skip_patterns: list[str] = []
     files: dict[str, dict] = {}
@@ -111,6 +127,7 @@ class DocumentMetadata(BaseModel):
     origin: Origin | None = None
     role: Role | None = None
     entities: list[str] = []
+    claims: list[Claim] = []
 
     # provenance (first-class): the derived doc links back to raw path + commit
     raw_path: str | None = None

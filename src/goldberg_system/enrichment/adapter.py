@@ -15,7 +15,14 @@ from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
-from goldberg_system.metadata.schema import DocumentMetadata
+from goldberg_system.metadata.schema import Claim, DocumentMetadata
+
+__all__ = [
+    "EnrichmentRequest",
+    "EnrichmentResult",
+    "EnrichmentAdapter",
+    "Claim",
+]
 
 
 class EnrichmentRequest(BaseModel):
@@ -28,30 +35,17 @@ class EnrichmentRequest(BaseModel):
     metadata: DocumentMetadata
 
 
-class Claim(BaseModel):
-    """An attributed assertion extracted from a document.
-
-    Comparable across the corpus so contradictions (a party's account shifting
-    over time) become queryable.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    subject: str
-    predicate: str
-    object: str
-    asserted_by: str | None = None  # the speaker/author making the claim
-
-
 class EnrichmentResult(BaseModel):
     """The attributed output of enrichment."""
 
     model_config = ConfigDict(extra="forbid")
 
     summary: str
+    long_summary: str | None = None
     keywords: list[str] = []
     entities: list[str] = []
     author: str | None = None  # source_party / speaker
+    document_type: str | None = None  # a classification, e.g. "email", "court order"
     claims: list[Claim] = []
 
 
