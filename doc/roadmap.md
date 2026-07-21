@@ -322,9 +322,10 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
 - **Phases:** (1) event schema + DLQ/errors JetStream streams + emit stage events from
   the live service/backfill/wiki sink → ES projection; (2) reconciliation CLI
   (expected vs actual → gaps); (3) per-doc trace + status summary; (4) stretch: OTel
-  metrics/tracing + alerting.
-- **Status:** spec'd (roadmap). High value once autonomous processes (M11) and the
-  full corpus (M8) are live — that's when silent drops actually cost us.
+  metrics/tracing + alerting. **Core = phases 1–3** (de-risks M8).
+- **Status:** **spec'd — see [ADR 0008](./decisions/0008-observability-architecture.md)**.
+  Recommended before the M8 full migration so the migration is self-verifying (every
+  failure captured + reprocessable; a closing `goldberg audit` proves 0 missing).
 
 ### M13 — Live operations dashboard (Streamlit)
 
@@ -333,10 +334,18 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   app.
 - **Depends on M12** — the dashboard *renders* the audit log / DLQ / reconciliation;
   it does not generate telemetry itself. M12 must land first (it produces the data).
+- **Dual-mode — one `SystemState`, two renderers (user, 2026-07-21):** the same data
+  in a **human-readable mode** (the Streamlit UI) *and* an **LLM-readable mode** (the
+  identical state rendered as **YAML**, via `goldberg status --yaml`) so an LLM — this
+  agent or the casework drafting LLM — can grok the whole system in one read. The
+  dual-mode is the architecture: a single canonical `SystemState` model is rendered
+  both ways, so they never drift. See [ADR 0009](./decisions/0009-operations-dashboard.md).
 - **Scope (to analyse):** live pipeline activity (documents in flight, per-stage
   throughput), the **DLQ / errors queue** (what failed, why, reprocess buttons), the
   **reconciliation view** (expected vs actual, the list of un-ingested documents),
   corpus + wiki growth over time, and freshness/health of the autonomous processes.
   Reads ES (`goldberg_documents`, `goldberg_pipeline_events`) + NATS (DLQ depth).
 - **Deployment:** a container on Halob alongside the other services (LAN-only).
-- **Status:** deferred — subsequent mission after M12.
+- **Status:** **spec'd — see [ADR 0009](./decisions/0009-operations-dashboard.md)**.
+  Subsequent mission after M12 (it renders M12's data; `goldberg status --yaml` lands
+  with M12 core, the Streamlit UI on top).
