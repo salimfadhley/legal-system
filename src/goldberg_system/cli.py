@@ -170,5 +170,58 @@ def reindex(max_docs, extracted_root) -> None:  # type: ignore[no-untyped-def]
     )
 
 
+@main.group()
+def migrate() -> None:
+    """Corpus migration (M8): populate goldberg-raw and build the provenance manifest."""
+
+
+@migrate.command("populate-raw")
+@click.option("--dry-run", is_flag=True, help="Report what would be copied without writing.")
+def migrate_populate_raw(dry_run) -> None:  # type: ignore[no-untyped-def]
+    """Copy the allowlisted evidence trees from the frozen archive into goldberg-raw."""
+    from goldberg_system.config import load_projects, project_path
+    from goldberg_system.migrate.allowlist import Allowlist
+    from goldberg_system.migrate.populate_raw import populate_raw
+
+    cfg = load_projects()
+    archive_root = cfg["archive"]["path"]
+    raw_root = project_path("raw")
+    allowlist = Allowlist.load()
+    click.echo(
+        f"{'DRY-RUN: ' if dry_run else ''}populating {raw_root}\n  from {archive_root}\n"
+        f"  trees: {', '.join(sorted(allowlist.included))}"
+    )
+    report = populate_raw(archive_root, raw_root, allowlist, dry_run=dry_run)
+    for tree, n in sorted(report.trees.items()):
+        click.echo(f"  {tree:22} {n:>6} files")
+    mb = report.bytes_copied / (1024 * 1024)
+    click.echo(
+        f"\n{'would copy' if dry_run else 'copied'} {report.files_copied} files "
+        f"({mb:.1f} MB); skipped {report.skipped_excluded} excluded"
+    )
+    if not dry_run:
+        click.echo("Next: cd goldberg-raw && git lfs install && git add -A && git commit")
+
+
+@migrate.command("manifest")
+@click.option("--out", "out_path", default=None, help="Manifest output path (JSON).")
+@click.option("--no-commit", is_flag=True, help="Skip per-file git commit lookup (faster).")
+def migrate_manifest(out_path, no_commit) -> None:  # type: ignore[no-untyped-def]
+    """Build the SHA-256 provenance manifest by walking goldberg-raw."""
+    from goldberg_system.config import project_path
+    from goldberg_system.migrate.allowlist import Allowlist
+    from goldberg_system.migrate.manifest import build_manifest, write_manifest
+
+    raw_root = project_path("raw")
+    dest = out_path or (project_path("system") / "config" / "provenance-manifest.json")
+    entries = build_manifest(raw_root, Allowlist.load(), with_commit=not no_commit)
+    write_manifest(entries, dest)
+    with_matter = sum(1 for e in entries if e.matters)
+    click.echo(
+        f"manifest: {len(entries)} files → {dest}\n"
+        f"  with matter: {with_matter}  | without: {len(entries) - with_matter}"
+    )
+
+
 if __name__ == "__main__":
     main()

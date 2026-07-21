@@ -1,0 +1,115 @@
+"""The provenance manifest — the SHA-256 join key between goldberg-raw and Papra.
+
+For every file in goldberg-raw we record ``sha256`` (which equals Papra's
+``original_sha256_hash``, ADR 0006 spike §1), the git ``raw_path`` + ``raw_commit``,
+and the structural metadata resolved from the folder ``metadata.yaml`` chain
+(``matters`` from ``case_number``, plus ``party_role`` / ``document_type`` /
+``origin``). The pipeline looks an entry up by SHA-256 to attach real provenance
+to whatever Papra extracted.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import subprocess
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+import yaml
+
+from goldberg_system.migrate.allowlist import Allowlist
+
+
+@dataclass(frozen=True)
+class ManifestEntry:
+    sha256: str
+    raw_path: str  # POSIX, relative to the goldberg-raw root
+    raw_commit: str  # git commit that last touched the file ("" if not committed yet)
+    size: int
+    matters: list[str] = field(default_factory=list)
+    origin: str = "received"
+    party_role: str | None = None
+    document_type: str | None = None
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def _resolve_chain(rel: Path, root: Path) -> dict:
+    """Merge ``metadata.yaml`` from ``root`` down to ``rel``'s folder (child overrides).
+
+    Plain-dict merge over the archive's own vocabulary (``case_number`` etc.); no
+    schema validation here — translation to the schema happens at enrichment time.
+    """
+    merged: dict = {}
+    cur = root
+    for seg in ("", *rel.parts[:-1]):  # folders only, root first
+        cur = cur / seg if seg else cur
+        meta = cur / "metadata.yaml"
+        if meta.is_file():
+            try:
+                data = yaml.safe_load(meta.read_text()) or {}
+            except yaml.YAMLError:
+                data = {}
+            merged.update({k: v for k, v in data.items() if v not in (None, "")})
+    return merged
+
+
+def _last_commit(root: Path, rel: Path) -> str:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "log", "-1", "--format=%H", "--", str(rel)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return out.stdout.strip()
+    except (subprocess.SubprocessError, OSError):
+        return ""
+
+
+def build_manifest(
+    raw_root: Path | str, allowlist: Allowlist, *, with_commit: bool = True
+) -> list[ManifestEntry]:
+    """Walk ``raw_root`` and build a manifest entry for every migrated file."""
+    root = Path(raw_root)
+    entries: list[ManifestEntry] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root)
+        if rel.parts and rel.parts[0] == ".git":
+            continue
+        if rel.name == "metadata.yaml" or allowlist.is_excluded_file(rel):
+            continue
+        chain = _resolve_chain(rel, root)
+        tree = allowlist.tree_for(rel)
+        case_number = chain.get("case_number")
+        entries.append(
+            ManifestEntry(
+                sha256=_sha256(path),
+                raw_path=rel.as_posix(),
+                raw_commit=_last_commit(root, rel) if with_commit else "",
+                size=path.stat().st_size,
+                matters=[str(case_number)] if case_number else [],
+                origin=tree.origin if tree else str(chain.get("origin", "received")),
+                party_role=chain.get("party_role"),
+                document_type=chain.get("document_type"),
+            )
+        )
+    return entries
+
+
+def write_manifest(entries: list[ManifestEntry], dest: Path | str) -> Path:
+    """Write the manifest as JSON keyed by SHA-256 (the Papra join key)."""
+    out = Path(dest)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    by_sha = {e.sha256: asdict(e) for e in entries}
+    out.write_text(json.dumps(by_sha, indent=2, sort_keys=True) + "\n")
+    return out

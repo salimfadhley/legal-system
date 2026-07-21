@@ -1,0 +1,43 @@
+# evidence-allowlist.yaml — which top-level trees of the frozen archive migrate
+# into goldberg-raw, and how each is classified. Read by goldberg_system.migrate.
+#
+# Rationale + the full survey are in doc/decisions/0006-ingestion-provenance-architecture.md
+# (spike results §3): the archive is the whole legacy working directory — evidence
+# mixed with code, build junk, and authored work product — so migration is
+# allowlist-driven, not "copy everything".
+#
+# origin/role use the two-axis taxonomy (metadata schema): received|authored × input|output.
+# Every tree here is role=input (queryable knowledge the corpus answers over);
+# they differ only in origin (who produced it).
+
+# Trees copied into goldberg-raw.
+include:
+  evidence:            { origin: received, note: "core evidence; already carries case_number metadata.yaml" }
+  telegram:            { origin: received, note: "Telegram chat exports + media (jpg/mp4/json)" }
+  goldberg_1099:       { origin: received, note: "financial / 1099 evidence docs" }
+  exhibits:            { origin: received, note: "exhibit bundles" }
+  downloaded-artifacts: { origin: received, note: "single downloaded PDF artifact" }
+  reports:             { origin: authored, note: "reports treated as raw data / input knowledge (user decision 2026-07-21)" }
+  analysis:            { origin: authored, note: "prior analysis indexed as input knowledge (user decision 2026-07-21)" }
+
+# Trees deliberately excluded from goldberg-raw.
+exclude:
+  # Authored work product — lives in goldberg-casework, not raw evidence.
+  filings:   "authored work product (court documents) -> goldberg-casework"
+  briefings: "authored work product (briefings) -> goldberg-casework"
+  # Code / build / scratch of the old goldberg-meta project — not evidence.
+  tmp:     "scratch (1996 files - png/tsv dumps)"
+  out:     "build output (luc/lua/pdf)"
+  src:     "source code"
+  tests:   "test code"
+  log:     "run logs"
+  plan:    "planning notes"
+  backups: "backup dumps"
+  tasks:   "task notes"
+  doc:     "project docs"
+
+# File-glob exclusions applied within included trees (never migrate these).
+exclude_globs:
+  - "**/.DS_Store"
+  - "**/__pycache__/**"
+  - "**/*.pyc"
