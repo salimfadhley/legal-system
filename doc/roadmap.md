@@ -98,14 +98,15 @@ docx / layout+tables, so we no longer hand-build those extractors.*
 
 ## M3 — Enrich (claim-aware)
 
-**Status: 🟡 In progress (2026-07-21).** Metadata representation pivoted to
+**Status: ✅ Delivered (2026-07-21).** Metadata representation pivoted to
 **markdown + YAML frontmatter** ([ADR 0004](./decisions/0004-metadata-representation.md)):
 `metadata/frontmatter.py` (serialise/parse), `metadata/defaults.py` (light
 folder-defaults, replacing the demoted goldberg-meta inheritance), schema extended
-with `long_summary`/`claims`, and `enrichment/assemble.py` (merge enrichment →
-frontmatter doc). 74 tests, gates clean. **Remaining:** the concrete LLM enricher
-(OpenAI/MoS `llm_support`) behind the `EnrichmentAdapter`, plus a live enrichment
-verification (needs an OpenAI key, as Papra needed one).
+with `long_summary`/`claims`, `enrichment/assemble.py` (merge enrichment →
+frontmatter doc). Concrete `OpenAIEnricher` + `secrets.py` (reuses the MoS OpenAI
+key) produce attributed summary/keywords/entities/author/claims. **Verified live
+end-to-end** (Papra content → enrich → frontmatter doc, real attributed claims).
+80 tests, gates clean.
 
 - **Goal:** turn extracted markdown into enriched, attributed markdown.
 - **Scope:** reuse MoS `llm_support` (OpenAI) to produce summary, keywords,
