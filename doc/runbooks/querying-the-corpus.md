@@ -104,6 +104,20 @@ goldberg facets
 Terms counts by `matters`, `author`, `document_type`, `parties` — a map of what's
 in the index.
 
+### `goldberg audit` — completeness check (did anything not ingest?)
+
+```
+goldberg audit --manifest <provenance-manifest.json> [--missing] [--extra]
+```
+
+Reconciles the **expected** set (the goldberg-raw provenance manifest) against the
+**actual** set (the index), joining on `raw_path` (M12 / [ADR 0008](../decisions/0008-observability-architecture.md)).
+Reports `matched`, **`missing`** (expected but never ingested — the drops that would
+silently skew answers), and `extra` (indexed under a path the manifest doesn't know,
+e.g. a doc indexed without provenance). Exits non-zero when gaps exist, so it can gate
+a migration. `--missing` lists every un-ingested `raw_path`; run this after a bulk
+migration to prove completeness.
+
 ## How to answer a question
 
 1. **Pick the tool.** Attribution / "who said" → `claims`. Topic / keyword →

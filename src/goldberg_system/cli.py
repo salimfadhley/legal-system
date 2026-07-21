@@ -170,6 +170,56 @@ def facets() -> None:
 
 @main.command()
 @click.option(
+    "--manifest",
+    "manifest_path",
+    required=True,
+    help="Provenance manifest (JSON) = the expected set.",
+)
+@click.option(
+    "--missing", "show_missing", is_flag=True, help="List every missing raw_path."
+)
+@click.option(
+    "--extra",
+    "show_extra",
+    is_flag=True,
+    help="List indexed raw_paths not in the manifest.",
+)
+def audit(manifest_path, show_missing, show_extra) -> None:  # type: ignore[no-untyped-def]
+    """Reconcile the corpus: expected (manifest) vs actual (index) → what did not ingest.
+
+    Completeness is a correctness property for a legal corpus (ADR 0008): a document
+    that never ingested is an invisible hole. This joins on raw_path and reports the
+    gap.
+    """
+    from goldberg_system.observability.reconcile import Reconciler
+
+    q = _query()
+    report = Reconciler(q.client, q.index).run(manifest_path)
+    status = "✓ COMPLETE" if report.complete else "✗ GAPS FOUND"
+    click.echo(f"{status}")
+    click.echo(f"  expected (manifest): {report.expected_count}")
+    click.echo(f"  indexed (actual):    {report.actual_count}")
+    click.echo(f"  matched:             {len(report.matched)}")
+    click.echo(f"  MISSING (not ingested): {len(report.missing)}")
+    click.echo(f"  extra (no manifest entry): {len(report.extra)}")
+    if report.missing_by_matter:
+        click.echo("  missing by matter:")
+        for matter, n in report.missing_by_matter.items():
+            click.echo(f"    {n:5d}  {matter}")
+    if show_missing:
+        click.echo("\nMissing raw_paths:")
+        for rp in report.missing:
+            click.echo(f"  - {rp}")
+    if show_extra:
+        click.echo("\nExtra (indexed, not in manifest):")
+        for rp in report.extra:
+            click.echo(f"  - {rp}")
+    if not report.complete:
+        raise SystemExit(1)
+
+
+@main.command()
+@click.option(
     "--max", "max_docs", type=int, default=None, help="Limit documents processed."
 )
 @click.option(
