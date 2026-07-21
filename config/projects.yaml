@@ -46,7 +46,8 @@ halob:
   host: halob
   ssh: sal@halob
   elasticsearch: http://halob:9200
-  elasticsearch_index: goldberg_files
+  elasticsearch_index: goldberg_documents   # new-pipeline index (M4 mapping, ADR 0004)
+  elasticsearch_index_legacy: goldberg_files  # frozen ~589 legacy docs; reindexed in M8
   nats: nats://halob:4222
   nats_subjects:
     ingested: goldberg.raw.ingested     # published when raw content is pushed

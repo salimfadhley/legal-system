@@ -122,6 +122,15 @@ end-to-end** (Papra content → enrich → frontmatter doc, real attributed clai
 
 ## M4 — Sinks
 
+**Status: 🟡 Mostly delivered (2026-07-21).** `ElasticsearchIndexer` (new
+`goldberg_documents` index; mapping matches the frontmatter schema — claims
+**nested**, matters/author/entities keyword, content/summary text, provenance +
+handling flags; idempotent by deterministic doc-id) and `ExtractedRepoWriter`
+built behind the M1 `Sink` interface. **Verified live** on Halob ES: full pipeline
+(Papra → enrich → index) then a nested claims query (`asserted_by`) returns the
+doc. 91 tests, gates clean. **Remaining:** the RAG sink / query layer (RAG-on-ES +
+optional dense-vector) and reindexing the 589 legacy `goldberg_files` docs (M8).
+
 - **Goal:** persist + index the enriched document, behind the M1 sink interface.
 - **Scope:** (1) **goldberg-extracted writer** — mirror the raw path, link the raw
   commit; (2) **Elasticsearch indexer** (MoS chunker/indexer) — index content +
