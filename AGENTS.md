@@ -39,3 +39,29 @@ documents give you the quotable primary source.
 - `uv run goldberg facets` — orient (counts by matter/author/type/party).
 
 **Full instructions: [`doc/runbooks/querying-the-corpus.md`](doc/runbooks/querying-the-corpus.md).**
+
+## Skill: reporting on the system itself (observability)
+
+When asked "how's indexing going / any bottlenecks / has anything failed?", use the
+observability commands (M12, [ADR 0008](doc/decisions/0008-observability-architecture.md)):
+
+- `uv run goldberg status [--yaml]` — health, corpus size, per-stage/status counts,
+  DLQ depth (`--yaml` is the compact LLM-readable form).
+- `uv run goldberg dlq` / `goldberg trace <raw_path|sha256|doc_id>` — what failed /
+  why a specific document did (not) ingest.
+- `uv run goldberg audit --manifest <manifest.json>` — completeness: did anything
+  not ingest.
+
+## MCP server (agent-agnostic, no shell needed)
+
+The same observability + query capabilities are exposed as a **hosted MCP server**
+([ADR 0010](doc/decisions/0010-mcp-server.md)) for any MCP-capable agent (Claude,
+Codex, …): tools `system_status`, `recent_failures`, `trace_document`,
+`search_evidence`, `find_claims`, `search_concepts`, `get_document`. Run it with
+`uv run goldberg mcp-serve` (needs `uv sync --extra mcp`); connect at
+`http://<host>:8765/mcp`. Tools return structured, citable data — no shell, no
+hand-written Elasticsearch queries.
+
+---
+*`CLAUDE.md` is a symlink to this file — one operating brief for every agent
+(Claude Code, Codex, …). `AGENTS.md` is canonical.*

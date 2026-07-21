@@ -325,6 +325,24 @@ def dlq(statuses, size) -> None:  # type: ignore[no-untyped-def]
             click.echo(f"  reason: {e['reason']}")
 
 
+@main.command("mcp-serve")
+@click.option("--host", default=None, help="Bind host (default 0.0.0.0 / env).")
+@click.option("--port", default=None, type=int, help="Bind port (default 8765 / env).")
+def mcp_serve(host, port) -> None:  # type: ignore[no-untyped-def]
+    """Run the hosted MCP server (M14) — LLM visibility + query. Needs the `mcp` extra."""
+    import os
+
+    if host:
+        os.environ["GOLDBERG_MCP_HOST"] = host
+    if port:
+        os.environ["GOLDBERG_MCP_PORT"] = str(port)
+    try:
+        from goldberg_system.mcp.server import main as serve
+    except ModuleNotFoundError:
+        raise SystemExit("mcp not installed — run `uv sync --extra mcp` first.")
+    serve()
+
+
 @main.command()
 @click.option("--port", default=8501, show_default=True, help="Port to serve on.")
 def dashboard(port) -> None:  # type: ignore[no-untyped-def]

@@ -356,3 +356,18 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   aggregated state — verified live (health/corpus/pipeline/wiki/DLQ panels + a YAML
   expander). **Remaining:** phase 3 — the Halob container deploy (LAN-only) + DLQ
   reprocess actions (with the NATS DLQ increment).
+
+### M14 — Hosted MCP server (LLM-native visibility + query)
+
+- **Goal:** make the system legible + queryable by a *fleet* of LLM agents (Claude,
+  Codex, chat models), since the human rarely checks a dashboard — "how's indexing
+  going / anything failed?" and "what does the evidence say?" answered via MCP tools.
+- **Decision (ADR 0010):** one hosted MCP server (`streamable-http`), two tool
+  families (observability + evidence query) as thin read-only wrappers over the
+  existing `aggregate()`/`CorpusQuery`/`read_trace` core. Intent-level tools (typed
+  params, structured citable returns) — no ES-DSL, no shell, no escape-hatch tools.
+- **Agent-agnostic:** `AGENTS.md` canonical, `CLAUDE.md` a symlink to it; CLI + MCP
+  are Claude-neutral so Codex is first-class.
+- **Status:** ✅ **built + tested** (`goldberg mcp-serve`, `--extra mcp`; 7 tools
+  validated live over HTTP). **Remaining:** deploy as a container on the Pi (external
+  vantage) or Halob — whichever performs best.

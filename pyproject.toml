@@ -40,6 +40,11 @@ dev = [
 dashboard = [
     "streamlit>=1.37",
 ]
+# The hosted MCP server (M14) — LLM-native visibility + query surface. Optional so
+# only the host running it (locally, then Pi/Halob) installs the MCP SDK.
+mcp = [
+    "mcp>=1.9",
+]
 
 [project.scripts]
 goldberg = "goldberg_system.cli:main"
