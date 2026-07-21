@@ -279,24 +279,64 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
      (received → extracted → enriched → indexed → wiki'd, plus skipped/failed with a
      reason + timestamp). The live service, backfill, and the M11 wiki sink all emit.
      Persisted and queryable later — not just container stdout.
-  2. **Reconciliation / gap detection.** Join the *expected* set (the goldberg-raw
+  2. **NATS dead-letter queue (user, 2026-07-21).** A JetStream stream on
+     `goldberg.dlq.>` where **any stage failure lands** — the original message +
+     payload + the stage + the failure reason. Consumers set `MaxDeliver`; a message
+     that exceeds redeliveries (or is explicitly `term()`d) is republished to
+     `goldberg.dlq.<stage>`. JetStream's `$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES`
+     advisories drive the routing. The DLQ is durable and examinable — a failed
+     document is *visible*, and reprocessable once fixed.
+  3. **NATS errors/crash queue (user, 2026-07-21).** A separate `goldberg.errors.>`
+     JetStream stream for structured error + crash events from the components
+     themselves (unhandled exceptions, startup/connection failures) — distinct from
+     per-document DLQ entries. Logs *why a process* crashed, not just why a *document*
+     failed.
+  4. **Reconciliation / gap detection.** Join the *expected* set (the goldberg-raw
      provenance manifest / Papra) against the *actual* set (ES `goldberg_documents`
      + the wiki) by SHA-256 / doc-id; report **missing**, **extra**, and **stale**.
-  3. **Per-document trace** — `goldberg trace <raw_path|sha256|doc_id>`: the document's
-     journey and its stop point.
-  4. **Status summary** — `goldberg status` / `goldberg audit`: per-stage counts,
-     failures, dead-letters, freshness.
-  5. **(Stretch)** alerting when a run fails or reconciliation finds a gap.
+  5. **Per-document trace** — `goldberg trace <raw_path|sha256|doc_id>`: the document's
+     journey and its stop point (reads the audit log + DLQ).
+  6. **Status summary** — `goldberg status` / `goldberg audit`: per-stage counts,
+     failures, DLQ depth, freshness.
+  7. **(Stretch)** alerting when a run fails or reconciliation finds a gap.
+- **OpenTelemetry (researched 2026-07-21):** there is **no turnkey OTel gateway for
+  NATS** — the OTel Collector *is* the gateway, but an official NATS receiver/exporter
+  is still community WIP (contrib issue #39540), not in shipped distributions. The
+  realistic path: (a) **prometheus-nats-exporter** + NATS monitoring endpoints for
+  server/stream/consumer metrics (throughput, slow consumers, JetStream lag); (b) for
+  distributed tracing, app-level OTel SDK instrumentation with **trace context
+  propagated in NATS message headers** (NATS 2.2+) → an OTel Collector → any backend.
+  Treat OTel as an *optional later layer* over the DLQ/errors/audit backbone, not a
+  prerequisite.
 - **Building blocks already in place:** deterministic SHA-256 doc-ids (the
   reconciliation join key), the provenance manifest (the *expected* set, ADR 0006),
-  ES as the *actual* set, `BackfillReport` counters, the `goldberg.indexed` NATS
-  subject, and the existing `skipped-empty`/`failure` signals.
-- **Open decision (settle at implementation):** where the audit log lives — a
-  dedicated ES index `goldberg_pipeline_events` (recommended: queryable with the same
-  tooling, directly answers per-document "why", reuses infra) vs NATS JetStream
-  durable vs plain log files. Lean ES audit index + emit at each stage.
-- **Phases:** (1) event schema + emit structured stage events to a persistent store;
-  (2) reconciliation CLI (expected vs actual → gaps); (3) per-doc trace + status
-  summary; (4) stretch: alerting/dashboard.
+  ES as the *actual* set, `BackfillReport` counters, JetStream + the
+  `goldberg.raw.ingested` / `goldberg.indexed` subjects, and the existing
+  `skipped-empty`/`failure` signals.
+- **Event backbone (recommended synthesis):** **NATS JetStream is the durable event
+  bus** — stage events on `goldberg.events.>`, failures on `goldberg.dlq.>`, crashes
+  on `goldberg.errors.>` — **projected into an ES index `goldberg_pipeline_events`**
+  for querying (per-doc "why", status). NATS gives durability + DLQ + replay; ES gives
+  the query surface. (Resolves the earlier open decision: use both, each for its
+  strength.)
+- **Phases:** (1) event schema + DLQ/errors JetStream streams + emit stage events from
+  the live service/backfill/wiki sink → ES projection; (2) reconciliation CLI
+  (expected vs actual → gaps); (3) per-doc trace + status summary; (4) stretch: OTel
+  metrics/tracing + alerting.
 - **Status:** spec'd (roadmap). High value once autonomous processes (M11) and the
   full corpus (M8) are live — that's when silent drops actually cost us.
+
+### M13 — Live operations dashboard (Streamlit)
+
+- **Goal (user, 2026-07-21):** a **dashboard to see what the system is doing right
+  now** — a visual front-end over the M12 observability data. Built as a **Streamlit**
+  app.
+- **Depends on M12** — the dashboard *renders* the audit log / DLQ / reconciliation;
+  it does not generate telemetry itself. M12 must land first (it produces the data).
+- **Scope (to analyse):** live pipeline activity (documents in flight, per-stage
+  throughput), the **DLQ / errors queue** (what failed, why, reprocess buttons), the
+  **reconciliation view** (expected vs actual, the list of un-ingested documents),
+  corpus + wiki growth over time, and freshness/health of the autonomous processes.
+  Reads ES (`goldberg_documents`, `goldberg_pipeline_events`) + NATS (DLQ depth).
+- **Deployment:** a container on Halob alongside the other services (LAN-only).
+- **Status:** deferred — subsequent mission after M12.
