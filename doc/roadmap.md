@@ -173,3 +173,18 @@ end-to-end** (Papra content → enrich → frontmatter doc, real attributed clai
 - **Depends on:** M7.
 - **Acceptance:** archive content landed in the right repos with provenance intact;
   ES coverage meets/exceeds the legacy baseline; the archive is left untouched.
+
+## Future / deferred missions (to analyse later)
+
+### M9 — Composite raw-data decomposition (deferred)
+
+- **Problem:** a single raw file often contains **multiple logical documents** —
+  an `.eml` with many attachments (each attachment is arguably its own exhibit), a
+  PDF that is a print-out of several separate email messages, a scanned bundle of
+  distinct documents. One raw file → several extracted documents.
+- **Scope (to be analysed):** detect document boundaries within a composite;
+  split into constituent documents; give each its own doc-id + frontmatter while
+  preserving provenance back to the parent raw file (and the position within it);
+  decide how attachments relate to their carrier email.
+- **Status:** deferred — analyse and spec later. Note: the M2 eml extractor already
+  produces an *attachment manifest* (a foundation this can build on).

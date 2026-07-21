@@ -23,18 +23,18 @@ def _union(a: list[str], b: list[str]) -> list[str]:
     return out
 
 
-def assemble_enriched_document(
+def merge_enrichment(
     base: DocumentMetadata,
     result: EnrichmentResult,
-    body: str,
     *,
     ingested_at: str | None = None,
-) -> str:
-    """Return the enriched extracted document (frontmatter + body).
+) -> DocumentMetadata:
+    """Merge an :class:`EnrichmentResult` into ``base`` metadata (no rendering).
 
-    Every assembled document is stamped with an ingestion timestamp: the existing
-    ``base.ingested_at`` is preserved if set, else ``ingested_at`` (for
-    deterministic callers/tests), else the current UTC time.
+    Provenance/matters/handling from ``base`` are preserved; enrichment fills
+    summary/keywords/entities/claims and (only when unset) author/document_type.
+    Every document is stamped with an ingestion timestamp: an existing
+    ``base.ingested_at`` wins, else ``ingested_at``, else the current UTC time.
     """
     updates: dict[str, object] = {
         "summary": result.summary,
@@ -49,5 +49,16 @@ def assemble_enriched_document(
         updates["author"] = result.author
     if result.document_type is not None and base.document_type is None:
         updates["document_type"] = result.document_type
-    merged = base.model_copy(update=updates)
+    return base.model_copy(update=updates)
+
+
+def assemble_enriched_document(
+    base: DocumentMetadata,
+    result: EnrichmentResult,
+    body: str,
+    *,
+    ingested_at: str | None = None,
+) -> str:
+    """Return the enriched extracted document (frontmatter + body)."""
+    merged = merge_enrichment(base, result, ingested_at=ingested_at)
     return to_frontmatter_document(merged, body)
