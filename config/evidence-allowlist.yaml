@@ -41,3 +41,14 @@ exclude_globs:
   - "**/.DS_Store"
   - "**/__pycache__/**"
   - "**/*.pyc"
+  # Movie/audio: no OCR-able text, and they dominated repo size (4.7 GB / 80%).
+  # Originals remain in the frozen archive. (user decision 2026-07-22)
+  - "**/*.mp4"
+  - "**/*.mov"
+  - "**/*.avi"
+  - "**/*.mkv"
+  - "**/*.webm"
+  - "**/*.m4a"
+  - "**/*.mp3"
+  - "**/*.wav"
+  - "**/*.ogg"
