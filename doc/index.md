@@ -10,6 +10,7 @@ Documentation for **goldberg-system**, the pipeline and tooling for the Goldberg
 
 ## Runbooks
 - [Querying the corpus](./runbooks/querying-the-corpus.md) — how the query layer works (the `goldberg` tools + how an agent answers with citations)
+- [The live-index service](./runbooks/live-index-service.md) — the automatic pipeline (Papra webhook → enrich → index): deploy, the webhook, operating & troubleshooting
 - [Decisions (ADRs)](./decisions/) — recorded architecture decisions and their rationale
 
 ## Infrastructure

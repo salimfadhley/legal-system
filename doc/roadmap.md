@@ -141,6 +141,11 @@ optional dense-vector) and reindexing the 589 legacy `goldberg_files` docs (M8).
 
 ## M5 — live-index service
 
+**Status: ✅ Delivered (2026-07-21), webhook-driven per [ADR 0005](./decisions/0005-live-service-webhook-driven.md).**
+`service/` = `Processor` (poll Papra for content → enrich → index) + a stdlib HTTP
+app (`POST /webhooks/papra`, `GET /health`). NATS deferred; the Papra webhook is
+the trigger. Live-verified end to end.
+
 - **Goal:** the orchestration loop that wires it all together.
 - **Scope:** consume `goldberg.raw.ingested`; run the correct ingest path —
   **evidence pipeline** (extract→enrich→persist→index→wiki) or **input passthrough**
@@ -150,7 +155,13 @@ optional dense-vector) and reindexing the 589 legacy `goldberg_files` docs (M8).
 - **Acceptance:** end-to-end test over a sample leaf through both paths;
   re-processing updates (not duplicates); failures dead-letter without touching raw.
 
-## M6 — Trigger (Halob filesystem watcher)
+## M6 — Trigger (Papra webhook)
+
+**Status: ✅ Delivered (2026-07-21), per [ADR 0005](./decisions/0005-live-service-webhook-driven.md).**
+Registered a Papra **`document:created` webhook** → the live-index service
+(Papra's `WEBHOOK_URL_ALLOWED_HOSTNAMES` extended to permit the private-IP target).
+Papra fires it *before* Docling finishes, so the service polls for content. (The
+Halob filesystem-watcher framing below is superseded by the Papra webhook.)
 
 - **Goal:** detect raw changes on Halob and publish `goldberg.raw.ingested`.
 - **Scope:** filesystem watcher on the goldberg-raw (and input) tree; **coalesce to
@@ -163,6 +174,12 @@ optional dense-vector) and reindexing the 589 legacy `goldberg_files` docs (M8).
 - **Acceptance:** simulated multi-file save produces exactly one event per leaf.
 
 ## M7 — Deploy
+
+**Status: ✅ Delivered (2026-07-21).** `Dockerfile` (python:3.12-slim) → container
+`goldberg-live-index` on Halob (port 8099, `--restart unless-stopped`, env from
+`/share/Docker/goldberg-live-index/.env`). **Verified restart-safe + fully
+automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
+[runbooks/live-index-service.md](./runbooks/live-index-service.md).
 
 - **Goal:** run `live-index` + watcher on Halob.
 - **Scope:** docker-compose service (à la MoS); wire Elasticsearch, NATS, and
