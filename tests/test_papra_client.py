@@ -50,13 +50,17 @@ def test_transport_protocol_is_satisfied() -> None:
 
 
 def test_get_document_parses_content_and_metadata() -> None:
+    # The real Papra API wraps the document and uses camelCase field names.
     payload = {
-        "id": "doc_1",
-        "original_name": "test-letter.pdf",
-        "mime_type": "application/pdf",
-        "content": "Artington Services Limited...",
-        "original_sha256_hash": "abcdef",
-        "some_unmodelled_field": "ignored",
+        "document": {
+            "id": "doc_1",
+            "originalName": "test-letter.pdf",
+            "mimeType": "application/pdf",
+            "content": "Artington Services Limited...",
+            "originalSha256Hash": "abcdef",
+            "someUnmodelledField": "ignored",
+        },
+        "customProperties": [],
     }
     client, transport = _client(payload)
     doc = client.get_document("doc_1")

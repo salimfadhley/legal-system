@@ -16,12 +16,20 @@ from __future__ import annotations
 from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 class PapraDocument(BaseModel):
-    """The subset of a Papra document the pipeline consumes."""
+    """The subset of a Papra document the pipeline consumes.
 
-    model_config = ConfigDict(extra="ignore")
+    Papra's REST API returns camelCase fields (``originalName``, ``mimeType``,
+    ``originalSha256Hash``); the alias generator maps those onto these snake_case
+    fields, while ``populate_by_name`` keeps snake_case input working too.
+    """
+
+    model_config = ConfigDict(
+        extra="ignore", alias_generator=to_camel, populate_by_name=True
+    )
 
     id: str
     name: str | None = None
@@ -72,6 +80,25 @@ class PapraClient:
         self.org_id = org_id
         self._http: HttpTransport = transport or _RequestsTransport()
 
+    @classmethod
+    def from_env(cls, transport: HttpTransport | None = None) -> PapraClient:
+        """Build a client from ``PAPRA_BASE_URL`` / ``PAPRA_API_KEY`` /
+        ``PAPRA_LEGAL_ORG_ID`` (loaded from a gitignored ``.env`` if present)."""
+        import os
+
+        try:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+        except ImportError:
+            pass
+        return cls(
+            base_url=os.environ["PAPRA_BASE_URL"],
+            api_key=os.environ["PAPRA_API_KEY"],
+            org_id=os.environ["PAPRA_LEGAL_ORG_ID"],
+            transport=transport,
+        )
+
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}"}
 
@@ -82,12 +109,18 @@ class PapraClient:
         )
 
     def get_document(self, document_id: str) -> PapraDocument:
-        """Fetch a document (including its extracted ``content``)."""
+        """Fetch a document (including its extracted ``content``).
+
+        Papra wraps the document in a ``{"document": {...}}`` envelope.
+        """
         resp = self._http.request(
             "GET", self._doc_url(document_id), headers=self._headers()
         )
         resp.raise_for_status()
-        return PapraDocument.model_validate(resp.json())
+        payload = resp.json()
+        if isinstance(payload, dict) and "document" in payload:
+            payload = payload["document"]
+        return PapraDocument.model_validate(payload)
 
     def get_content(self, document_id: str) -> str | None:
         """Return the extracted/OCR'd text for a document, if any."""
