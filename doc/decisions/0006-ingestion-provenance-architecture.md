@@ -1,6 +1,6 @@
 # ADR 0006 — Ingestion & provenance architecture (reconciling git-raw with Papra)
 
-**Status:** Accepted (pending spike validation) · **Date:** 2026-07-21 · **Enables:** M8, and closes the §2 pipeline gaps
+**Status:** Accepted (spike-validated) · **Date:** 2026-07-21 · **Enables:** M8, and closes the §2 pipeline gaps
 
 ## Context
 
@@ -97,3 +97,29 @@ one large PDF): stage them in a `goldberg-raw`-shaped tree with their
 **correct `raw_path`, `raw_commit`, and `matters`**, the `.eml` produces content,
 and the large doc enriches without truncation. If the SHA-256 join or the
 metadata-chain resolution misbehaves, revise here — not during the full migration.
+
+## Spike results (2026-07-21)
+
+Validated against the live archive + Papra before writing migration code:
+
+1. **SHA-256 join — CONFIRMED.** 20 of 21 Papra documents matched an archive file
+   *exactly* by content hash (Papra `original_sha256_hash` == `sha256(raw bytes)`);
+   the 21st is a leftover test artifact. The join key is reliable — no need for
+   Papra custom-properties.
+2. **Matter resolution — CONFIRMED where metadata exists.** The folder
+   `metadata.yaml` chain resolves `case_number → matters` correctly for `evidence/`
+   files (→ `422500059892`), and empty where no `case_number` is set upstream
+   (e.g. `exhibits/`). The mechanism is sound; coverage tracks the metadata.
+3. **New finding — the archive is NOT a clean evidence tree; M8 needs a curation
+   step first.** Of 5,018 files, only 27% resolve to a matter. The 72% without one
+   are overwhelmingly **not evidence**: `tmp/` (1,996), `src`/`out`/`log`/`tests`/
+   `plan`/`backups` (code & build junk), and `filings/` + `briefings/` (914 —
+   authored **work product**, which belongs in `goldberg-casework`, not
+   `goldberg-raw`). The genuinely-evidence trees that merely need a **matter
+   backfill** are small and enumerable: `telegram/` (268), `goldberg_1099/` (113),
+   `exhibits/` (78). `evidence/` itself is well-covered.
+
+   → **M8 gains an explicit selection/allowlist step**: only designated evidence
+   trees migrate into `goldberg-raw`; scratch/code/build trees are excluded, and
+   authored trees are out of scope. A short per-tree `metadata.yaml` backfill
+   (matter + party_role) covers the evidence trees that currently lack one.
