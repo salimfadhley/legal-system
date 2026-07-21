@@ -153,6 +153,26 @@ def test_reingest_indexes_skips_media_and_missing(tmp_path: Path) -> None:
     assert sink.written == ["evidence/a.pdf"]
 
 
+def test_reingest_parallel_processes_all(tmp_path: Path) -> None:
+    root = tmp_path / "raw"
+    (root / "evidence").mkdir(parents=True)
+    by_sha = {}
+    for i in range(12):
+        (root / "evidence" / f"d{i}.pdf").write_bytes(b"%PDF")
+        by_sha[f"sha{i}"] = {
+            "raw_path": f"evidence/d{i}.pdf",
+            "raw_commit": "c",
+            "sha256": f"sha{i}",
+            "matters": [],
+        }
+    sink = _FakeSink()
+    report = reingest_from_raw(
+        root, Manifest(by_sha), _FakeDocling({}), _FakeEnricher(), [sink], workers=4
+    )
+    assert report.processed == 12 and report.indexed == 12
+    assert len(sink.written) == 12  # every doc indexed exactly once
+
+
 def test_reingest_only_filter_and_empty(tmp_path: Path) -> None:
     manifest, root = _manifest(tmp_path)
     sink = _FakeSink()

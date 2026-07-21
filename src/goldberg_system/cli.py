@@ -572,7 +572,8 @@ def migrate_manifest(out_path, no_commit) -> None:  # type: ignore[no-untyped-de
     default=None,
     help="Target index (e.g. goldberg_documents_test for isolated testing).",
 )
-def migrate_reingest(manifest_path, max_docs, only, events, index_override) -> None:  # type: ignore[no-untyped-def]
+@click.option("--workers", default=1, show_default=True, help="Concurrent documents.")
+def migrate_reingest(manifest_path, max_docs, only, events, index_override, workers) -> None:  # type: ignore[no-untyped-def]
     """Bulk extract→enrich→index from goldberg-raw via docling-serve DIRECTLY (M8 fix).
 
     Bypasses Papra's broken extraction. Use --max/--only for test injections and
@@ -630,6 +631,7 @@ def migrate_reingest(manifest_path, max_docs, only, events, index_override) -> N
         run_id=run_id,
         max_docs=max_docs,
         only=set(only) or None,
+        workers=workers,
         on_doc=on_doc,
     )
     click.echo(
