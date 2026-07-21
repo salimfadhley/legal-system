@@ -46,6 +46,9 @@ class _FakePapra:
     def list_documents(self, *, page_index=0, page_size=200, search=None):  # type: ignore[no-untyped-def]
         return [PapraDocument(id=i, original_name=f"{i}.pdf") for i in self._docs]
 
+    def iter_documents(self, *, page_size=100, search=None):  # type: ignore[no-untyped-def]
+        yield from self.list_documents()
+
     def get_document(self, document_id: str) -> PapraDocument:
         return PapraDocument(
             id=document_id,
