@@ -282,6 +282,24 @@ def dlq(statuses, size) -> None:  # type: ignore[no-untyped-def]
 
 
 @main.command()
+@click.option("--port", default=8501, show_default=True, help="Port to serve on.")
+def dashboard(port) -> None:  # type: ignore[no-untyped-def]
+    """Launch the Streamlit operations dashboard (M13). Needs the `dashboard` extra."""
+    import subprocess
+    from pathlib import Path
+
+    app = Path(__file__).parent / "dashboard" / "app.py"
+    try:
+        subprocess.run(
+            ["streamlit", "run", str(app), "--server.port", str(port)], check=True
+        )
+    except FileNotFoundError:
+        raise SystemExit(
+            "streamlit not installed — run `uv sync --extra dashboard` first."
+        )
+
+
+@main.command()
 @click.argument("key")
 def trace(key) -> None:  # type: ignore[no-untyped-def]
     """Show one document's pipeline timeline — why did X (not) ingest.

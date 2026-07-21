@@ -346,6 +346,9 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   corpus + wiki growth over time, and freshness/health of the autonomous processes.
   Reads ES (`goldberg_documents`, `goldberg_pipeline_events`) + NATS (DLQ depth).
 - **Deployment:** a container on Halob alongside the other services (LAN-only).
-- **Status:** **spec'd — see [ADR 0009](./decisions/0009-operations-dashboard.md)**.
-  Subsequent mission after M12 (it renders M12's data; `goldberg status --yaml` lands
-  with M12 core, the Streamlit UI on top).
+- **Status:** 🟡 **phases 1–2 built** ([ADR 0009](./decisions/0009-operations-dashboard.md)).
+  `SystemState` + `goldberg status --yaml` (LLM mode) and the Streamlit UI
+  (`src/goldberg_system/dashboard/app.py`, `goldberg dashboard`) both render the same
+  aggregated state — verified live (health/corpus/pipeline/wiki/DLQ panels + a YAML
+  expander). **Remaining:** phase 3 — the Halob container deploy (LAN-only) + DLQ
+  reprocess actions (with the NATS DLQ increment).

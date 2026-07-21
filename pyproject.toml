@@ -35,6 +35,11 @@ dev = [
     "ruff>=0.4",
     "types-PyYAML>=6.0",
 ]
+# The M13 operations dashboard (ADR 0009). Kept optional so the core pipeline +
+# CLI have no Streamlit dependency; installed only where the dashboard runs (Halob).
+dashboard = [
+    "streamlit>=1.37",
+]
 
 [project.scripts]
 goldberg = "goldberg_system.cli:main"
