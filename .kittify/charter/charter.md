@@ -10,6 +10,13 @@ Generated: 2026-07-20T20:40:07Z
 `uv run pytest`; tests live in tests/. Extractors and schema logic are covered
 with table-driven tests and fixtures.
 
+- **Hard-case regression rule:** whenever a document (or document *type*) fails or
+misbehaves in the pipeline, ADD IT to `config/hard-cases.yaml` so we never regress
+on it. Run the isolated suite with `uv run goldberg test-hard-cases` (extraction,
+no live index, no OpenAI cost) — it gates the bulk re-ingest. Synthesize adversarial
+documents (`goldberg_system.testing.synthetic`) to probe limits before a real
+document exposes them. See `doc/runbooks/hard-case-testing.md`.
+
 
 ## Quality Gates
 

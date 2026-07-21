@@ -1,0 +1,50 @@
+# hard-cases.yaml — the extraction/ingestion regression suite.
+#
+# WORKFLOW: whenever a document fails or misbehaves in the pipeline, ADD IT HERE
+# (under `real`) with a note on *why* and the expected outcome, so we never regress
+# on it. `synthetic` cases are generated to probe theoretical limits before a real
+# document exposes them. Run with `goldberg test-hard-cases` (isolated test index).
+#
+# expect keys: min_chars (default 1) | allow_empty | allow_error | contains
+
+real:
+  - raw_path: evidence/tracey_edwards/bsb_complaint/bsb_complaint_form.pdf
+    why: "large scanned PDF — hit Docling's 120s SYNC timeout; fixed by async convert"
+    expect: { min_chars: 500, contains: "complaint" }
+
+  - raw_path: evidence/simon_goldberg/white_rabbit_dossiers/fbi_packet/where-does-the-fraud-begin.pdf
+    why: "large scanned PDF — sync-timeout case (async fix)"
+    expect: { min_chars: 500 }
+
+  - raw_path: telegram/data/empowerthepeople/posts.json
+    why: "JSON is not a Docling document format — must passthrough, not error"
+    expect: { min_chars: 10 }
+
+  - raw_path: evidence/gary_summers/attachments/20260226_125545-re-formal-complaint-gary-summers/image005.png
+    why: "screenshot image with little/no OCR-able text — must not crash"
+    expect: { allow_empty: true }
+
+  - raw_path: evidence/dan_neidle/glp_correspondence/20260522_090000-re-draft-regarding-missing-police-evidence.eml
+    why: "email (.eml) — composite (M9); Docling handling of message/rfc822 is a known gap"
+    expect: { allow_empty: true, allow_error: true }
+
+synthetic:
+  - name: huge-text
+    kind: huge_text
+    why: "very large text — full-context enrichment must not truncate (ADR 0006)"
+    expect: { min_chars: 100000 }
+
+  - name: empty-pdf
+    kind: empty_pdf
+    why: "valid PDF with no text — the empty-extraction path must be graceful"
+    expect: { allow_empty: true }
+
+  - name: latin1-text
+    kind: latin1_text
+    why: "non-UTF-8 (latin-1) text — encoding robustness in passthrough"
+    expect: { min_chars: 10, contains: "Fadhley" }
+
+  - name: near-empty
+    kind: near_empty
+    why: "one-word doc — minimal but non-empty content"
+    expect: { min_chars: 3 }

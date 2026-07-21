@@ -159,6 +159,38 @@ def get(doc_id, content) -> None:  # type: ignore[no-untyped-def]
     click.echo(json.dumps(doc, indent=2, ensure_ascii=False))
 
 
+@main.command("test-hard-cases")
+@click.option("--only", multiple=True, help="Run only these case names/raw_paths.")
+def test_hard_cases(only) -> None:  # type: ignore[no-untyped-def]
+    """Run the extraction hard-case regression suite (config/hard-cases.yaml).
+
+    Isolated: extracts each known-hard document (real + synthetic) via Docling and
+    checks it against its expectation. No live index touched, no OpenAI cost. Exits
+    non-zero on any failure. Add every troublesome document to the registry.
+    """
+    import tempfile
+
+    from goldberg_system.config import project_path
+    from goldberg_system.extract.docling_client import DoclingClient
+    from goldberg_system.testing.hard_cases import run_hard_cases
+
+    docling = DoclingClient.from_env()
+    if not docling.health():
+        raise SystemExit(
+            f"docling not reachable at {docling.base_url} (start the tunnel)."
+        )
+    with tempfile.TemporaryDirectory() as work:
+        results = run_hard_cases(
+            docling, project_path("raw"), work, only=set(only) or None
+        )
+    failed = [r for r in results if not r.ok]
+    for r in results:
+        click.echo(f"  {'✓' if r.ok else '✗'} [{r.kind}] {r.name}  — {r.detail}")
+    click.echo(f"\n{len(results) - len(failed)}/{len(results)} passed")
+    if failed:
+        raise SystemExit(1)
+
+
 @main.command()
 def facets() -> None:
     """Show corpus facets (matters, authors, document types, parties)."""
@@ -534,11 +566,17 @@ def migrate_manifest(out_path, no_commit) -> None:  # type: ignore[no-untyped-de
     help="Only these raw_paths (repeatable; for targeted tests).",
 )
 @click.option("--events/--no-events", default=True, help="Emit pipeline audit events.")
-def migrate_reingest(manifest_path, max_docs, only, events) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--index",
+    "index_override",
+    default=None,
+    help="Target index (e.g. goldberg_documents_test for isolated testing).",
+)
+def migrate_reingest(manifest_path, max_docs, only, events, index_override) -> None:  # type: ignore[no-untyped-def]
     """Bulk extract→enrich→index from goldberg-raw via docling-serve DIRECTLY (M8 fix).
 
-    Bypasses Papra's broken extraction. Use --max/--only for test injections, then
-    run unbounded to re-ingest the whole corpus.
+    Bypasses Papra's broken extraction. Use --max/--only for test injections and
+    --index for an isolated test index, then run unbounded to re-ingest everything.
     """
     from goldberg_system.config import project_path
     from goldberg_system.enrichment import OpenAIEnricher
@@ -561,6 +599,8 @@ def migrate_reingest(manifest_path, max_docs, only, events) -> None:  # type: ig
         )
     enricher = OpenAIEnricher.from_settings()
     indexer = ElasticsearchIndexer.from_env()
+    if index_override:
+        indexer.index = index_override  # isolated test index
     indexer.ensure_index()
     event_sink = None
     run_id = None
