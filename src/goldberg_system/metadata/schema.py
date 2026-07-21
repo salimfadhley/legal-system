@@ -130,8 +130,9 @@ class DocumentMetadata(BaseModel):
     claims: list[Claim] = []
 
     # provenance (first-class): the derived doc links back to raw path + commit
-    raw_path: str | None = None
+    raw_path: str | None = None  # path to the original raw file
     raw_commit: str | None = None
+    ingested_at: str | None = None  # ISO 8601 UTC timestamp of ingestion/processing
 
     # Papra cross-store mapping (ADR 0003)
     papra_document_id: str | None = None
