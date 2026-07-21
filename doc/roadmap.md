@@ -197,3 +197,15 @@ optional dense-vector) and reindexing the 589 legacy `goldberg_files` docs (M8).
   decide how attachments relate to their carrier email.
 - **Status:** deferred — analyse and spec later. Note: the M2 eml extractor already
   produces an *attachment manifest* (a foundation this can build on).
+
+### M10 — Dense-vector semantic RAG (stretch goal)
+
+- **Idea:** add a `dense_vector` field to the ES index and generate embeddings at
+  index time (cloud OpenAI per ADR 0001) to enable **semantic** retrieval (kNN)
+  alongside the current BM25 + structured/claims search — i.e. find relevant
+  passages by *meaning*, not just keyword overlap, and hybrid-rank the two.
+- **Status:** **stretch / uncertain value.** The current BM25 + attributed-claims
+  querying already answers the core "who said what" questions well; the added
+  benefit of embeddings (and their cost/complexity — chunking, an embedding model,
+  vector storage) is not yet clear. Analyse whether it materially improves answers
+  before committing.
