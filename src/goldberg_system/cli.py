@@ -514,5 +514,90 @@ def migrate_manifest(out_path, no_commit) -> None:  # type: ignore[no-untyped-de
     )
 
 
+@migrate.command("reingest")
+@click.option(
+    "--manifest",
+    "manifest_path",
+    default=None,
+    help="Provenance manifest (default: config/provenance-manifest.json).",
+)
+@click.option(
+    "--max",
+    "max_docs",
+    type=int,
+    default=None,
+    help="Cap documents (for test injections).",
+)
+@click.option(
+    "--only",
+    multiple=True,
+    help="Only these raw_paths (repeatable; for targeted tests).",
+)
+@click.option("--events/--no-events", default=True, help="Emit pipeline audit events.")
+def migrate_reingest(manifest_path, max_docs, only, events) -> None:  # type: ignore[no-untyped-def]
+    """Bulk extract→enrich→index from goldberg-raw via docling-serve DIRECTLY (M8 fix).
+
+    Bypasses Papra's broken extraction. Use --max/--only for test injections, then
+    run unbounded to re-ingest the whole corpus.
+    """
+    from goldberg_system.config import project_path
+    from goldberg_system.enrichment import OpenAIEnricher
+    from goldberg_system.extract.docling_client import DoclingClient
+    from goldberg_system.migrate.manifest import Manifest
+    from goldberg_system.migrate.reingest import reingest_from_raw
+    from goldberg_system.observability.events import ElasticsearchEventSink
+    from goldberg_system.provenance import now_iso
+    from goldberg_system.sinks import ElasticsearchIndexer
+
+    raw_root = project_path("raw")
+    mpath = manifest_path or (
+        project_path("system") / "config" / "provenance-manifest.json"
+    )
+    manifest = Manifest.load(mpath)
+    docling = DoclingClient.from_env()
+    if not docling.health():
+        raise SystemExit(
+            f"docling not reachable at {docling.base_url} (start the SSH tunnel or set GOLDBERG_DOCLING_URL)."
+        )
+    enricher = OpenAIEnricher.from_settings()
+    indexer = ElasticsearchIndexer.from_env()
+    indexer.ensure_index()
+    event_sink = None
+    run_id = None
+    if events:
+        event_sink = ElasticsearchEventSink.from_env()
+        event_sink.ensure_index()
+        run_id = f"reingest-{now_iso()}"
+
+    click.echo(
+        f"Re-ingesting from {raw_root} via Docling {docling.base_url} → {indexer.index}"
+    )
+    click.echo(
+        f"  manifest: {len(manifest)} entries"
+        + (f"  (max {max_docs})" if max_docs else "")
+    )
+
+    def on_doc(raw_path, status) -> None:  # type: ignore[no-untyped-def]
+        click.echo(f"  [{status}] {raw_path}")
+
+    report = reingest_from_raw(
+        raw_root,
+        manifest,
+        docling,
+        enricher,
+        [indexer],
+        events=event_sink,
+        run_id=run_id,
+        max_docs=max_docs,
+        only=set(only) or None,
+        on_doc=on_doc,
+    )
+    click.echo(
+        f"\nprocessed={report.processed} indexed={report.indexed} "
+        f"skipped_empty={report.skipped_empty} skipped_media={report.skipped_media} "
+        f"missing={report.missing_file} failures={report.failures}"
+    )
+
+
 if __name__ == "__main__":
     main()

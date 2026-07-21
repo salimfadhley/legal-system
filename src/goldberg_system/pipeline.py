@@ -54,6 +54,31 @@ def build_enriched_document(
     )
 
 
+def build_enriched_from_raw(
+    raw_path: str,
+    content: str,
+    enricher: EnrichmentAdapter,
+    *,
+    base: DocumentMetadata,
+    ingested_at: str | None = None,
+) -> EnrichedDocument:
+    """Assemble an enriched document from a raw file's extracted ``content`` + its
+    manifest ``base`` (the direct-Docling bulk path — no Papra involved)."""
+    base = base.model_copy(update={"raw_path": raw_path})
+    result = enricher.enrich(
+        EnrichmentRequest(doc_id=raw_path, markdown=content, metadata=base)
+    )
+    enriched = merge_enrichment(base, result, ingested_at=ingested_at or now_iso())
+    doc_id = compute_doc_id(raw_path, content.encode("utf-8"))
+    return EnrichedDocument(
+        doc_id=doc_id,
+        raw_path=raw_path,
+        raw_commit=base.raw_commit or "",
+        markdown=content,
+        metadata=enriched,
+    )
+
+
 def write_to_sinks(document: EnrichedDocument, sinks: list[Sink]) -> list[SinkResult]:
     return [sink.write(document) for sink in sinks]
 

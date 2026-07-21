@@ -128,15 +128,20 @@ class Manifest:
     def entry_for_sha(self, sha256: str | None) -> dict | None:
         return self._by_sha.get((sha256 or "").lower()) if sha256 else None
 
-    def base_for(self, papra_doc: "PapraDocumentLike") -> "DocumentMetadata | None":
-        """Resolve real provenance + matters for a Papra document, or None if unknown.
+    def items(self) -> "list[tuple[str, dict]]":
+        """`(sha256, entry)` pairs for every manifested file."""
+        return list(self._by_sha.items())
 
-        Joins on ``original_sha256_hash`` == the raw file's SHA-256 (spike §1).
+    def base_for_sha(self, sha256: str | None) -> "DocumentMetadata | None":
+        """Resolve real provenance + matters for a raw file's SHA-256, or None.
+
+        The SHA-256 is the pipeline correlation ID (== Papra ``original_sha256_hash``
+        == the raw file hash), so this serves both the Papra-join path and the
+        direct-Docling bulk path.
         """
         from goldberg_system.metadata.schema import DocumentMetadata, Origin
 
-        sha = getattr(papra_doc, "original_sha256_hash", None)
-        entry = self.entry_for_sha(sha)
+        entry = self.entry_for_sha(sha256)
         if entry is None:
             return None
         matters = list(entry.get("matters") or [])
@@ -144,13 +149,17 @@ class Manifest:
         return DocumentMetadata(
             raw_path=entry.get("raw_path"),
             raw_commit=entry.get("raw_commit") or None,
-            raw_sha256=entry.get("sha256") or (sha.lower() if sha else None),
+            raw_sha256=entry.get("sha256") or (sha256.lower() if sha256 else None),
             matters=matters,
             primary_matter=matters[0] if matters else None,
             origin=Origin(origin) if origin in ("received", "authored") else None,
             document_type=entry.get("document_type"),
             party_role=entry.get("party_role"),
         )
+
+    def base_for(self, papra_doc: "PapraDocumentLike") -> "DocumentMetadata | None":
+        """Resolve provenance for a Papra document (joins on ``original_sha256_hash``)."""
+        return self.base_for_sha(getattr(papra_doc, "original_sha256_hash", None))
 
 
 class PapraDocumentLike(Protocol):  # pragma: no cover - typing aid only
