@@ -45,6 +45,43 @@ def _client(payload: Any) -> tuple[PapraClient, _FakeTransport]:
     return client, transport
 
 
+class _PagingTransport:
+    """Returns full pages until the last (short) page — models Papra pagination."""
+
+    def __init__(self, total: int, page_size: int = 100) -> None:
+        self.total = total
+        self.page_size = page_size
+        self.pages_served = 0
+
+    def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
+        params = kwargs.get("params", {})
+        idx = params.get("pageIndex", 0)
+        start = idx * self.page_size
+        docs = [
+            {"id": f"d{i}"}
+            for i in range(start, min(start + self.page_size, self.total))
+        ]
+        self.pages_served += 1
+        return _FakeResponse({"documents": docs, "documentsCount": self.total})
+
+
+def test_iter_documents_paginates_through_all() -> None:
+    # 250 docs across 3 pages (100 + 100 + 50) must all be yielded
+    transport = _PagingTransport(total=250)
+    client = PapraClient("https://papra.halob.lan/", "k", ORG, transport=transport)
+    ids = [d.id for d in client.iter_documents(page_size=100)]
+    assert len(ids) == 250
+    assert ids[0] == "d0" and ids[-1] == "d249"
+    assert transport.pages_served == 3  # stopped after the short final page
+
+
+def test_iter_documents_exact_multiple_stops_on_empty_page() -> None:
+    # 200 docs = exactly 2 full pages; needs a 3rd (empty) request to know it's done
+    transport = _PagingTransport(total=200)
+    client = PapraClient("https://papra.halob.lan/", "k", ORG, transport=transport)
+    assert len(list(client.iter_documents(page_size=100))) == 200
+
+
 def test_transport_protocol_is_satisfied() -> None:
     assert isinstance(_FakeTransport({}), HttpTransport)
 

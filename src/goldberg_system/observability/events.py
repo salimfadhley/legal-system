@@ -68,8 +68,8 @@ EVENTS_INDEX_MAPPING: dict[str, Any] = {
         "sha256": {"type": "keyword"},
         "raw_path": {"type": "keyword"},
         "attempt": {"type": "integer"},
-        "reason": {"type": "text"},
-        "error": {"type": "text"},
+        "reason": {"type": "keyword"},  # keyword → aggregatable ("top failure reasons")
+        "error": {"type": "text"},  # free-form detail, stays full-text
     }
 }
 

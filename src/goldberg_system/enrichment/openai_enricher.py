@@ -18,7 +18,11 @@ from typing import Any, Protocol
 from goldberg_system.enrichment.adapter import EnrichmentRequest, EnrichmentResult
 from goldberg_system.metadata.schema import Claim
 
-_MAX_BODY_CHARS = 12000
+# Full-context enrichment (ADR 0006): pass the whole document, not just its head, so
+# claims/summary reflect the entire text. This is a generous *safety* cap that bounds
+# a pathologically large document (~50k tokens of a 128k-context model), NOT the old
+# aggressive 12k truncation that lost most of a long filing.
+_MAX_BODY_CHARS = 200_000
 
 _SYSTEM_PROMPT = (
     "You are a meticulous legal-document analyst helping a defendant prepare their "

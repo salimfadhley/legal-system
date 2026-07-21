@@ -100,7 +100,7 @@ def backfill_from_papra(
         safe_emit(events, PipelineEvent.make("backfill", stage, status, **fields))
 
     report = BackfillReport()
-    for stub in papra.list_documents(page_size=page_size):
+    for stub in papra.iter_documents(page_size=page_size):  # paginates ALL docs
         if max_docs is not None and report.processed >= max_docs:
             break
         report.processed += 1

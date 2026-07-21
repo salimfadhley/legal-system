@@ -13,6 +13,7 @@ testable without a live Papra or an API key. The default transport uses
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
@@ -135,6 +136,27 @@ class PapraClient:
             payload.get("documents", payload) if isinstance(payload, dict) else payload
         )
         return [PapraDocument.model_validate(d) for d in docs]
+
+    def iter_documents(
+        self, *, page_size: int = 100, search: str | None = None
+    ) -> "Iterator[PapraDocument]":
+        """Yield **every** document in the organisation, paginating until exhausted.
+
+        ``list_documents`` returns a single page (Papra caps pageSize at 100), so any
+        full-corpus operation (backfill/reindex) must page through here — otherwise it
+        silently processes only the first 100 documents.
+        """
+        page_index = 0
+        while True:
+            page = self.list_documents(
+                page_index=page_index, page_size=page_size, search=search
+            )
+            if not page:
+                return
+            yield from page
+            if len(page) < min(page_size, 100):
+                return
+            page_index += 1
 
     def get_document(self, document_id: str) -> PapraDocument:
         """Fetch a document (including its extracted ``content``).
