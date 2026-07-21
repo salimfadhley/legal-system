@@ -49,7 +49,33 @@ goldberg-raw push
 
 ## Metadata
 
-`metadata.yaml` in `goldberg-raw` (inherited down the directory tree, à la goldberg-meta) supplies case_number, parties, keywords, and handling flags. These flow into the enriched markdown frontmatter and the Elasticsearch fields.
+Each extracted document is a **markdown file with a YAML frontmatter header**
+([ADR 0004](decisions/0004-metadata-representation.md)) — metadata in the prelude
+(summary, keywords, entities, author, `matters`, attributed `claims`, provenance,
+handling flags), extracted text in the body. Most fields are machine-derived at
+enrichment; a light **folder-defaults** merge supplies the few genuinely
+folder-uniform, human-set fields (the legal-handling flags, sometimes
+`matters`/`parties`). Those same fields flow into the Elasticsearch document.
+
+## Answering questions (the read side)
+
+The pipeline above is the *write* side (raw → indexed). The *read* side is the
+**query layer**: an agent (Claude Code) answers questions about the corpus by
+running retrieval tools against the Elasticsearch index and synthesising an
+**attributed, cited** answer — the tools retrieve, the agent answers.
+
+```
+question ──▶ goldberg claims / search / get / facets ──▶ Elasticsearch (goldberg_documents)
+                                                              │
+                                             grounded hits (with provenance)
+                                                              ▼
+                              agent synthesises an answer, citing doc_id + raw_path + speaker + date
+```
+
+`goldberg claims` (the nested attributed-claims query) answers "who said what about
+whom" and surfaces contradictions; `goldberg search` is full-text; `goldberg get`
+reads a document; `goldberg facets` orients. Full runbook:
+[runbooks/querying-the-corpus.md](runbooks/querying-the-corpus.md).
 
 ## Open decisions
 

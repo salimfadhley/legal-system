@@ -26,13 +26,23 @@ The predecessor `the_goldberg_files` is **frozen** as a rollback / archive point
                        └───────────┬────────────┘
               ┌────────────────────┼─────────────────────┐
               ▼                    ▼                     ▼
-   ┌────────────────────┐  ┌───────────────┐   ┌──────────────────┐
-   │ goldberg-extracted │  │ Elasticsearch │   │    LLM wiki      │
-   │ (artifact store)   │  │ goldberg_files│   │ (Ragie/Obsidian) │
-   └────────────────────┘  └───────────────┘   └──────────────────┘
+   ┌────────────────────┐  ┌────────────────────┐
+   │ goldberg-extracted │  │   Elasticsearch    │
+   │ (frontmatter docs) │  │ goldberg_documents │
+   └────────────────────┘  └─────────┬──────────┘
+                                     │
+                    query layer — `goldberg` CLI (search / claims / get / facets)
+                                     │
+                    an agent (Claude Code) synthesises a cited, attributed answer
 
-   goldberg-casework  ── reads from ES / wiki; authored work lives here (not shown in the data flow)
+   goldberg-casework  ── authored work product (not shown in the data flow)
 ```
+
+Extraction is offloaded to the already-deployed **Papra** DMS (backed by a
+self-hosted **Docling** server) — see [ADR 0003](decisions/0003-document-management-papra-integration.md).
+The RAG/query surface is **RAG-on-Elasticsearch** ([ADR 0001](decisions/0001-wiki-rag-sink-backend.md)),
+not a separate wiki. Each extracted document is a markdown-with-frontmatter file
+([ADR 0004](decisions/0004-metadata-representation.md)).
 
 ## Where it runs — Halob
 

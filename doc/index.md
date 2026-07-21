@@ -7,6 +7,9 @@ Documentation for **goldberg-system**, the pipeline and tooling for the Goldberg
 - [Workflow](./workflow.md) — what happens to a document when it is ingested (the pipeline)
 - [Design](./design.md) — corpus model (two-axis taxonomy), metadata schema, and the two ingest paths
 - [Roadmap](./roadmap.md) — the M0–M8 mission breakdown for taking the pipeline live
+
+## Runbooks
+- [Querying the corpus](./runbooks/querying-the-corpus.md) — how the query layer works (the `goldberg` tools + how an agent answers with citations)
 - [Decisions (ADRs)](./decisions/) — recorded architecture decisions and their rationale
 
 ## Infrastructure
