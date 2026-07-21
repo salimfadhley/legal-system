@@ -6,18 +6,23 @@ internal OCR, so the bulk migration extracts by calling ``docling-serve`` direct
 purpose-built for OCR/layout; this bypasses Papra's broken extraction entirely
 (Papra stays for the live single-doc drop workflow).
 
-Text files (``.md``/``.txt``) are passed through unchanged — they need no OCR.
+Uses Docling's **async** convert flow (submit → poll → result) so large scanned
+PDFs aren't bounded by the server's synchronous ``DOCLING_SERVE_MAX_SYNC_WAIT`` (120s)
+— which was failing ~15% of the corpus's biggest evidence. Text/data files
+(``.md``/``.txt``/``.json``/``.tsv``/``.csv``) are passed through unchanged — Docling
+can't (and shouldn't) OCR them.
 """
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
 import requests
 
-# Extensions we read as-is (already text); everything else goes to Docling.
-_PASSTHROUGH = {".md", ".markdown", ".txt", ".text"}
+# Extensions read as-is (already text / structured data Docling can't parse).
+_PASSTHROUGH = {".md", ".markdown", ".txt", ".text", ".json", ".tsv", ".csv"}
 
 
 class DoclingError(RuntimeError):
@@ -25,11 +30,21 @@ class DoclingError(RuntimeError):
 
 
 class DoclingClient:
-    """Convert a file to markdown via docling-serve's ``/v1/convert/file``."""
+    """Convert a file to markdown via docling-serve's async convert flow."""
 
-    def __init__(self, base_url: str, *, timeout: float = 300.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        request_timeout: float = 60.0,
+        max_wait: float = 900.0,
+        poll_interval: float = 3.0,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
+        self.request_timeout = request_timeout  # per-HTTP-call timeout
+        self.max_wait = max_wait  # total time to wait for one conversion
+        self.poll_interval = poll_interval
+        self._sleep = time.sleep
 
     @classmethod
     def from_env(cls) -> "DoclingClient":
@@ -52,25 +67,62 @@ class DoclingClient:
             return False
 
     def convert_file(self, path: Path | str) -> str:
-        """Return the markdown extraction for ``path`` (passthrough for text files)."""
+        """Return the markdown extraction for ``path`` (passthrough for text/data)."""
         path = Path(path)
         if path.suffix.lower() in _PASSTHROUGH:
             return path.read_text(errors="replace")
 
+        task_id = self._submit(path)
+        self._await(task_id)
+        return self._result(task_id)
+
+    # ── async flow ────────────────────────────────────────────────────────────
+
+    def _submit(self, path: Path) -> str:
         with path.open("rb") as fh:
             resp = requests.post(
-                f"{self.base_url}/v1/convert/file",
+                f"{self.base_url}/v1/convert/file/async",
                 files={"files": (path.name, fh)},
                 data={"to_formats": "md"},
-                timeout=self.timeout,
+                timeout=self.request_timeout,
             )
         if not resp.ok:
-            raise DoclingError(f"docling {resp.status_code}: {resp.text[:200]}")
-        payload: dict[str, Any] = resp.json()
-        if payload.get("status") not in ("success", "partial_success", None):
-            raise DoclingError(
-                f"docling status={payload.get('status')}: {payload.get('errors')}"
+            raise DoclingError(f"docling submit {resp.status_code}: {resp.text[:200]}")
+        task_id = resp.json().get("task_id")
+        if not task_id:
+            raise DoclingError("docling submit returned no task_id")
+        return str(task_id)
+
+    def _await(self, task_id: str) -> None:
+        deadline = self.max_wait
+        waited = 0.0
+        while waited <= deadline:
+            resp = requests.get(
+                f"{self.base_url}/v1/status/poll/{task_id}",
+                timeout=self.request_timeout,
             )
+            if not resp.ok:
+                raise DoclingError(
+                    f"docling poll {resp.status_code}: {resp.text[:120]}"
+                )
+            status = resp.json().get("task_status")
+            if status == "success":
+                return
+            if status == "failure":
+                raise DoclingError(
+                    f"docling conversion failed: {resp.json().get('error_message')}"
+                )
+            self._sleep(self.poll_interval)
+            waited += self.poll_interval
+        raise DoclingError(f"docling conversion timed out after {self.max_wait}s")
+
+    def _result(self, task_id: str) -> str:
+        resp = requests.get(
+            f"{self.base_url}/v1/result/{task_id}", timeout=self.request_timeout
+        )
+        if not resp.ok:
+            raise DoclingError(f"docling result {resp.status_code}: {resp.text[:120]}")
+        payload: dict[str, Any] = resp.json()
         md = (payload.get("document") or {}).get("md_content")
         if md is None:
             raise DoclingError("docling returned no md_content")

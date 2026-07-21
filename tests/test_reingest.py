@@ -29,36 +29,51 @@ class _FakeResp:
         return self._p
 
 
-def test_convert_file_parses_md_content(tmp_path: Path, monkeypatch) -> None:
+def _async_docling(
+    monkeypatch, *, status: str = "success", md: str | None = "extracted text"
+):
+    """Wire Docling's async submit→poll→result flow to fakes."""
+    import goldberg_system.extract.docling_client as mod
+
+    monkeypatch.setattr(
+        mod.requests, "post", lambda *a, **k: _FakeResp({"task_id": "t1"})
+    )
+
+    def fake_get(url: str, **k: Any) -> _FakeResp:
+        if "/status/poll/" in url:
+            return _FakeResp({"task_status": status, "error_message": "boom"})
+        return _FakeResp({"document": ({"md_content": md} if md is not None else {})})
+
+    monkeypatch.setattr(mod.requests, "get", fake_get)
+
+
+def test_convert_file_async_parses_md_content(tmp_path: Path, monkeypatch) -> None:
     pdf = tmp_path / "a.pdf"
     pdf.write_bytes(b"%PDF-1.4")
-    import goldberg_system.extract.docling_client as mod
-
-    monkeypatch.setattr(
-        mod.requests,
-        "post",
-        lambda *a, **k: _FakeResp(
-            {"status": "success", "document": {"md_content": "extracted text"}}
-        ),
-    )
-    assert DoclingClient("http://x").convert_file(pdf) == "extracted text"
+    _async_docling(monkeypatch, status="success", md="extracted text")
+    client = DoclingClient("http://x")
+    client._sleep = lambda *_: None  # type: ignore[method-assign]
+    assert client.convert_file(pdf) == "extracted text"
 
 
-def test_convert_file_raises_on_no_content(tmp_path: Path, monkeypatch) -> None:
+def test_convert_file_raises_on_failure_status(tmp_path: Path, monkeypatch) -> None:
     pdf = tmp_path / "a.pdf"
     pdf.write_bytes(b"%PDF")
-    import goldberg_system.extract.docling_client as mod
-
-    monkeypatch.setattr(
-        mod.requests,
-        "post",
-        lambda *a, **k: _FakeResp({"status": "success", "document": {}}),
-    )
+    _async_docling(monkeypatch, status="failure")
+    client = DoclingClient("http://x")
+    client._sleep = lambda *_: None  # type: ignore[method-assign]
     try:
-        DoclingClient("http://x").convert_file(pdf)
+        client.convert_file(pdf)
         assert False, "should have raised"
-    except DoclingError:
-        pass
+    except DoclingError as e:
+        assert "boom" in str(e)
+
+
+def test_json_and_tsv_are_passthrough(tmp_path: Path) -> None:
+    j = tmp_path / "data.json"
+    j.write_text('{"a": 1}')
+    # unreachable base_url — passthrough (json) must not hit the network
+    assert DoclingClient("http://127.0.0.1:1").convert_file(j) == '{"a": 1}'
 
 
 # ── reingest loop (with fakes) ────────────────────────────────────────────────
