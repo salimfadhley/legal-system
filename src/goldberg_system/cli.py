@@ -133,5 +133,42 @@ def facets() -> None:
             click.echo(f"  {count:5d}  {key}")
 
 
+@main.command()
+@click.option(
+    "--max", "max_docs", type=int, default=None, help="Limit documents processed."
+)
+@click.option(
+    "--extracted-root",
+    default=None,
+    help="Also write frontmatter .md files under this root.",
+)
+def reindex(max_docs, extracted_root) -> None:  # type: ignore[no-untyped-def]
+    """Backfill the ES index from documents already in Papra (enrich + index)."""
+    from goldberg_system.enrichment import OpenAIEnricher
+    from goldberg_system.papra import PapraClient
+    from goldberg_system.pipeline import backfill_from_papra
+    from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
+
+    papra = PapraClient.from_env()
+    enricher = OpenAIEnricher.from_settings()
+    indexer = ElasticsearchIndexer.from_env()
+    indexer.ensure_index()
+    sinks: list = [indexer]
+    if extracted_root:
+        sinks.append(ExtractedRepoWriter(extracted_root))
+
+    def on_doc(stub, status) -> None:  # type: ignore[no-untyped-def]
+        click.echo(f"  [{status}] {stub.original_name or stub.id}")
+
+    click.echo(f"Backfilling into {indexer.index} …")
+    report = backfill_from_papra(
+        papra, enricher, sinks, max_docs=max_docs, on_doc=on_doc
+    )
+    click.echo(
+        f"\nprocessed={report.processed} indexed={report.indexed} "
+        f"skipped_empty={report.skipped_empty} failures={report.failures}"
+    )
+
+
 if __name__ == "__main__":
     main()
