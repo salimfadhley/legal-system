@@ -238,3 +238,24 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   benefit of embeddings (and their cost/complexity — chunking, an embedding model,
   vector storage) is not yet clear. Analyse whether it materially improves answers
   before committing.
+
+### M11 — Concept wiki (SilverBullet, downstream of enrichment)
+
+- **Goal:** a browsable **"by concept" index** of the corpus — people, orgs, legal
+  concepts, and contradictions — as an LLM-curated SilverBullet wiki. The *output*
+  form of the knowledge base (read/navigate), complementing the query layer.
+- **Key decision (ADR 0007):** the wiki is built **strictly downstream of
+  enrichment** — a peer `Sink` alongside the ES indexer and extracted-writer,
+  consuming the same `EnrichedDocument` (`entities`, attributed `claims`, `summary`,
+  `matters`, `raw_path`). It never re-reads raw. Reuse the existing
+  `silverbullet-goldberg` space + the Mind of Steele indexer/linter/author machinery
+  (shared infra → documented in MoS).
+- **Payoff:** attributed `claims` → `comparison/` pages surfacing contradictions
+  across parties/time — argument-grade material for the defence.
+- **Phases:** (1) verify the goldberg SB indexer + fit `SCHEMA.md` to this case;
+  (2) batch-author `entities/`+`concepts/` from the indexed corpus (DRY_RUN → review
+  → apply), build `index.md`; (3) contradiction pass → `comparison/` pages;
+  (4) event-driven auto-update hooked to the live pipeline (DRY_RUN then live, MoS
+  guardrails). See ADR 0007.
+- **Status:** spec'd (ADR 0007); implement after the M8 full migration gives the
+  wiki the whole corpus to draw on.
