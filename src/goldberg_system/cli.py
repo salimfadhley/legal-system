@@ -219,6 +219,69 @@ def audit(manifest_path, show_missing, show_extra) -> None:  # type: ignore[no-u
 
 
 @main.command()
+@click.option(
+    "--yaml", "as_yaml", is_flag=True, help="Emit the LLM-readable YAML mode."
+)
+def status(as_yaml) -> None:  # type: ignore[no-untyped-def]
+    """System state — health, corpus, wiki, pipeline, DLQ (M12/M13, ADR 0009).
+
+    Human table by default; --yaml emits the same canonical SystemState as YAML so an
+    LLM can grok the whole system in one read.
+    """
+    from goldberg_system.observability.state import aggregate
+
+    state = aggregate(_query().client)
+    if as_yaml:
+        click.echo(state.to_yaml())
+        return
+    h = state.health
+    click.echo(f"health: {h['status'].upper()}")
+    for c in h["checks"]:
+        click.echo(f"  {'✓' if c['ok'] else '✗'} {c['name']}: {c['detail']}")
+    click.echo(f"\ncorpus: {state.corpus['documents']} documents")
+    for matter, n in list(state.corpus["by_matter"].items())[:8]:
+        click.echo(f"    {n:5d}  {matter}")
+    click.echo(f"wiki: {state.wiki['pages']} pages  {state.wiki['by_layer']}")
+    click.echo(f"\npipeline: last indexed {state.pipeline['last_indexed_at'] or '-'}")
+    for k, n in sorted(state.pipeline["by_stage_status"].items()):
+        click.echo(f"    {n:5d}  {k}")
+    click.echo(f"\ndlq: {state.dlq['failed']} failed, {state.dlq['skipped']} skipped")
+    for e in state.dlq["recent"][:5]:
+        click.echo(
+            f"    {e.get('status')}  {e.get('stage')}  {e.get('raw_path') or e.get('doc_id')}  — {e.get('reason') or ''}"
+        )
+
+
+@main.command("dlq")
+@click.option(
+    "--status",
+    "statuses",
+    multiple=True,
+    default=("failed",),
+    help="Event statuses to list (default: failed). Use --status skipped too.",
+)
+@click.option("--size", default=25, show_default=True, help="Max entries.")
+def dlq(statuses, size) -> None:  # type: ignore[no-untyped-def]
+    """List failed/skipped documents — the ES-projection dead-letter view (M12).
+
+    (The durable NATS JetStream DLQ with retry arrives with the NATS increment; this
+    reads the same failure signal from the event projection.)
+    """
+    from goldberg_system.observability.state import _recent
+
+    q = _query()
+    entries = _recent(q.client, "goldberg_pipeline_events", list(statuses), size=size)
+    if not entries:
+        click.echo(f"(no {'/'.join(statuses)} events)")
+        return
+    for e in entries:
+        click.echo(f"\n• {e.get('status')}/{e.get('stage')}  {e.get('ts')}")
+        click.echo(f"  {e.get('raw_path') or e.get('doc_id')}")
+        if e.get("reason"):
+            click.echo(f"  reason: {e['reason']}")
+
+
+@main.command()
 @click.argument("key")
 def trace(key) -> None:  # type: ignore[no-untyped-def]
     """Show one document's pipeline timeline — why did X (not) ingest.

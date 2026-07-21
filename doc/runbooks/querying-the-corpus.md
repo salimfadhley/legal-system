@@ -118,6 +118,28 @@ e.g. a doc indexed without provenance). Exits non-zero when gaps exist, so it ca
 a migration. `--missing` lists every un-ingested `raw_path`; run this after a bulk
 migration to prove completeness.
 
+### `goldberg status` — system health (human + LLM-readable)
+
+```
+goldberg status [--yaml]
+```
+
+The canonical system state (M12/M13, [ADR 0009](../decisions/0009-operations-dashboard.md)):
+health checks, corpus counts by matter/type, wiki pages by layer, per-stage/status
+pipeline counts, and DLQ depth. Default is a human table; **`--yaml`** emits the same
+`SystemState` as YAML so an LLM can read the whole system in one call.
+
+### `goldberg trace` / `goldberg dlq` — why did X (not) ingest
+
+```
+goldberg trace <raw_path|sha256|doc_id>   # one document's full stage timeline
+goldberg dlq [--status failed] [--status skipped]   # what failed/skipped, and why
+```
+
+`trace` resolves any identifier to the document's `raw_sha256` correlation ID and
+shows every stage event in order — the stop point is the answer. `dlq` lists the
+failed/skipped documents from the event projection.
+
 ## How to answer a question
 
 1. **Pick the tool.** Attribution / "who said" → `claims`. Topic / keyword →
