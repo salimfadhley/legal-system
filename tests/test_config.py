@@ -22,7 +22,8 @@ def test_load_projects_has_four_projects() -> None:
 def test_halob_elasticsearch_configured() -> None:
     cfg = load_projects()
     assert cfg["halob"]["elasticsearch"] == "http://halob:9200"
-    assert cfg["halob"]["elasticsearch_index"] == "goldberg_files"
+    assert cfg["halob"]["elasticsearch_index"] == "goldberg_documents"
+    assert cfg["halob"]["elasticsearch_index_legacy"] == "goldberg_files"
 
 
 def test_archive_is_recorded_and_separate() -> None:
