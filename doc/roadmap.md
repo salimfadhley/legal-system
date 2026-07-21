@@ -259,3 +259,44 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   guardrails). See ADR 0007.
 - **Status:** spec'd (ADR 0007); implement after the M8 full migration gives the
   wiki the whole corpus to draw on.
+
+### M12 — Observability (is it working? did anything not ingest?)
+
+- **Why:** the autonomous pipeline can fail *silently*. A document that never
+  ingests is invisible — it simply isn't in search or the wiki — so the corpus has
+  an undetected hole and every answer is quietly skewed. For a legal case,
+  **completeness is a correctness property**, not a nice-to-have. This mission makes
+  the pipeline auditable and gap-detecting.
+- **Questions it must answer:**
+  - *"Is there something that did not ingest?"* — a reconciliation of what **should**
+    be in the corpus vs what **is**.
+  - *"Why did X not ingest?"* — a per-document trace showing where in the pipeline it
+    stopped and why (e.g. Docling returned empty, enrichment failed, `.eml` skipped).
+  - *"Is it working right now?"* — a health/status summary of the autonomous
+    processes (counts per stage, failure/skip rates, last-run times).
+- **Capabilities:**
+  1. **Persistent audit log.** Every document emits a structured event at each stage
+     (received → extracted → enriched → indexed → wiki'd, plus skipped/failed with a
+     reason + timestamp). The live service, backfill, and the M11 wiki sink all emit.
+     Persisted and queryable later — not just container stdout.
+  2. **Reconciliation / gap detection.** Join the *expected* set (the goldberg-raw
+     provenance manifest / Papra) against the *actual* set (ES `goldberg_documents`
+     + the wiki) by SHA-256 / doc-id; report **missing**, **extra**, and **stale**.
+  3. **Per-document trace** — `goldberg trace <raw_path|sha256|doc_id>`: the document's
+     journey and its stop point.
+  4. **Status summary** — `goldberg status` / `goldberg audit`: per-stage counts,
+     failures, dead-letters, freshness.
+  5. **(Stretch)** alerting when a run fails or reconciliation finds a gap.
+- **Building blocks already in place:** deterministic SHA-256 doc-ids (the
+  reconciliation join key), the provenance manifest (the *expected* set, ADR 0006),
+  ES as the *actual* set, `BackfillReport` counters, the `goldberg.indexed` NATS
+  subject, and the existing `skipped-empty`/`failure` signals.
+- **Open decision (settle at implementation):** where the audit log lives — a
+  dedicated ES index `goldberg_pipeline_events` (recommended: queryable with the same
+  tooling, directly answers per-document "why", reuses infra) vs NATS JetStream
+  durable vs plain log files. Lean ES audit index + emit at each stage.
+- **Phases:** (1) event schema + emit structured stage events to a persistent store;
+  (2) reconciliation CLI (expected vs actual → gaps); (3) per-doc trace + status
+  summary; (4) stretch: alerting/dashboard.
+- **Status:** spec'd (roadmap). High value once autonomous processes (M11) and the
+  full corpus (M8) are live — that's when silent drops actually cost us.
