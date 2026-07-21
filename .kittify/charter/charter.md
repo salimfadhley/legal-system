@@ -99,12 +99,18 @@ Legal-handling flags (cpia_s17, privileged, sensitivity, disclosure_status,
 source_channel) are HUMAN-authored and default to the safe value when absent;
 the LLM must not invent them.
 
-2. Keep documentation synchronized with workflow and behavior changes: doc/ is the human-facing design record, maintained directly (see doc/design.md
-for the corpus model, metadata schema, and ingest paths). Update docs whenever
-pipeline behaviour or the schema changes. Keep canonical terms precise:
-`matters` (multi-valued case identifiers), `origin`/`role` (the two-axis
-taxonomy), `author`/`source_party` (who is speaking, vs `parties` = who a doc
-is about).
+2. Keep documentation synchronized with workflow and behavior changes:
+**Every material change to the system MUST include a corresponding documentation
+change** — no code, behaviour, schema, pipeline-topology, or deployment change
+lands without updating the relevant doc(s) (design.md / workflow.md /
+architecture.md / the affected runbook / an ADR for decisions) in the same unit
+of work. A change is "material" if it alters how the system behaves, is
+operated, is queried, or is reasoned about; pure internal refactors with no
+behavioural or interface change are exempt. doc/ is the human-facing design
+record, maintained directly (see doc/design.md for the corpus model, metadata
+schema, and ingest paths). Keep canonical terms precise: `matters`
+(multi-valued case identifiers), `origin`/`role` (the two-axis taxonomy),
+`author`/`source_party` (who is speaking, vs `parties` = who a doc is about).
 
 
 ## Reference Index
