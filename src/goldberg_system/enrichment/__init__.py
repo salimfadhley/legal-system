@@ -7,6 +7,7 @@ from goldberg_system.enrichment.adapter import (
     EnrichmentResult,
 )
 from goldberg_system.enrichment.assemble import assemble_enriched_document
+from goldberg_system.enrichment.openai_enricher import OpenAIEnricher
 
 __all__ = [
     "EnrichmentAdapter",
@@ -14,4 +15,5 @@ __all__ = [
     "EnrichmentResult",
     "Claim",
     "assemble_enriched_document",
+    "OpenAIEnricher",
 ]
