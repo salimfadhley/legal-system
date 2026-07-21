@@ -43,6 +43,7 @@ INDEX_MAPPING: dict[str, Any] = {
             "ingested_at": {"type": "date"},
             "raw_path": {"type": "keyword"},
             "raw_commit": {"type": "keyword"},
+            "raw_sha256": {"type": "keyword"},  # correlation ID across the pipeline
             "papra_document_id": {"type": "keyword"},
             "relates_to": {"type": "keyword"},
             "handling": {
@@ -103,6 +104,7 @@ def to_es_document(document: EnrichedDocument) -> dict[str, Any]:
         "ingested_at": meta.ingested_at,
         "raw_path": meta.raw_path,
         "raw_commit": meta.raw_commit,
+        "raw_sha256": meta.raw_sha256,
         "papra_document_id": meta.papra_document_id,
         "relates_to": meta.relates_to,
         "handling": meta.handling.model_dump(mode="json"),
@@ -112,14 +114,21 @@ def to_es_document(document: EnrichedDocument) -> dict[str, Any]:
 
 
 def ensure_index(client: Any, index: str) -> bool:
-    """Create ``index`` with :data:`INDEX_MAPPING` if it does not exist.
+    """Create ``index`` with :data:`INDEX_MAPPING`, or add any new fields to it.
 
-    Returns True if it was created, False if it already existed.
+    Returns True if it was created, False if it already existed. When it already
+    exists, new top-level fields in :data:`INDEX_MAPPING` are added via a mapping
+    update (ES merges additive field mappings without a reindex) — so a schema
+    addition like ``raw_sha256`` becomes queryable on the existing index. Existing
+    documents pick up the new mapping when they are next (re)indexed.
     """
-    if client.indices.exists(index=index):
-        return False
-    client.indices.create(index=index, mappings=INDEX_MAPPING["mappings"])
-    return True
+    if not client.indices.exists(index=index):
+        client.indices.create(index=index, mappings=INDEX_MAPPING["mappings"])
+        return True
+    client.indices.put_mapping(
+        index=index, properties=INDEX_MAPPING["mappings"]["properties"]
+    )
+    return False
 
 
 class ElasticsearchIndexer:

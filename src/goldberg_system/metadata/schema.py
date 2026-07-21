@@ -132,6 +132,8 @@ class DocumentMetadata(BaseModel):
     # provenance (first-class): the derived doc links back to raw path + commit
     raw_path: str | None = None  # path to the original raw file
     raw_commit: str | None = None
+    raw_sha256: str | None = None  # sha256 of the raw file — the preservable
+    # pipeline correlation ID (== Papra original_sha256_hash == manifest key, ADR 0008)
     ingested_at: str | None = None  # ISO 8601 UTC timestamp of ingestion/processing
 
     # Papra cross-store mapping (ADR 0003)

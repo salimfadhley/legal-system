@@ -81,6 +81,27 @@ Report **missing** (expected − actual), **extra** (actual − expected), **sta
 projection / DLQ to attach the last-known stage + reason. This is the direct answer
 to "is there something that did not ingest?".
 
+### 4a. Correlation ID — the raw SHA-256 (preserved in metadata)
+
+**Decision: the raw file's SHA-256 is the pipeline's preservable correlation ID**, and
+it is **stamped into the document metadata** (`raw_sha256`) so any ingested artifact
+traces back to its original source bytes (user, 2026-07-21). It is preferred over a
+minted UUID because it is *content-addressed*: deterministic, identical at every
+stage and in every representation, and stable across re-runs / re-extraction /
+re-indexing (unlike `doc_id = sha256(raw_path + content)`, which shifts if extraction
+output changes). The same value already appears as Papra's `original_sha256_hash`, the
+manifest key (ADR 0006), and the `sha256` on every `PipelineEvent`.
+
+`raw_sha256` is carried on `DocumentMetadata` → the ES document, the extracted
+frontmatter (serialised from the schema), and — for M11 — wiki pages. So one ID
+correlates **goldberg-raw → Papra → events → ES doc → extracted → wiki**, and
+`goldberg trace <sha256>` walks the whole journey. It also lets reconciliation join by
+hash (path-independent) rather than only by `raw_path`.
+
+*(A per-execution trace ID — an OTel-style UUID minted at ingestion and propagated in
+NATS message headers — is the complementary "one specific run" identifier; it arrives
+with the NATS/OTel increment (§2, §7) and does not replace the content correlation ID.)*
+
 ### 5. Instrumentation — a thin `emit` + a stage wrapper
 
 A small `observability` module: `emit(event)` (publishes to JetStream) and an

@@ -135,7 +135,8 @@ class Manifest:
         """
         from goldberg_system.metadata.schema import DocumentMetadata, Origin
 
-        entry = self.entry_for_sha(getattr(papra_doc, "original_sha256_hash", None))
+        sha = getattr(papra_doc, "original_sha256_hash", None)
+        entry = self.entry_for_sha(sha)
         if entry is None:
             return None
         matters = list(entry.get("matters") or [])
@@ -143,6 +144,7 @@ class Manifest:
         return DocumentMetadata(
             raw_path=entry.get("raw_path"),
             raw_commit=entry.get("raw_commit") or None,
+            raw_sha256=entry.get("sha256") or (sha.lower() if sha else None),
             matters=matters,
             primary_matter=matters[0] if matters else None,
             origin=Origin(origin) if origin in ("received", "authored") else None,

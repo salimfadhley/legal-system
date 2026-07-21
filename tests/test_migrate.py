@@ -200,6 +200,8 @@ def test_manifest_base_for_joins_by_sha256(tmp_path: Path) -> None:
     assert base.matters == ["422500059892"]
     assert base.primary_matter == "422500059892"
     assert base.origin.value == "received"
+    # the raw sha256 is preserved as the pipeline correlation ID (ADR 0008)
+    assert base.raw_sha256 == letter_sha
 
     # SHA-256 is case-insensitive on lookup
     assert manifest.base_for(_FakePapraDoc(letter_sha.upper())) is not None

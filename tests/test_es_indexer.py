@@ -19,6 +19,7 @@ class _FakeIndices:
     def __init__(self, exists: bool = False) -> None:
         self._exists = exists
         self.created: list[dict[str, Any]] = []
+        self.mapping_updates: list[dict[str, Any]] = []
 
     def exists(self, index: str) -> bool:
         return self._exists
@@ -26,6 +27,9 @@ class _FakeIndices:
     def create(self, index: str, mappings: dict[str, Any]) -> None:
         self.created.append({"index": index, "mappings": mappings})
         self._exists = True
+
+    def put_mapping(self, index: str, properties: dict[str, Any]) -> None:
+        self.mapping_updates.append({"index": index, "properties": properties})
 
 
 class _FakeES:
@@ -102,8 +106,19 @@ def test_ensure_index_creates_when_absent() -> None:
     assert ensure_index(es, "goldberg_documents") is False
 
 
-def test_mapping_has_nested_claims_and_keyword_matters() -> None:
+def test_ensure_index_updates_mapping_when_present() -> None:
+    # an existing index gets additive field mappings (e.g. raw_sha256) applied
+    es = _FakeES(exists=True)
+    assert ensure_index(es, "goldberg_documents") is False
+    assert es.indices.mapping_updates
+    props = es.indices.mapping_updates[0]["properties"]
+    assert "raw_sha256" in props
+
+
+def test_mapping_has_nested_claims_and_keyword_matters_and_correlation_id() -> None:
     props = INDEX_MAPPING["mappings"]["properties"]
     assert props["claims"]["type"] == "nested"
     assert props["matters"]["type"] == "keyword"
     assert props["content"]["type"] == "text"
+    # the pipeline correlation ID (ADR 0008)
+    assert props["raw_sha256"]["type"] == "keyword"
