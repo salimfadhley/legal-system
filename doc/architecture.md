@@ -24,25 +24,30 @@ The predecessor `the_goldberg_files` is **frozen** as a rollback / archive point
                        │  extract → enrich →     │
                        │  index → wiki           │
                        └───────────┬────────────┘
-              ┌────────────────────┼─────────────────────┐
-              ▼                    ▼                     ▼
-   ┌────────────────────┐  ┌────────────────────┐
-   │ goldberg-extracted │  │   Elasticsearch    │
-   │ (frontmatter docs) │  │ goldberg_documents │
-   └────────────────────┘  └─────────┬──────────┘
-                                     │
-                    query layer — `goldberg` CLI (search / claims / get / facets)
-                                     │
-                    an agent (Claude Code) synthesises a cited, attributed answer
+        ┌──────────────────────┼──────────────────────┬─────────────────────┐
+        ▼                      ▼                      ▼                     ▼
+┌────────────────────┐ ┌────────────────────┐ ┌────────────────────┐
+│ goldberg-extracted │ │   Elasticsearch    │ │  SilverBullet wiki │
+│ (frontmatter docs) │ │ goldberg_documents │ │  (concept index)   │
+└────────────────────┘ └─────────┬──────────┘ └─────────┬──────────┘
+                                 │ silverbullet-goldberg ES ↙
+              query layer — `goldberg` CLI (search / claims / wiki / get / facets)
+                                 │
+              an agent (Claude Code) synthesises a cited, attributed answer,
+              querying BOTH representations (documents = evidence, wiki = concept map)
 
    goldberg-casework  ── authored work product (not shown in the data flow)
 ```
 
 Extraction is offloaded to the already-deployed **Papra** DMS (backed by a
 self-hosted **Docling** server) — see [ADR 0003](decisions/0003-document-management-papra-integration.md).
-The RAG/query surface is **RAG-on-Elasticsearch** ([ADR 0001](decisions/0001-wiki-rag-sink-backend.md)),
-not a separate wiki. Each extracted document is a markdown-with-frontmatter file
-([ADR 0004](decisions/0004-metadata-representation.md)).
+The primary query surface is **RAG-on-Elasticsearch** ([ADR 0001](decisions/0001-wiki-rag-sink-backend.md));
+each extracted document is a markdown-with-frontmatter file
+([ADR 0004](decisions/0004-metadata-representation.md)). A **second representation**
+is the **SilverBullet concept wiki** ([ADR 0007](decisions/0007-concept-wiki-output.md)) —
+curated entity/concept/contradiction pages built as a sink **downstream of
+enrichment**, itself indexed (`silverbullet-goldberg`) so the `goldberg wiki` command
+searches it alongside the documents.
 
 ## Where it runs — Halob
 

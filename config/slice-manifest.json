@@ -1,0 +1,332 @@
+{
+  "08d0c336a84d244c3fcd32af2c7ab4920e5dacb39964d75d28f345508c45358b": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "goldberg_1099/documents/forum_messages_markdown/1099_conversations/1099-1099-1496.md",
+    "sha256": "08d0c336a84d244c3fcd32af2c7ab4920e5dacb39964d75d28f345508c45358b",
+    "size": 367
+  },
+  "0b3ab12c5d9fe0fcd6d08a9894284b9eee2f1cc410be63e8db8ae5080e2d0b03": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "telegram/README.md",
+    "sha256": "0b3ab12c5d9fe0fcd6d08a9894284b9eee2f1cc410be63e8db8ae5080e2d0b03",
+    "size": 2258
+  },
+  "1134fc86a7935453318781f093aec779714f1aa38ade90516254635342c40c04": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "telegram/data/The_Shill_Hunter/deleted_hash_test.md",
+    "sha256": "1134fc86a7935453318781f093aec779714f1aa38ade90516254635342c40c04",
+    "size": 59866
+  },
+  "13cd80e712e055a044e0a337438b4c0941fb2fc9f63acea07adacd6380d99a86": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "exhibits/2025-04-27-telegram-important-notice.md",
+    "sha256": "13cd80e712e055a044e0a337438b4c0941fb2fc9f63acea07adacd6380d99a86",
+    "size": 5115
+  },
+  "2909a6184dbcf45dfceb487d9032448fa4cd1a23eb3642a186332ae1117f23dd": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "analysis/2025_12_04_witness_statement_analysis/context/analyst.md",
+    "sha256": "2909a6184dbcf45dfceb487d9032448fa4cd1a23eb3642a186332ae1117f23dd",
+    "size": 18826
+  },
+  "310197d6ddc4e2627e05778f64dc6307cb3014a38ef176c3de45c5c98ff41f2e": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "witness",
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "evidence/ann_peat/snitch_emails/markdown/20251029_103829-fw-11-april-22-fw-urgent-announcement-share-everywhere.md",
+    "sha256": "310197d6ddc4e2627e05778f64dc6307cb3014a38ef176c3de45c5c98ff41f2e",
+    "size": 14171
+  },
+  "381c0a60c7bd420fefbb652a5fa71b3ef4792f81a6ff462023d078e84a4ef61d": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "reports/civil_procedure/civil_costs_disproportionate_filings.md",
+    "sha256": "381c0a60c7bd420fefbb652a5fa71b3ef4792f81a6ff462023d078e84a4ef61d",
+    "size": 59801
+  },
+  "55c74c6fd8bfa0840bbeaafa66dcbe1ec971c5c352312ddad5ca0565e31509f8": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "exhibits/2025-04-07-right-of-reply-email.md",
+    "sha256": "55c74c6fd8bfa0840bbeaafa66dcbe1ec971c5c352312ddad5ca0565e31509f8",
+    "size": 10966
+  },
+  "59b04df7ce9e1dad485d6e2e4520740c2450b8f79d3f77d61f2667e63fc453ea": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "analysis/2025_12_04_witness_statement_analysis/README.md",
+    "sha256": "59b04df7ce9e1dad485d6e2e4520740c2450b8f79d3f77d61f2667e63fc453ea",
+    "size": 7355
+  },
+  "59f28dfcf90bf5558a9be91c05f078dcf42b9f919f2b349fff05f42eb1be967b": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "exhibits/2025-05-17-mark-steele-channel-belinda-parmar-doxxing.md",
+    "sha256": "59f28dfcf90bf5558a9be91c05f078dcf42b9f919f2b349fff05f42eb1be967b",
+    "size": 1335
+  },
+  "63e3c4554372c1c3749f54a9618b27f48f540922294b4bfd4dd0fec0852d6909": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "evidence/9br_chambers/press_release_etp/press_release.md",
+    "sha256": "63e3c4554372c1c3749f54a9618b27f48f540922294b4bfd4dd0fec0852d6909",
+    "size": 2274
+  },
+  "67529d778f9f4579e473078ee38eae8efad10f20b91eeb0b3540f318a734558f": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "evidence/9br_chambers/2025-11-24-letter/9brsummarybeforeinitialhearing.pdf",
+    "sha256": "67529d778f9f4579e473078ee38eae8efad10f20b91eeb0b3540f318a734558f",
+    "size": 320405
+  },
+  "71c41c981cce235739cc01ac41b02248b76e3f0b31c5a1a4345821c603eac11f": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "exhibits/2025-04-21-youtube-fair-dealing-response.md",
+    "sha256": "71c41c981cce235739cc01ac41b02248b76e3f0b31c5a1a4345821c603eac11f",
+    "size": 4079
+  },
+  "7300f3437de89ca65a350df9f726bc7b0aec1a447571023c682025a0ada9876f": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "witness",
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "evidence/ann_peat/snitch_emails/markdown/20251029_103846-fw-1st-may-fw-important-announcement-intended-external-legal-proceedings.md",
+    "sha256": "7300f3437de89ca65a350df9f726bc7b0aec1a447571023c682025a0ada9876f",
+    "size": 6276
+  },
+  "7b54a1bb8b10440bbdf1264c6c5760e1fc5525309f249bd0d62243867f5d1565": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "goldberg_1099/documents/forum_messages_markdown/1099_conversations/1099-1099-31012.md",
+    "sha256": "7b54a1bb8b10440bbdf1264c6c5760e1fc5525309f249bd0d62243867f5d1565",
+    "size": 1939
+  },
+  "8647d42d10ed786bff23381bfe6124ddb43464347ddd56e58745acef5b17ef2e": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "reports/civil_procedure/civil_cpr_5_4c_request_withdrawal_costs.md",
+    "sha256": "8647d42d10ed786bff23381bfe6124ddb43464347ddd56e58745acef5b17ef2e",
+    "size": 11751
+  },
+  "86b7ccb22a9e208bb3aae4ce558e713bf7dcacaee1ae06270aefc1130dcbac12": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "telegram/data/The_Shill_Hunter/deleted_ts_test.md",
+    "sha256": "86b7ccb22a9e208bb3aae4ce558e713bf7dcacaee1ae06270aefc1130dcbac12",
+    "size": 53438
+  },
+  "8be024bad0b033c409a559b66ae014b3b12efe05d41ba50d657e6a094bfb66c1": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "reports/agents.md",
+    "sha256": "8be024bad0b033c409a559b66ae014b3b12efe05d41ba50d657e6a094bfb66c1",
+    "size": 550
+  },
+  "9beb220bbad2697acc58429dbe5216779ac2d9423df1f37b990e7127c2e1a37c": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "reports/INDEX.md",
+    "sha256": "9beb220bbad2697acc58429dbe5216779ac2d9423df1f37b990e7127c2e1a37c",
+    "size": 41365
+  },
+  "9c255072cd792a5b2b370cb6cf44ddd76101dd38d303a0bd258781020a36fb92": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "reports/article_10/staging_of_article_10_scrutiny_private_prosecution_summons.md",
+    "sha256": "9c255072cd792a5b2b370cb6cf44ddd76101dd38d303a0bd258781020a36fb92",
+    "size": 8924
+  },
+  "a3cd23b08734c693a127d8811dd19fbd613657f01a4474ecd5585cdba1e4b329": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "analysis/2025_12_04_witness_statement_analysis/context/authorities_list.md",
+    "sha256": "a3cd23b08734c693a127d8811dd19fbd613657f01a4474ecd5585cdba1e4b329",
+    "size": 4332
+  },
+  "ab84f1805d95ff9725dc1dc43a5623283966f8f67dee4299e649c7bc0a9efb46": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "analysis/2025_12_04_witness_statement_analysis/agents.md",
+    "sha256": "ab84f1805d95ff9725dc1dc43a5623283966f8f67dee4299e649c7bc0a9efb46",
+    "size": 13802
+  },
+  "ad8049eb9bde185d3437c47a45d1c22254cafd7542cf1e69bd1a9516de5a07a1": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "telegram/data/The_Shill_Hunter/deleted.md",
+    "sha256": "ad8049eb9bde185d3437c47a45d1c22254cafd7542cf1e69bd1a9516de5a07a1",
+    "size": 1363
+  },
+  "b11b4adb54dec1d8cc716bab453e4ccd4c13b8025b75c8992ab8be81f9440879": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "exhibits/2025-06-27-mark-steele-channel-curious-case.md",
+    "sha256": "b11b4adb54dec1d8cc716bab453e4ccd4c13b8025b75c8992ab8be81f9440879",
+    "size": 2321
+  },
+  "c6c36e1254a2f97635b8b443c55941f9691327bf783204f39f5de0588eb2f587": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "analysis/2025_12_04_witness_statement_analysis/RESTRUCTURE_SUMMARY.md",
+    "sha256": "c6c36e1254a2f97635b8b443c55941f9691327bf783204f39f5de0588eb2f587",
+    "size": 5270
+  },
+  "cda9b0a80bebdefb8e260d9622769501d0ebae56b2823e3c1200f6a4583370a8": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "telegram/data/The_Shill_Hunter/deleted.pdf",
+    "sha256": "cda9b0a80bebdefb8e260d9622769501d0ebae56b2823e3c1200f6a4583370a8",
+    "size": 3688637
+  },
+  "e651ca7b7330ace6aeccb469e59207f71991cb9faf979dd7931258196eb3ee49": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "goldberg_1099/README.md",
+    "sha256": "e651ca7b7330ace6aeccb469e59207f71991cb9faf979dd7931258196eb3ee49",
+    "size": 24137
+  },
+  "edd30d5f415d9225dac3996630957f826d13ac180c9bd777c778c9d3c2c4f4e1": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "goldberg_1099/AGENTS.md",
+    "sha256": "edd30d5f415d9225dac3996630957f826d13ac180c9bd777c778c9d3c2c4f4e1",
+    "size": 2815
+  },
+  "f71199e3bbcbd9c830fdd29c9a38bcd11d2a7faf880eb9f01b59bd282a57d93c": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "evidence/9br_chambers/2025-11-24-letter/9br_summary_before_initial_hearing.md",
+    "sha256": "f71199e3bbcbd9c830fdd29c9a38bcd11d2a7faf880eb9f01b59bd282a57d93c",
+    "size": 2152
+  },
+  "fce238385953dcccb2f7305a7860e3cf3e2f73bad4f64d6024279465c17b84f0": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "892ced3d6211985777259f4469670a3614621865",
+    "raw_path": "goldberg_1099/documents/forum_messages_markdown/1099_conversations/1099-1099-claims-45350.md",
+    "sha256": "fce238385953dcccb2f7305a7860e3cf3e2f73bad4f64d6024279465c17b84f0",
+    "size": 1181
+  }
+}

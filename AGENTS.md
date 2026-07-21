@@ -24,9 +24,17 @@ Goldberg say was the prosecuting entity?"), **do not answer from memory** — ru
 (`doc_id` + `raw_path` + speaker + date). Never invent; if nothing relevant is
 indexed, say so.
 
+The corpus has **two representations — query both**: the *document index*
+(primary evidence) and the *concept wiki* (synthesised, cross-linked pages). They're
+complementary — the wiki gives you the map (who's who, how they connect); the
+documents give you the quotable primary source.
+
 - `uv run goldberg claims [--by <speaker>] [--subject X] [--object X]` — who
   asserted what (attributed; use for "who said" + contradiction-hunting).
-- `uv run goldberg search "<keywords>" [--matter M] [--author A]` — full-text.
+- `uv run goldberg search "<keywords>" [--matter M] [--author A]` — full-text over
+  the evidence documents.
+- `uv run goldberg wiki "<keywords>" [--layer entity|concept|comparison] [--tag T]`
+  — search the **concept wiki** (synthesised entity/concept/contradiction pages).
 - `uv run goldberg get <doc_id>` — read a document's full text to quote it.
 - `uv run goldberg facets` — orient (counts by matter/author/type/party).
 

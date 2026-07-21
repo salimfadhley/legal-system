@@ -1,6 +1,6 @@
 # ADR 0007 — Concept-wiki output: SilverBullet LLM-wiki generated from the enriched corpus
 
-**Status:** Proposed (spec for mission M11) · **Date:** 2026-07-21
+**Status:** Accepted (spike-validated) · **Date:** 2026-07-21
 
 ## Context
 
@@ -106,3 +106,27 @@ is already deployed:
    claims; the argument-grade output.
 4. **Event-driven auto-update** — hook the live pipeline; DRY_RUN then live, with the
    MoS guardrails. Keep the wiki current as the corpus grows (esp. after full M8).
+
+## Spike results (2026-07-21)
+
+Validated both directions against live infra before committing to M11:
+
+1. **Infra is live.** `silverbullet-goldberg` ES index exists with 107 indexed pages
+   (`index.md`, `concepts/`, `entities/…` — e.g. `entities/salim-fadhley` tagged
+   `defendant`); the SB indexer is running; `silverbullet-mindofsteele` (2,966 pages)
+   proves the pattern scales.
+2. **Dual-representation query — CONFIRMED complementary.** Added
+   `CorpusQuery.wiki()` + `goldberg wiki` (searches `silverbullet-goldberg`, excludes
+   raw/archive layers). Same query "Empower the People": the **wiki** returns
+   synthesised entity/concept pages (Simon Goldberg = plaintiff + cross-wiki
+   conspiracy figure, `[[linked]]` to co-defendants); the **corpus** returns the
+   primary evidence (Exhibit 22 Telegram post, attributed). Different representations,
+   genuinely complementary — the query skill now checks both.
+3. **Downstream author — CONFIRMED.** A pure renderer (`wiki/page.py`) built an
+   `entities/simon-goldberg.md` page *from the enriched corpus* (6 attributed claims
+   pulled via `CorpusQuery.claims`), with required frontmatter, ≥2 `[[wikilinks]]`,
+   and `sources:` citing the corpus `raw_path` — written as a non-destructive DRY_RUN
+   proposal. Confirms the wiki-as-downstream-`Sink` data flow (decision §2).
+
+Remaining for M11 proper: the LLM "orient → author → validate(SCHEMA) → apply" loop
+around the renderer, `comparison/` pages from conflicting claims, and the event hook.

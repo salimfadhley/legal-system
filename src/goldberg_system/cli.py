@@ -1,8 +1,10 @@
 """Command-line entry point for goldberg-system.
 
-The ``search`` / ``claims`` / ``get`` / ``facets`` commands are the corpus query
-layer: an agent (Claude Code) runs them to gather grounded, citable evidence and
-then synthesises an attributed answer. See ``AGENTS.md``.
+The ``search`` / ``claims`` / ``wiki`` / ``get`` / ``facets`` commands are the corpus
+query layer: an agent (Claude Code) runs them to gather grounded, citable evidence
+and then synthesises an attributed answer. ``search``/``claims`` query the evidence
+documents; ``wiki`` queries the synthesised concept wiki (ADR 0007) — a second
+representation. See ``AGENTS.md``.
 """
 
 from __future__ import annotations
@@ -75,6 +77,39 @@ def search(text, matters, author, document_type, size) -> None:  # type: ignore[
         if h.summary:
             click.echo(f"  summary: {h.summary}")
         for frag in h.highlights:
+            click.echo(f"  … {frag.strip()} …")
+
+
+@main.command()
+@click.argument("text")
+@click.option(
+    "--layer", default=None, help="Filter by layer (entity/concept/comparison/…)."
+)
+@click.option("--tag", "tags", multiple=True, help="Filter by tag (repeatable).")
+@click.option("--size", default=10, show_default=True, help="Max pages.")
+def wiki(text, layer, tags, size) -> None:  # type: ignore[no-untyped-def]
+    """Search the SilverBullet concept wiki — the synthesised, cross-linked view.
+
+    A second representation of the corpus (ADR 0007): curated concept/entity pages.
+    Search this alongside `search`/`claims` to find synthesised context the raw
+    documents don't state in one place.
+    """
+    pages = _query().wiki(text, layer=layer, tags=list(tags) or None, size=size)
+    if not pages:
+        click.echo("(no wiki pages)")
+        return
+    for p in pages:
+        click.echo(f"\n• {p.title or p.path}  [{p.layer or '?'}]  score={p.score:.2f}")
+        click.echo(f"  page: {p.path}")
+        if p.tags:
+            click.echo(f"  tags: {', '.join(p.tags)}")
+        if p.sources:
+            click.echo(f"  sources: {', '.join(p.sources[:4])}")
+        if p.outbound_links:
+            click.echo(
+                f"  links: {', '.join('[[' + link + ']]' for link in p.outbound_links[:6])}"
+            )
+        for frag in p.highlights:
             click.echo(f"  … {frag.strip()} …")
 
 
@@ -187,7 +222,9 @@ def migrate() -> None:
 
 
 @migrate.command("populate-raw")
-@click.option("--dry-run", is_flag=True, help="Report what would be copied without writing.")
+@click.option(
+    "--dry-run", is_flag=True, help="Report what would be copied without writing."
+)
 def migrate_populate_raw(dry_run) -> None:  # type: ignore[no-untyped-def]
     """Copy the allowlisted evidence trees from the frozen archive into goldberg-raw."""
     from goldberg_system.config import load_projects, project_path
@@ -211,12 +248,16 @@ def migrate_populate_raw(dry_run) -> None:  # type: ignore[no-untyped-def]
         f"({mb:.1f} MB); skipped {report.skipped_excluded} excluded"
     )
     if not dry_run:
-        click.echo("Next: cd goldberg-raw && git lfs install && git add -A && git commit")
+        click.echo(
+            "Next: cd goldberg-raw && git lfs install && git add -A && git commit"
+        )
 
 
 @migrate.command("manifest")
 @click.option("--out", "out_path", default=None, help="Manifest output path (JSON).")
-@click.option("--no-commit", is_flag=True, help="Skip per-file git commit lookup (faster).")
+@click.option(
+    "--no-commit", is_flag=True, help="Skip per-file git commit lookup (faster)."
+)
 def migrate_manifest(out_path, no_commit) -> None:  # type: ignore[no-untyped-def]
     """Build the SHA-256 provenance manifest by walking goldberg-raw."""
     from goldberg_system.config import project_path

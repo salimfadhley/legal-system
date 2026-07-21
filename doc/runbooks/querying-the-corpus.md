@@ -66,6 +66,26 @@ Searches `content` + `summary` + `long_summary` + `keywords` + `entities`, with
 optional filters. Output per hit: `doc_id`, `document_type`, score, `raw_path`,
 `matters`, `author`, `summary`, and highlighted snippets.
 
+### `goldberg wiki` — search the concept wiki (the synthesised view)
+
+```
+goldberg wiki "<keywords>" [--layer entity|concept|comparison|query|summary] \
+             [--tag <tag>] [--size N]
+```
+
+Searches the **SilverBullet concept wiki** (`silverbullet-goldberg` index) — the
+*second representation* of the corpus (ADR 0007): curated, cross-linked
+`entity`/`concept`/`comparison` pages synthesised **downstream of enrichment**. Raw
+and archived pages are excluded, so you get synthesised knowledge only. Output per
+page: `title`, `layer`, score, `page` path, `tags`, `sources` (corpus `raw_path`
+citations), outbound `[[wikilinks]]`, and highlighted snippets.
+
+**Query both representations.** `search`/`claims` find the *primary evidence* to
+quote; `wiki` finds the *synthesised context* — who an entity is, how parties
+connect, where accounts contradict — that the raw documents don't state in one
+place. Follow a wiki page's `sources` back into the document index to quote the
+underlying evidence.
+
 ### `goldberg get` — read a document
 
 ```
@@ -87,7 +107,9 @@ in the index.
 ## How to answer a question
 
 1. **Pick the tool.** Attribution / "who said" → `claims`. Topic / keyword →
-   `search`. Then `get` the most relevant document(s) to read the exact text.
+   `search`. Orientation on people/concepts/contradictions → `wiki`. Then `get` the
+   most relevant document(s) to read the exact text. For a thorough answer, check
+   both the wiki (synthesised map) and the documents (primary evidence).
 2. **Synthesise** the answer only from what you retrieved. If nothing relevant is
    found, say so — do not guess.
 3. **Cite every claim**: source `doc_id` + `raw_path`, the **speaker**
