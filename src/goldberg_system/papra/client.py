@@ -108,6 +108,31 @@ class PapraClient:
             f"/documents/{document_id}"
         )
 
+    def _docs_url(self) -> str:
+        return f"{self.base_url}/api/organizations/{self.org_id}/documents"
+
+    def list_documents(
+        self, *, page_index: int = 0, page_size: int = 100, search: str | None = None
+    ) -> list[PapraDocument]:
+        """List documents in the organisation (one page).
+
+        The list projection may omit full ``content``; fetch the single document
+        (or the webhook payload) when the text is needed.
+        """
+        # Papra caps pageSize at 100.
+        params: dict[str, Any] = {"pageIndex": page_index, "pageSize": min(page_size, 100)}
+        if search:
+            params["searchQuery"] = search
+        resp = self._http.request(
+            "GET", self._docs_url(), headers=self._headers(), params=params
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        docs = (
+            payload.get("documents", payload) if isinstance(payload, dict) else payload
+        )
+        return [PapraDocument.model_validate(d) for d in docs]
+
     def get_document(self, document_id: str) -> PapraDocument:
         """Fetch a document (including its extracted ``content``).
 
