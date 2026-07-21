@@ -24,6 +24,7 @@ Each ADR follows the same sections:
 | [0001](./0001-wiki-rag-sink-backend.md) | Wiki / RAG sink backend | Accepted |
 | [0002](./0002-large-binary-handling.md) | Large-binary handling in `goldberg-raw` | Accepted |
 | [0003](./0003-document-management-papra-integration.md) | Document management — integrate existing Papra (+ Docling) | Accepted |
+| [0004](./0004-metadata-representation.md) | Metadata representation — markdown + YAML frontmatter | Accepted |
 
 *Resolved outside an ADR (recorded here for completeness): trigger locus =
 Halob-local filesystem watcher; data boundary = cloud LLM/Ragie permitted (logged
