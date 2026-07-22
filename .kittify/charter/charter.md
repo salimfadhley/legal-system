@@ -129,6 +129,18 @@ schema, and ingest paths). Keep canonical terms precise: `matters`
 (multi-valued case identifiers), `origin`/`role` (the two-axis taxonomy),
 `author`/`source_party` (who is speaking, vs `parties` = who a doc is about).
 
+3. Diagnose from observability first, then decide if a component must be
+upgraded: **When investigating any pipeline problem, run `goldberg doctor`
+(component liveness) and `goldberg status` (data-plane health) BEFORE
+hand-probing** — the system should tell you which component is down, not the
+operator with curl. If you discover a new failure mode where a major component
+becomes **unavailable or unresponsive**: (a) ensure `goldberg doctor` has a
+probe that would have caught it — add one if it does not; and (b) explicitly
+consider whether that component needs **upgrading** (more memory/CPU, a newer
+version, or a more capable host) rather than merely being restarted, and record
+that assessment. Repeated unavailability of the same component is a signal to
+upgrade, not just to bounce it.
+
 
 ## Reference Index
 
