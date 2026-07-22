@@ -78,6 +78,50 @@ def _last_commit(root: Path, rel: Path) -> str:
         return ""
 
 
+def build_entry(
+    root: Path | str,
+    rel: Path | str,
+    allowlist: Allowlist,
+    *,
+    with_commit: bool = True,
+    known_shas: set[str] | None = None,
+) -> ManifestEntry | None:
+    """Build the provenance entry for a single ``rel`` file under ``root``.
+
+    Returns ``None`` when the file is not migratable evidence (``.git`` internals,
+    a folder ``metadata.yaml``, an ``exclude_globs`` match, or a file outside any
+    allowlisted tree) — or when ``known_shas`` is given and the file's content hash
+    is already registered (so the reconciler's per-cycle git-commit lookups are
+    bounded to genuinely new files). This is the single per-file derivation reused
+    by both the bulk :func:`build_manifest` and the polling reconciler.
+    """
+    root = Path(root)
+    rel = Path(rel)
+    if rel.parts and rel.parts[0] == ".git":
+        return None
+    if rel.name == "metadata.yaml" or allowlist.is_excluded_file(rel):
+        return None
+    tree = allowlist.tree_for(rel)
+    if tree is None:  # only files under an allowlisted tree get a manifest entry
+        return None
+    path = root / rel
+    sha = _sha256(path)
+    if known_shas is not None and sha in known_shas:
+        return None
+    chain = _resolve_chain(rel, root)
+    case_number = chain.get("case_number")
+    return ManifestEntry(
+        sha256=sha,
+        raw_path=rel.as_posix(),
+        raw_commit=_last_commit(root, rel) if with_commit else "",
+        size=path.stat().st_size,
+        matters=[str(case_number)] if case_number else [],
+        origin=tree.origin,
+        party_role=chain.get("party_role"),
+        document_type=chain.get("document_type"),
+    )
+
+
 def build_manifest(
     raw_root: Path | str, allowlist: Allowlist, *, with_commit: bool = True
 ) -> list[ManifestEntry]:
@@ -88,27 +132,9 @@ def build_manifest(
         if not path.is_file():
             continue
         rel = path.relative_to(root)
-        if rel.parts and rel.parts[0] == ".git":
-            continue
-        if rel.name == "metadata.yaml" or allowlist.is_excluded_file(rel):
-            continue
-        tree = allowlist.tree_for(rel)
-        if tree is None:  # only files under an allowlisted tree get a manifest entry
-            continue
-        chain = _resolve_chain(rel, root)
-        case_number = chain.get("case_number")
-        entries.append(
-            ManifestEntry(
-                sha256=_sha256(path),
-                raw_path=rel.as_posix(),
-                raw_commit=_last_commit(root, rel) if with_commit else "",
-                size=path.stat().st_size,
-                matters=[str(case_number)] if case_number else [],
-                origin=tree.origin if tree else str(chain.get("origin", "received")),
-                party_role=chain.get("party_role"),
-                document_type=chain.get("document_type"),
-            )
-        )
+        entry = build_entry(root, rel, allowlist, with_commit=with_commit)
+        if entry is not None:
+            entries.append(entry)
     return entries
 
 

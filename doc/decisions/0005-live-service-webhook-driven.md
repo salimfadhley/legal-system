@@ -1,6 +1,19 @@
 # ADR 0005 — Live pipeline: Papra-webhook-driven service (v1)
 
-**Status:** Accepted · **Date:** 2026-07-21 · **Delivers:** M5 (service) + M6 (trigger) + M7 (deploy)
+**Status:** **Superseded by [ADR 0011](./0011-auto-ingestion-reconciler.md)** (the
+auto-ingestion reconciler) · **Date:** 2026-07-21
+
+> **Superseded (M15).** The Papra-webhook trigger described here is retired as the
+> automatic ingest path. It indexed off Papra's extraction *before* registering
+> `goldberg-raw` provenance, so documents landed without `raw_commit` / `matters` —
+> exactly the provenance gap ADR 0006/0008 called out. M8 then moved real ingestion to
+> `goldberg-raw` + the provenance manifest + **direct Docling** (`reingest_from_raw`),
+> but nothing was left watching `goldberg-raw`. ADR 0011 closes that gap with a
+> provenance-first **reconciler** (`goldberg watch`). The service code
+> (`goldberg_system.service`) is kept for reference but no longer deployed. The rest of
+> this ADR is preserved as the historical record.
+
+**Delivered:** M5 (service) + M6 (trigger) + M7 (deploy)
 
 ## Context
 

@@ -1,5 +1,16 @@
 """The live-index HTTP app (stdlib) — receives Papra webhooks and processes them.
 
+.. deprecated:: M15
+    **RETIRED / superseded.** This Papra-webhook live-index trigger is no longer the
+    auto-ingestion path. It indexed off Papra's extraction *without* registering
+    ``goldberg-raw`` provenance first, so documents landed with no ``raw_commit`` /
+    ``matters`` (the flaw ADR 0006/0008 exposed). The canonical automatic ingest path
+    is now the **reconciler** — ``goldberg watch`` /
+    :class:`goldberg_system.reconcile.Reconciler` — which registers provenance from
+    goldberg-raw + the manifest *before* indexing and extracts via direct Docling. See
+    ADR 0005 (superseded), ADR 0011 (reconciler), and
+    ``doc/runbooks/auto-ingestion-reconciler.md``. Kept for reference; do not deploy.
+
 `POST /webhooks/papra` accepts a Papra `document:created` event, returns 200
 immediately, and processes the document in a background thread (fetch content →
 enrich → index). `GET /health` is a liveness check. See ADR 0005.

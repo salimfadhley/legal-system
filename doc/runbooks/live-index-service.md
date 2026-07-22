@@ -1,5 +1,12 @@
 # Runbook — the live-index service (M5–M7, ADR 0005)
 
+> **RETIRED (M15).** This Papra-webhook live-index service is **superseded** by the
+> auto-ingestion **reconciler** ([ADR 0011](../decisions/0011-auto-ingestion-reconciler.md),
+> [runbook](./auto-ingestion-reconciler.md), `goldberg watch`). The reconciler is
+> provenance-first (registers `goldberg-raw` provenance before indexing) and extracts
+> via direct Docling, closing the provenance gap this webhook path had. This runbook is
+> kept for historical reference only — do not deploy the live-index service.
+
 The automatic pipeline: **drop a file into Papra → Docling extracts it → Papra
 fires a `document:created` webhook → the `live-index` service polls for the
 content, enriches it (OpenAI, incl. attributed claims), and indexes it into
