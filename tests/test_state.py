@@ -59,6 +59,11 @@ class _StateES:
             }
         # recent failures/skips, or last_indexed
         q = kw.get("query", {})
+        # windowed failure count (bool filter with a ts range) → hits.total
+        bool_q = q.get("bool", {})
+        clauses = bool_q.get("filter", []) + bool_q.get("must", [])
+        if any("range" in c for c in clauses):
+            return {"hits": {"total": {"value": 1}}}
         if q.get("terms", {}).get("status") == ["failed"]:
             return {
                 "hits": {
@@ -146,3 +151,56 @@ def test_aggregate_healthy_when_no_failures() -> None:
     es.search = search  # type: ignore[method-assign]
     state = aggregate(es)
     assert state.health["status"] == "ok"
+
+
+def _check(state: SystemState, name: str) -> dict[str, Any]:
+    return next(c for c in state.health["checks"] if c["name"] == name)
+
+
+def test_no_recent_failures_ignores_old_failures_outside_window() -> None:
+    """Historical failed events must NOT trip the check — only recent ones (FR-009)."""
+    es = _StateES()
+
+    def search(**kw: Any) -> dict[str, Any]:
+        aggs = kw.get("aggs") or {}
+        if "stage" in aggs:
+            # there ARE historical failures in the stage/status counts …
+            return {
+                "aggregations": {
+                    "stage": {
+                        "buckets": [
+                            {
+                                "key": "indexed",
+                                "status": {
+                                    "buckets": [{"key": "failed", "doc_count": 7}]
+                                },
+                            }
+                        ]
+                    }
+                }
+            }
+        if "t" in aggs:
+            return {"aggregations": {"t": {"buckets": []}}}
+        q = kw.get("query", {})
+        bool_q = q.get("bool", {})
+        clauses = bool_q.get("filter", []) + bool_q.get("must", [])
+        if any("range" in c for c in clauses):
+            # … but zero of them fall inside the recent window
+            return {"hits": {"total": {"value": 0}}}
+        if q.get("terms", {}).get("status") in (["failed"], ["skipped"]):
+            return {"hits": {"hits": []}}
+        return {"hits": {"hits": [{"_source": {"ts": "2026-07-21T12:00:00Z"}}]}}
+
+    es.search = search  # type: ignore[method-assign]
+    state = aggregate(es)
+    assert _check(state, "no_recent_failures")["ok"] is True
+    assert state.dlq["failed"] == 7  # historical count still surfaced in the DLQ view
+    assert state.health["status"] == "ok"
+
+
+def test_no_recent_failures_trips_on_recent_failure() -> None:
+    """A failure inside the window trips the check and shows the window (FR-009)."""
+    state = aggregate(_StateES())  # fake returns total=1 for the windowed query
+    check = _check(state, "no_recent_failures")
+    assert check["ok"] is False
+    assert "24h" in check["detail"]

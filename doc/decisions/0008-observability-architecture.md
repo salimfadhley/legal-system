@@ -122,6 +122,55 @@ failure is logged, not fatal).
 - `goldberg dlq list` / `goldberg dlq retry <doc_id|all>` — inspect + reprocess
   dead-lettered documents (idempotent via deterministic doc-id).
 
+### 6b. Component health (`goldberg doctor`)
+
+Audit/trace/status answer *"did this document ingest?"* — a **data-plane** question.
+They do **not** answer *"is the pipeline itself up right now?"* — the **control-plane**
+question an operator asks when ingestion has silently stopped. A paused live-index
+watcher or an unreachable Docling used to be found only by hand-probing with `curl`.
+`goldberg doctor` closes that gap: a per-component liveness board over the six major
+components, assembled by `observability/health.py` and reused by `goldberg status`
+and the MCP layer (one implementation, no drift).
+
+**Status semantics** (a three-value enum, so DOWN is structurally distinct from a
+data-plane DEGRADED):
+
+- **UP** — reachable and functioning as intended.
+- **DEGRADED** — reachable but not fully correct (missing index, stale synthesis).
+- **DOWN** — unreachable, erroring, or timed out.
+
+The overall verdict is the **worst** component status; the command's **exit code**
+follows it (UP → 0, DEGRADED/DOWN → non-zero) so it is usable in CI/cron.
+
+**The probes** (each read-only, individually time-bounded to ≤5s, and never raising —
+any failure becomes DOWN with a reason; all six run concurrently on a thread pool so
+the board returns ≤10s even with every component down):
+
+| Component | Probe | UP / DEGRADED / DOWN |
+|-----------|-------|----------------------|
+| **elasticsearch** | `_cluster/health` + a `_count` on each required index | all indices present → UP; a required index missing → DEGRADED; cluster unreachable → DOWN |
+| **docling** | `DoclingClient.health()` (`GET /health` == `{"status":"ok"}`) | ok → UP; else/unreachable → DOWN |
+| **enricher** (OpenAI) | `GET /v1/models` with the API key — a **metadata/list** call, never a completion (no tokens billed) | HTTP 200 → UP; **no key → DEGRADED**; other/unreachable → DOWN |
+| **mcp_server** | a real streamable-http `initialize` handshake (`POST /mcp`) | HTTP 200 (+ `Mcp-Session-Id`) → UP; refused/timeout/non-200 → DOWN |
+| **live_index_watcher** | **inferred** from pipeline-event freshness (newest `ts` within a window, default 15 min) | fresh → UP; stale/none → DOWN — **always `inferred=true`** |
+| **wiki_synthesis** | `silverbullet-goldberg` presence vs ingest | missing → DOWN; present but not refreshed from ingest → DEGRADED; present + wired → UP |
+
+**Inferred caveats (honest, not optimistic).** Two legs cannot be probed as a true
+liveness check and are reported as such:
+
+- The **live-index watcher** runs on a remote host (Halob) unreachable from wherever
+  the command runs (C-003), so its liveness is *inferred* from event freshness — a
+  green here means "events are flowing", not "the process was pinged". Every result
+  carries `inferred=true`.
+- **Wiki synthesis** has **no synthesis pipeline wired yet**: the index exists but is
+  not refreshed from ingest. The probe therefore reports **DEGRADED** by default
+  (`synthesis_wired=False`) — it deliberately does not paint this leg green until the
+  refresh mechanism exists.
+
+Related fix (same increment): `no_recent_failures` in `status` was permanently red
+because it counted *all* historical failed events; it now counts only failures within
+a configurable recent window (default 24h) via a range query on the event `ts`.
+
 ### 7. OpenTelemetry — an optional later layer, not core
 
 Researched (2026-07-21): there is **no turnkey OTel gateway for NATS** — the OTel
