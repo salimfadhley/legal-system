@@ -104,7 +104,7 @@ services:
       context: .
       dockerfile: Dockerfile.mcp
     image: goldberg:local
-    container_name: goldberg
+    container_name: goldberg-mcp-server
     restart: unless-stopped
     depends_on:
       - docling
