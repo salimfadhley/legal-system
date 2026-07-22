@@ -1,0 +1,134 @@
+# Goldberg portable processing stack (ADR 0012).
+#
+# The *processing* services only — docling (OCR), reconciler (auto-ingest watcher),
+# mcp (query/observability server). Elasticsearch is NOT here: it is an already-running
+# external datastore reached over TCP via ${GOLDBERG_ES_URL}. Point the stack at an ES
+# URL, mount goldberg-raw, set the .env, and bring it up on any host (Portainer stack or
+# `docker compose up -d`). All host-specific / secret values come from the env file —
+# nothing host-specific is hard-coded here (NFR-002 / NFR-004).
+#
+# Copy .env.example -> .env and fill it in first.
+
+services:
+  # ── Docling OCR (external image, pinned by tag) ────────────────────────────
+  docling:
+    image: ghcr.io/docling-project/docling-serve-cpu:latest
+    restart: unless-stopped
+    ports:
+      - "${DOCLING_PORT:-5001}:5001"
+    healthcheck:
+      # docling-serve is a Python app; probe its /health with the stdlib (no curl needed).
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5001/health',timeout=4).status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          # Cap Docling so a large scan OOMs the container (dead-lettered + retried by
+          # the reconciler) rather than pegging the petite host (NFR-003).
+          memory: ${DOCLING_MEM_LIMIT:-4g}
+
+  # ── Reconciler: the always-on goldberg-raw watcher (goldberg watch) ────────
+  reconciler:
+    build:
+      context: .
+      dockerfile: Dockerfile.reconciler
+    image: goldberg-reconciler:local
+    restart: unless-stopped
+    depends_on:
+      - docling
+    environment:
+      # External Elasticsearch over TCP (e.g. http://192.168.86.31:9200) — never a
+      # second ES; the stack only connects (FR-002 / C-002).
+      GOLDBERG_ES_URL: ${GOLDBERG_ES_URL}
+      # Reach Docling by its compose service name, not a host IP (FR-004).
+      GOLDBERG_DOCLING_URL: ${GOLDBERG_DOCLING_URL:-http://docling:5001}
+      # Enrichment (optional; text/passthrough ingest without it).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      # goldberg-raw, read-only. MUST be the git working-tree root so that .git comes
+      # along — the reconciler runs `git log` over it to stamp raw_commit provenance.
+      # The mount point must match projects.yaml `projects.raw.path` inside the config
+      # volume below (default container path: /data/goldberg-raw).
+      - ${GOLDBERG_RAW_PATH}:/data/goldberg-raw:ro
+      # Config dir, READ-WRITE and persistent. Holds two things:
+      #   1. projects.yaml  — the container-tuned copy (raw.path=/data/goldberg-raw,
+      #      system.path=/app) so the app resolves paths inside the container.
+      #   2. provenance-manifest.json — the reconciler WRITES this every cycle. It must
+      #      live on a writable, persistent volume so registrations survive restarts and
+      #      are not lost inside an ephemeral image layer. This is the source of truth
+      #      that lets a fresh host rebuild the corpus (FR-008).
+      - ${GOLDBERG_MANIFEST_PATH}:/app/config
+    ports:
+      - "${RECONCILE_HEALTH_PORT:-8098}:8080"
+    # --manifest is passed explicitly so manifest resolution never depends on the
+    # projects.yaml `system` path. Interval/workers/batch default to conservative,
+    # petite-host-friendly values (NFR-003) and are overridable via .env.
+    command:
+      [
+        "goldberg",
+        "watch",
+        "--interval",
+        "${RECONCILE_INTERVAL:-300}",
+        "--workers",
+        "${RECONCILE_WORKERS:-2}",
+        "--batch",
+        "${RECONCILE_BATCH:-50}",
+        "--manifest",
+        "/app/config/provenance-manifest.json",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health',timeout=4).status==200 else 1)",
+        ]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # ── MCP server: query + observability (incl. the component_health doctor tool) ─
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    image: goldberg-mcp:local
+    restart: unless-stopped
+    depends_on:
+      - docling
+    environment:
+      GOLDBERG_ES_URL: ${GOLDBERG_ES_URL}
+      # The component_health MCP tool runs the doctor board, whose probes reach the
+      # sibling stack services by compose name (FR-004) and the enricher via the key.
+      GOLDBERG_DOCLING_URL: ${GOLDBERG_DOCLING_URL:-http://docling:5001}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOLDBERG_MCP_HOST: ${GOLDBERG_MCP_HOST:-0.0.0.0}
+      GOLDBERG_MCP_PORT: ${GOLDBERG_MCP_PORT:-8765}
+    ports:
+      - "${GOLDBERG_MCP_PORT:-8765}:8765"
+    # The /mcp endpoint rejects non-MCP requests by design, so health-check the port
+    # rather than an HTTP status (same check baked into Dockerfile.mcp; restated here
+    # for Portainer visibility).
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import socket,sys; socket.create_connection(('localhost',8765),3).close()",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

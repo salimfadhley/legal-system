@@ -15,6 +15,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from goldberg_system.observability.health import run_doctor
 from goldberg_system.observability.state import _recent, aggregate
 from goldberg_system.observability.trace import read_trace
 from goldberg_system.query import CorpusQuery
@@ -63,6 +64,16 @@ def trace_document(identifier: str) -> list[dict[str, Any]]:
     """The full pipeline timeline for one document — where it stopped and why.
     ``identifier`` may be a raw_path, a sha256 (the correlation ID), or a doc_id."""
     return [e.model_dump() for e in read_trace(_q().client, identifier)]
+
+
+@mcp.tool()
+def component_health() -> dict[str, Any]:
+    """The ``goldberg doctor`` liveness board as structured data — every pipeline
+    component (Elasticsearch, Docling, the enricher, the MCP server, the live-index
+    watcher, wiki synthesis) probed read-only and time-bounded, plus the worst-status
+    overall verdict. Answers 'is every component actually up?'. Each entry carries a
+    status (UP/DEGRADED/DOWN), a one-line reason and latency."""
+    return run_doctor(es_client=_q().client).model_dump(mode="json")
 
 
 # ── Evidence: "what does the corpus say?" ─────────────────────────────────────
