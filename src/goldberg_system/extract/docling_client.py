@@ -57,7 +57,10 @@ class DoclingClient:
         except ImportError:
             pass
         # default to the tunnelled/local port; on Halob use http://docling:5001
-        return cls(os.environ.get("GOLDBERG_DOCLING_URL", "http://localhost:5001"))
+        return cls(
+            os.environ.get("GOLDBERG_DOCLING_URL", "http://localhost:5001"),
+            max_wait=float(os.environ.get("GOLDBERG_DOCLING_MAX_WAIT", "900")),
+        )
 
     def health(self) -> bool:
         try:

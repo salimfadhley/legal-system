@@ -33,6 +33,7 @@ class ReingestReport:
     indexed: int = 0
     skipped_empty: int = 0
     skipped_media: int = 0
+    skipped_indexed: int = 0  # already in the target index (resume)
     missing_file: int = 0
     failures: int = 0
 
@@ -44,6 +45,8 @@ class ReingestReport:
             self.skipped_empty += 1
         elif status == "skipped-media":
             self.skipped_media += 1
+        elif status == "skipped-indexed":
+            self.skipped_indexed += 1
         elif status == "missing":
             self.missing_file += 1
         else:  # failed / sink-failed / error
@@ -61,15 +64,18 @@ def reingest_from_raw(
     run_id: str | None = None,
     max_docs: int | None = None,
     only: set[str] | None = None,
+    skip_shas: set[str] | None = None,
     workers: int = 1,
     on_doc: Callable[[str, str], None] | None = None,
 ) -> ReingestReport:
     """Extract (Docling) → enrich → index every manifested file from ``raw_root``.
 
     ``only`` restricts to specific raw_paths (test injections); ``max_docs`` caps the
-    count; ``workers`` processes that many documents concurrently.
+    count; ``workers`` processes that many documents concurrently. ``skip_shas`` are
+    SHA-256s already in the target index — skipped without re-extracting (resume).
     """
     root = Path(raw_root)
+    skip_shas = skip_shas or set()
 
     def emit(stage: str, status: str, sha: str, raw_path: str, **kw: Any) -> None:
         if events is None:
@@ -90,6 +96,8 @@ def reingest_from_raw(
     def process_one(sha: str, entry: dict) -> tuple[str, str]:
         """Process one document; return (raw_path, status)."""
         raw_path = entry.get("raw_path", "")
+        if sha in skip_shas:  # resume: already indexed, don't re-extract
+            return raw_path, "skipped-indexed"
         if Path(raw_path).suffix.lower() in _SKIP_EXT:
             emit(
                 "extracted", "skipped", sha, raw_path, reason="media (no OCR-able text)"

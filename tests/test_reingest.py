@@ -173,6 +173,22 @@ def test_reingest_parallel_processes_all(tmp_path: Path) -> None:
     assert len(sink.written) == 12  # every doc indexed exactly once
 
 
+def test_reingest_resume_skips_already_indexed(tmp_path: Path) -> None:
+    manifest, root = _manifest(tmp_path)  # sha_a (a.pdf), sha_b (mp4), sha_missing
+    sink = _FakeSink()
+    report = reingest_from_raw(
+        root,
+        manifest,
+        _FakeDocling({"evidence/a.pdf": "hi"}),
+        _FakeEnricher(),
+        [sink],
+        skip_shas={"sha_a"},  # a.pdf already indexed → skipped without extracting
+    )
+    assert report.skipped_indexed == 1
+    assert report.indexed == 0  # a.pdf skipped, not re-indexed
+    assert sink.written == []  # nothing re-written
+
+
 def test_reingest_only_filter_and_empty(tmp_path: Path) -> None:
     manifest, root = _manifest(tmp_path)
     sink = _FakeSink()

@@ -573,11 +573,23 @@ def migrate_manifest(out_path, no_commit) -> None:  # type: ignore[no-untyped-de
     help="Target index (e.g. goldberg_documents_test for isolated testing).",
 )
 @click.option("--workers", default=1, show_default=True, help="Concurrent documents.")
-def migrate_reingest(manifest_path, max_docs, only, events, index_override, workers) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--resume",
+    is_flag=True,
+    help="Skip documents already in the index (by raw_sha256).",
+)
+@click.option(
+    "--docling-timeout",
+    type=int,
+    default=None,
+    help="Per-doc Docling wait seconds (fail-fast on doomed files).",
+)
+def migrate_reingest(manifest_path, max_docs, only, events, index_override, workers, resume, docling_timeout) -> None:  # type: ignore[no-untyped-def]
     """Bulk extract→enrich→index from goldberg-raw via docling-serve DIRECTLY (M8 fix).
 
     Bypasses Papra's broken extraction. Use --max/--only for test injections and
     --index for an isolated test index, then run unbounded to re-ingest everything.
+    --resume skips already-indexed docs (restart-safe).
     """
     from goldberg_system.config import project_path
     from goldberg_system.enrichment import OpenAIEnricher
@@ -594,6 +606,8 @@ def migrate_reingest(manifest_path, max_docs, only, events, index_override, work
     )
     manifest = Manifest.load(mpath)
     docling = DoclingClient.from_env()
+    if docling_timeout:
+        docling.max_wait = float(docling_timeout)
     if not docling.health():
         raise SystemExit(
             f"docling not reachable at {docling.base_url} (start the SSH tunnel or set GOLDBERG_DOCLING_URL)."
@@ -603,6 +617,21 @@ def migrate_reingest(manifest_path, max_docs, only, events, index_override, work
     if index_override:
         indexer.index = index_override  # isolated test index
     indexer.ensure_index()
+
+    skip_shas: set[str] = set()
+    if resume:
+        resp = indexer.client.search(
+            index=indexer.index,
+            query={"exists": {"field": "raw_sha256"}},
+            size=10000,
+            source_includes=["raw_sha256"],
+        )
+        skip_shas = {
+            h["_source"]["raw_sha256"]
+            for h in resp["hits"]["hits"]
+            if h["_source"].get("raw_sha256")
+        }
+        click.echo(f"  resume: skipping {len(skip_shas)} already-indexed documents")
     event_sink = None
     run_id = None
     if events:
@@ -631,12 +660,14 @@ def migrate_reingest(manifest_path, max_docs, only, events, index_override, work
         run_id=run_id,
         max_docs=max_docs,
         only=set(only) or None,
+        skip_shas=skip_shas or None,
         workers=workers,
         on_doc=on_doc,
     )
     click.echo(
         f"\nprocessed={report.processed} indexed={report.indexed} "
         f"skipped_empty={report.skipped_empty} skipped_media={report.skipped_media} "
+        f"skipped_indexed={report.skipped_indexed} "
         f"missing={report.missing_file} failures={report.failures}"
     )
 
