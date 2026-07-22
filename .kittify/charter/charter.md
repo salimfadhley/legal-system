@@ -141,6 +141,17 @@ version, or a more capable host) rather than merely being restarted, and record
 that assessment. Repeated unavailability of the same component is a signal to
 upgrade, not just to bounce it.
 
+4. Trigger, don't poll — event-driven by default, NATS-first: **The pipeline is
+driven by events, never by polling.** The *initial* ingestion trigger is a git
+commit hook on `goldberg-raw`: only intentional, committed — and therefore
+provenanced (`raw_commit` in hand) — changes fire work. Everything downstream
+flows from **NATS** messages: prefer publishing a durable NATS message over
+polling for changes or inventing bespoke per-service local state (NATS is the
+integration backbone and a durable, retrievable store; ES is the materialised
+read-model). A polling reconciler may exist ONLY as a Mac-side whole-system
+simulation and as a backfill safety-net for missed events — never as the
+production trigger. New components should react to messages, not scan.
+
 
 ## Reference Index
 
