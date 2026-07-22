@@ -304,16 +304,31 @@ def status(as_yaml) -> None:  # type: ignore[no-untyped-def]
     Human table by default; --yaml emits the same canonical SystemState as YAML so an
     LLM can grok the whole system in one read.
     """
+    from goldberg_system.observability.health import run_doctor
     from goldberg_system.observability.state import aggregate
 
-    state = aggregate(_query().client)
+    q = _query()
+    state = aggregate(q.client)
+    report = run_doctor(es_client=q.client)
     if as_yaml:
         click.echo(state.to_yaml())
+        click.echo("components:")
+        for c in report.components:
+            inferred = " (inferred)" if c.inferred else ""
+            click.echo(f"  - {c.name}: {c.status.value}{inferred}  # {c.detail}")
+        click.echo(f"  overall: {report.overall.value}")
         return
     h = state.health
     click.echo(f"health: {h['status'].upper()}")
     for c in h["checks"]:
         click.echo(f"  {'✓' if c['ok'] else '✗'} {c['name']}: {c['detail']}")
+    click.echo(f"\ncomponents: {report.overall.value}")
+    for comp in report.components:
+        mark, color = _DOCTOR_MARK[comp.status.value]
+        inferred = " (inferred)" if comp.inferred else ""
+        click.echo(
+            f"  {click.style(mark, fg=color)} {comp.name}{inferred}: {comp.detail}"
+        )
     click.echo(f"\ncorpus: {state.corpus['documents']} documents")
     for matter, n in list(state.corpus["by_matter"].items())[:8]:
         click.echo(f"    {n:5d}  {matter}")
@@ -326,6 +341,51 @@ def status(as_yaml) -> None:  # type: ignore[no-untyped-def]
         click.echo(
             f"    {e.get('status')}  {e.get('stage')}  {e.get('raw_path') or e.get('doc_id')}  — {e.get('reason') or ''}"
         )
+
+
+_DOCTOR_MARK = {
+    "UP": ("✓", "green"),
+    "DEGRADED": ("~", "yellow"),
+    "DOWN": ("✗", "red"),
+}
+
+
+def _render_doctor_board(report) -> None:  # type: ignore[no-untyped-def]
+    """Human board — one line per component, then the overall verdict."""
+    for c in report.components:
+        mark, color = _DOCTOR_MARK[c.status.value]
+        lat = f"{c.latency_ms:.0f}ms" if c.latency_ms is not None else "-"
+        inferred = " (inferred)" if c.inferred else ""
+        head = click.style(f"{mark} {c.status.value:8s}", fg=color)
+        click.echo(f"  {head} {c.name}{inferred}  [{lat}]  {c.detail}")
+    mark, color = _DOCTOR_MARK[report.overall.value]
+    click.echo(f"\noverall: {click.style(report.overall.value, fg=color, bold=True)}")
+
+
+@main.command()
+@click.option("--yaml", "as_yaml", is_flag=True, help="Emit the structured YAML board.")
+@click.option(
+    "--freshness-window",
+    default=900,
+    show_default=True,
+    help="Seconds a pipeline event stays 'fresh' for the watcher liveness inference.",
+)
+def doctor(as_yaml, freshness_window) -> None:  # type: ignore[no-untyped-def]
+    """Component-health board — is every pipeline component actually up? (ADR 0008).
+
+    Probes Elasticsearch, Docling, the enricher, the MCP server, the live-index
+    watcher and wiki synthesis concurrently (each read-only and time-bounded) and
+    prints UP/DEGRADED/DOWN with a one-line reason and latency. Exit code follows the
+    worst component: UP → 0, DEGRADED/DOWN → 1 (usable in scripts/CI).
+    """
+    from goldberg_system.observability.health import ComponentStatus, run_doctor
+
+    report = run_doctor(freshness_seconds=float(freshness_window))
+    if as_yaml:
+        click.echo(report.to_yaml())
+    else:
+        _render_doctor_board(report)
+    raise SystemExit(0 if report.overall is ComponentStatus.UP else 1)
 
 
 @main.command("dlq")

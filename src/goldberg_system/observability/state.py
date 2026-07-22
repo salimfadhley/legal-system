@@ -9,12 +9,17 @@ the two modes render the *same* data, so they never drift.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import yaml
 from pydantic import BaseModel
 
 from goldberg_system.provenance import now_iso
+
+# Default window for the "no_recent_failures" health check: a failure older than this
+# is history, not a live problem (FR-009 / SC-004).
+DEFAULT_FAILURE_WINDOW_HOURS = 24.0
 
 
 class HealthCheck(BaseModel):
@@ -90,6 +95,32 @@ def _recent(
         return []
 
 
+def _recent_failure_count(client: Any, events_index: str, window_hours: float) -> int:
+    """Count ``failed`` events within the last ``window_hours`` (FR-009).
+
+    A range query on the event timestamp (``ts``) so an old, long-resolved failure
+    does not keep the check permanently red — only *recent* failures count.
+    """
+    since = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).isoformat()
+    try:
+        resp = client.search(
+            index=events_index,
+            size=0,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"status": "failed"}},
+                        {"range": {"ts": {"gte": since}}},
+                    ]
+                }
+            },
+        )
+        total = resp["hits"]["total"]
+        return int(total["value"] if isinstance(total, dict) else total)
+    except Exception:  # noqa: BLE001 - an unreadable events index counts as 0
+        return 0
+
+
 def _last_indexed_at(client: Any, events_index: str) -> str | None:
     try:
         resp = client.search(
@@ -115,6 +146,7 @@ def aggregate(
     documents_index: str = "goldberg_documents",
     events_index: str = "goldberg_pipeline_events",
     wiki_index: str = "silverbullet-goldberg",
+    failure_window_hours: float = DEFAULT_FAILURE_WINDOW_HOURS,
 ) -> SystemState:
     """Assemble the canonical :class:`SystemState` from the observability indices."""
     docs = _count(client, documents_index)
@@ -123,16 +155,22 @@ def aggregate(
     failures = _recent(client, events_index, ["failed"])
     skips = _recent(client, events_index, ["skipped"])
     last_indexed = _last_indexed_at(client, events_index)
+    recent_failed = _recent_failure_count(client, events_index, failure_window_hours)
 
     n_failed = sum(v for k, v in stage_status.items() if k.endswith("/failed"))
     n_skipped = sum(v for k, v in stage_status.items() if k.endswith("/skipped"))
 
+    window = int(failure_window_hours)
     checks = [
         HealthCheck(name="documents_indexed", ok=docs > 0, detail=f"{docs} docs"),
         HealthCheck(
             name="no_recent_failures",
-            ok=not failures,
-            detail=f"{n_failed} failed events" if n_failed else "none",
+            ok=recent_failed == 0,
+            detail=(
+                f"{recent_failed} failed events in last {window}h"
+                if recent_failed
+                else "none"
+            ),
         ),
         HealthCheck(
             name="events_flowing",
