@@ -6,6 +6,7 @@ services live. Everything else asks it rather than hard-coding paths.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -14,9 +15,17 @@ import yaml
 # repo layout: <root>/src/goldberg_system/config.py -> parents[2] == <root>
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
+# Env override so a pip-installed container (where the repo layout above does not
+# hold) can point at a host-tuned config, e.g. GOLDBERG_PROJECTS_CONFIG=/app/config/projects.yaml.
+_CONFIG_ENV = "GOLDBERG_PROJECTS_CONFIG"
+
 
 def default_config_path() -> Path:
-    """Return the path to the bundled config/projects.yaml."""
+    """Return the config path: the ``GOLDBERG_PROJECTS_CONFIG`` env override if
+    set, else the bundled ``config/projects.yaml`` next to the repo."""
+    env = os.environ.get(_CONFIG_ENV)
+    if env:
+        return Path(env)
     return _REPO_ROOT / "config" / "projects.yaml"
 
 
