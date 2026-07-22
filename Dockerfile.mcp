@@ -15,7 +15,9 @@ COPY src ./src
 RUN pip install --no-cache-dir ".[mcp]"
 
 EXPOSE 8765
+# The /mcp endpoint rejects non-MCP requests (406 by design), so health-check by
+# confirming the port is listening rather than by an HTTP status.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8765/mcp',timeout=4).status else 1)" || exit 1
+  CMD python -c "import socket,sys; socket.create_connection(('localhost',8765),3).close()" || exit 1
 
 CMD ["goldberg", "mcp-serve"]
