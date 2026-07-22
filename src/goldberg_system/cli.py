@@ -547,6 +547,132 @@ def reindex(max_docs, extracted_root, manifest_path, events) -> None:  # type: i
     )
 
 
+@main.command()
+@click.option(
+    "--interval",
+    default=300,
+    show_default=True,
+    help="Seconds between reconcile cycles.",
+)
+@click.option(
+    "--workers",
+    default=2,
+    show_default=True,
+    help="Concurrent documents per cycle (conservative — Halob is 4-core).",
+)
+@click.option(
+    "--batch",
+    default=50,
+    show_default=True,
+    help="Max documents ingested per cycle (bounds CPU per cycle).",
+)
+@click.option(
+    "--once", is_flag=True, help="Run exactly one cycle and exit (testing / cron)."
+)
+@click.option(
+    "--index",
+    "index_override",
+    default=None,
+    help="Target index (e.g. goldberg_documents_test for isolated testing).",
+)
+@click.option(
+    "--health-port",
+    default=8080,
+    show_default=True,
+    help="Port for GET /health (0 to disable). Ignored with --once.",
+)
+@click.option(
+    "--manifest",
+    "manifest_path",
+    default=None,
+    help="Provenance manifest (default: config/provenance-manifest.json).",
+)
+def watch(interval, workers, batch, once, index_override, health_port, manifest_path) -> None:  # type: ignore[no-untyped-def]
+    """Auto-ingestion reconciler — poll goldberg-raw and ingest new files (M15).
+
+    The canonical automatic ingest path (ADR 0011, supersedes the Papra webhook):
+    each cycle registers provenance for new files BEFORE indexing, then extracts →
+    enriches → indexes the difference via the direct-Docling reingest path, emitting
+    pipeline events. Text/passthrough files flow even when Docling is down; OCR files
+    dead-letter and retry. Runs forever unless --once.
+    """
+    import threading
+
+    from goldberg_system.config import project_path
+    from goldberg_system.enrichment import OpenAIEnricher
+    from goldberg_system.extract.docling_client import DoclingClient
+    from goldberg_system.migrate.allowlist import Allowlist
+    from goldberg_system.observability.events import ElasticsearchEventSink
+    from goldberg_system.reconcile import Reconciler, make_health_server
+    from goldberg_system.sinks import ElasticsearchIndexer
+
+    raw_root = project_path("raw")
+    mpath = manifest_path or (
+        project_path("system") / "config" / "provenance-manifest.json"
+    )
+    allowlist = Allowlist.load()
+
+    # Do NOT hard-gate on Docling health: the reconciler degrades gracefully — text /
+    # passthrough files ingest without Docling; OCR files dead-letter and retry.
+    docling = DoclingClient.from_env()
+    if not docling.health():
+        click.echo(
+            f"⚠ docling not reachable at {docling.base_url} — text/passthrough files "
+            "will still ingest; OCR files will dead-letter and retry next cycle."
+        )
+
+    enricher = OpenAIEnricher.from_settings()
+    indexer = ElasticsearchIndexer.from_env()
+    if index_override:
+        indexer.index = index_override
+    indexer.ensure_index()
+    event_sink = ElasticsearchEventSink.from_env()
+    event_sink.ensure_index()
+
+    def already_indexed() -> set:  # type: ignore[type-arg]
+        resp = indexer.client.search(
+            index=indexer.index,
+            query={"exists": {"field": "raw_sha256"}},
+            size=10000,
+            source_includes=["raw_sha256"],
+        )
+        return {
+            h["_source"]["raw_sha256"]
+            for h in resp["hits"]["hits"]
+            if h["_source"].get("raw_sha256")
+        }
+
+    reconciler = Reconciler(
+        raw_root=raw_root,
+        manifest_path=mpath,
+        allowlist=allowlist,
+        docling=docling,
+        enricher=enricher,
+        sinks=[indexer],
+        already_indexed=already_indexed,
+        events=event_sink,
+        batch=batch,
+        workers=workers,
+    )
+
+    def summary(cycle) -> None:  # type: ignore[no-untyped-def]
+        click.echo(cycle.summary_line())
+
+    if once:
+        summary(reconciler.run_cycle())
+        return
+
+    if health_port:
+        server = make_health_server(reconciler, port=health_port)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        click.echo(f"health endpoint: GET :{health_port}/health")
+    click.echo(
+        f"reconciler polling {raw_root} every {interval}s "
+        f"(batch={batch}, workers={workers}) → {indexer.index}"
+    )
+    reconciler.run_forever(interval, on_cycle=summary)
+
+
 @main.group()
 def migrate() -> None:
     """Corpus migration (M8): populate goldberg-raw and build the provenance manifest."""
