@@ -152,6 +152,16 @@ read-model). A polling reconciler may exist ONLY as a Mac-side whole-system
 simulation and as a backfill safety-net for missed events — never as the
 production trigger. New components should react to messages, not scan.
 
+5. Keep the query-usage docs release-current: **Every release updates the
+"how to query the system" documentation** — the project `CLAUDE.md`/`AGENTS.md`
+query section and [`doc/runbooks/querying-the-corpus.md`](../../doc/runbooks/querying-the-corpus.md)
+— so the documented way to interrogate the corpus always matches the shipped
+capabilities: the `goldberg` **MCP server** and its tools, the **concept wiki**,
+**full-text search / Elasticsearch**, and the `goldberg` **CLI**. If a release
+adds, renames, or removes an MCP tool, a query command, or an index, the query
+docs change **in the same release** — a consumer (human or the casework agent)
+must never have to read the code to learn how to ask a question.
+
 
 ## Reference Index
 

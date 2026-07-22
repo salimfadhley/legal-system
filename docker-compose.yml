@@ -103,7 +103,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.mcp
-    image: goldberg-mcp:local
+    image: goldberg:local
+    container_name: goldberg
     restart: unless-stopped
     depends_on:
       - docling
