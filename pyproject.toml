@@ -61,3 +61,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: end-to-end tests against real services (Docling, Elasticsearch, OpenAI). Opt-in via GOLDBERG_INTEGRATION=1; run into an isolated *_test index.",
+]
