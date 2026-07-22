@@ -69,6 +69,25 @@ def test_convert_file_raises_on_failure_status(tmp_path: Path, monkeypatch) -> N
         assert "boom" in str(e)
 
 
+def test_connection_error_becomes_docling_error(tmp_path: Path, monkeypatch) -> None:
+    # a transient network drop must surface as DoclingError (caught per-doc), not
+    # a raw requests exception that crashes the whole run
+    import goldberg_system.extract.docling_client as mod
+
+    pdf = tmp_path / "a.pdf"
+    pdf.write_bytes(b"%PDF")
+
+    def boom(*a, **k):
+        raise mod.requests.ConnectionError("Remote end closed connection")
+
+    monkeypatch.setattr(mod.requests, "post", boom)
+    try:
+        DoclingClient("http://x").convert_file(pdf)
+        assert False, "should have raised DoclingError"
+    except DoclingError as e:
+        assert "connection error" in str(e)
+
+
 def test_json_and_tsv_are_passthrough(tmp_path: Path) -> None:
     j = tmp_path / "data.json"
     j.write_text('{"a": 1}')

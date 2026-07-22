@@ -75,9 +75,14 @@ class DoclingClient:
         if path.suffix.lower() in _PASSTHROUGH:
             return path.read_text(errors="replace")
 
-        task_id = self._submit(path)
-        self._await(task_id)
-        return self._result(task_id)
+        # Wrap transient network errors (connection drop, timeout) as DoclingError so
+        # a blip fails just this document, never the whole run (a crash mid-bulk).
+        try:
+            task_id = self._submit(path)
+            self._await(task_id)
+            return self._result(task_id)
+        except requests.RequestException as exc:
+            raise DoclingError(f"docling connection error: {exc}") from exc
 
     # ── async flow ────────────────────────────────────────────────────────────
 
