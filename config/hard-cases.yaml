@@ -28,6 +28,18 @@ real:
     why: "email (.eml) — composite (M9); Docling handling of message/rfc822 is a known gap"
     expect: { allow_empty: true, allow_error: true }
 
+  - raw_path: evidence/etp_v_stephen_afshar/648MC011EtPBundle.pdf
+    why: "large multi-hundred-page court bundle — OOM'd Docling at 8 GB; needed the 32 GB Docker bump (2026-07-22). Guards against the memory regression."
+    expect: { min_chars: 1000 }
+
+  - raw_path: evidence/simon_goldberg/white_rabbit_dossiers/goldberg_authored/2012-03-27-deed-template-v10g.doc
+    why: "legacy Word .doc (binary, pre-2007) — Docling cannot parse it (returns empty). KNOWN GAP: a future .doc→text step (e.g. macOS textutil / libreoffice) would rescue these ~6 Goldberg-authored 2012 files."
+    expect: { allow_empty: true }
+
+  - raw_path: evidence/gary_summers/20260602_063358-re-urgent-hearing-5-june-pp-in-driving-seat.eml
+    why: "email that timed out on Halob under contention — must extract on the Mac tier"
+    expect: { allow_empty: true, allow_error: true }
+
 synthetic:
   - name: huge-text
     kind: huge_text
