@@ -1,0 +1,15 @@
+{
+  "coordination_branch": "kitty/mission-goldberg-stack-01KY5FCM",
+  "created_at": "2026-07-22T17:53:46.490146+00:00",
+  "flattened": false,
+  "friendly_name": "Portable Single-Stack Deployment",
+  "mission_id": "01KY5FCMDZ1JEGCMDN4FER0QTW",
+  "mission_number": null,
+  "mission_slug": "goldberg-stack-01KY5FCM",
+  "mission_type": "software-dev",
+  "purpose_context": "The system's services are currently scattered (Docling on the Mac, MCP and ES on Halob, reconciler undeployed) which makes it fragile and non-portable. This mission packages every service the system needs as a single docker-compose stack deployable as a Portainer stack on Halob, folds the doctor component-health check into the MCP server as a tool, and makes the whole thing host-agnostic so it can be lifted to a more powerful server later. goldberg-raw + the provenance manifest remain the source of truth, so a new host rebuilds its ES corpus via the reconciler.",
+  "purpose_tldr": "Run the whole system as one portable docker-compose stack (ES, Docling, MCP+doctor, reconciler) deployable via Portainer and liftable to a bigger host.",
+  "slug": "goldberg-stack-01KY5FCM",
+  "target_branch": "feat/goldberg-stack",
+  "topology": "coord"
+}
