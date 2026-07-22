@@ -13,9 +13,7 @@ from pathlib import Path
 
 import yaml
 
-_DEFAULT_CONFIG = (
-    Path(__file__).resolve().parents[3] / "config" / "evidence-allowlist.yaml"
-)
+from goldberg_system.config import config_dir
 
 
 @dataclass(frozen=True)
@@ -37,7 +35,8 @@ class Allowlist:
 
     @classmethod
     def load(cls, path: Path | str | None = None) -> "Allowlist":
-        data = yaml.safe_load(Path(path or _DEFAULT_CONFIG).read_text()) or {}
+        cfg = Path(path) if path else config_dir() / "evidence-allowlist.yaml"
+        data = yaml.safe_load(cfg.read_text()) or {}
         included = {
             name: IncludedTree(
                 name=name,

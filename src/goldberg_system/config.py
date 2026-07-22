@@ -15,18 +15,27 @@ import yaml
 # repo layout: <root>/src/goldberg_system/config.py -> parents[2] == <root>
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Env override so a pip-installed container (where the repo layout above does not
-# hold) can point at a host-tuned config, e.g. GOLDBERG_PROJECTS_CONFIG=/app/config/projects.yaml.
+# Env overrides so a pip-installed container (where the repo layout above does not
+# hold) can locate config: GOLDBERG_CONFIG_DIR points at the config directory used
+# by every loader; GOLDBERG_PROJECTS_CONFIG overrides just the projects.yaml file.
 _CONFIG_ENV = "GOLDBERG_PROJECTS_CONFIG"
+_CONFIG_DIR_ENV = "GOLDBERG_CONFIG_DIR"
+
+
+def config_dir() -> Path:
+    """The config directory: the ``GOLDBERG_CONFIG_DIR`` env override if set, else
+    the repo's ``config/`` (used by all config loaders — projects, allowlist, …)."""
+    env = os.environ.get(_CONFIG_DIR_ENV)
+    return Path(env) if env else _REPO_ROOT / "config"
 
 
 def default_config_path() -> Path:
-    """Return the config path: the ``GOLDBERG_PROJECTS_CONFIG`` env override if
-    set, else the bundled ``config/projects.yaml`` next to the repo."""
+    """Return the projects.yaml path: ``GOLDBERG_PROJECTS_CONFIG`` if set, else
+    ``config_dir()/projects.yaml``."""
     env = os.environ.get(_CONFIG_ENV)
     if env:
         return Path(env)
-    return _REPO_ROOT / "config" / "projects.yaml"
+    return config_dir() / "projects.yaml"
 
 
 def load_projects(path: Path | str | None = None) -> dict[str, Any]:
