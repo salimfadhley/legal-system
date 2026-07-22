@@ -88,6 +88,17 @@ def test_connection_error_becomes_docling_error(tmp_path: Path, monkeypatch) -> 
         assert "connection error" in str(e)
 
 
+def test_no_md_content_is_empty_not_error(tmp_path: Path, monkeypatch) -> None:
+    # Docling returning no md_content = no extractable text (blank/graphic-only) →
+    # must be an empty string (skipped-empty), NOT a DoclingError (spurious failure)
+    pdf = tmp_path / "a.pdf"
+    pdf.write_bytes(b"%PDF")
+    _async_docling(monkeypatch, status="success", md=None)
+    client = DoclingClient("http://x")
+    client._sleep = lambda *_: None  # type: ignore[method-assign]
+    assert client.convert_file(pdf) == ""
+
+
 def test_json_and_tsv_are_passthrough(tmp_path: Path) -> None:
     j = tmp_path / "data.json"
     j.write_text('{"a": 1}')

@@ -132,6 +132,7 @@ class DoclingClient:
             raise DoclingError(f"docling result {resp.status_code}: {resp.text[:120]}")
         payload: dict[str, Any] = resp.json()
         md = (payload.get("document") or {}).get("md_content")
-        if md is None:
-            raise DoclingError("docling returned no md_content")
-        return md
+        # No md_content means Docling found no extractable text (blank/graphic-only
+        # image, empty PDF, a non-document file). That's an *empty* result, not an
+        # error — return "" so the pipeline records it as skipped-empty, not a failure.
+        return md if md is not None else ""
