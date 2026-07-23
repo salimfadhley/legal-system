@@ -63,11 +63,11 @@ consume so nothing else imports `nats-py`. **Priority**: P0 (foundation).
 `Nats-Msg-Id` and the consumer helper acks/naks/terms correctly.
 **Depends on**: none. **Parallel with**: WP01.
 
-- [ ] T006 `messaging/config.py` — resolve NATS_URL/stream/subject/durable (WP02)
-- [ ] T007 `messaging/client.py` — JetStream connect + ensure stream idempotent (WP02)
-- [ ] T008 `messaging/publisher.py` — publish commit event with `Nats-Msg-Id=sha` (WP02)
-- [ ] T009 `messaging/client.py` — durable pull-consumer helper (WP02)
-- [ ] T010 Unit tests with injected fake NATS (WP02)
+- [x] T006 `messaging/config.py` — resolve NATS_URL/stream/subject/durable (WP02)
+- [x] T007 `messaging/client.py` — JetStream connect + ensure stream idempotent (WP02)
+- [x] T008 `messaging/publisher.py` — publish commit event with `Nats-Msg-Id=sha` (WP02)
+- [x] T009 `messaging/client.py` — durable pull-consumer helper (WP02)
+- [x] T010 Unit tests with injected fake NATS (WP02)
 
 Prompt: `tasks/WP02-messaging-boundary.md` (~260 lines)
 
