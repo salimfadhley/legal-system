@@ -47,11 +47,11 @@ outgoing request stays within budget and returns a normal result; a simulated
 context-length 400 is recovered by a shrink-and-retry.
 **Depends on**: none.
 
-- [ ] T001 Failing test: oversized body enrich stays under token budget / recovers from 400 (WP01)
-- [ ] T002 tiktoken token-budget truncation in `_build_messages` (WP01)
-- [ ] T003 Defensive `context_length_exceeded` retry (shrink body) in `enrich()` (WP01)
-- [ ] T004 Replace `_MAX_BODY_CHARS` char cap; add `tiktoken` dep (WP01)
-- [ ] T005 Run suite; verify green + storm-file case indexes (WP01)
+- [x] T001 Failing test: oversized body enrich stays under token budget / recovers from 400 (WP01)
+- [x] T002 tiktoken token-budget truncation in `_build_messages` (WP01)
+- [x] T003 Defensive `context_length_exceeded` retry (shrink body) in `enrich()` (WP01)
+- [x] T004 Replace `_MAX_BODY_CHARS` char cap; add `tiktoken` dep (WP01)
+- [x] T005 Run suite; verify green + storm-file case indexes (WP01)
 
 Prompt: `tasks/WP01-enrich-token-safety.md` (~230 lines)
 
