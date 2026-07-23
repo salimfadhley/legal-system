@@ -122,8 +122,8 @@ completeness. **Priority**: P1. **Independent test**: `audit` reports 100% cover
 `status` is healthy, the two OCR `.tsv` files trace to `indexed/ok`.
 **Depends on**: WP01, WP03.
 
-- [ ] T022 Run `goldberg ingest catchup` to backfill the two oversized OCR files (WP06)
-- [ ] T023 Verify: `audit` 100%, `status` healthy, `trace` indexed/ok, no reconcile heartbeat (WP06)
-- [ ] T024 Record verification-results artifact (WP06)
+- [x] T022 Run `goldberg ingest catchup` to backfill the two oversized OCR files (WP06)
+- [x] T023 Verify: `audit` 100%, `status` healthy, `trace` indexed/ok, no reconcile heartbeat (WP06)
+- [x] T024 Record verification-results artifact (WP06)
 
 Prompt: `tasks/WP06-backfill-verify.md` (~150 lines)
