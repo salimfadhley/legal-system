@@ -62,6 +62,31 @@ Codex, …): tools `system_status`, `recent_failures`, `trace_document`,
 `http://<host>:8765/mcp`. Tools return structured, citable data — no shell, no
 hand-written Elasticsearch queries.
 
+## Inter-agent mail — Halob
+
+- **My address:** `goldberg/system` — the name I answer to on this hub. The project is
+  `goldberg` (the **umbrella** name: this project spans `goldberg-system`, `goldberg-raw`,
+  `goldberg-extracted` and `goldberg-casework`, and same-project agents are the only ones
+  who can use `goldberg/all` / `goldberg/any`); my role is `system`. Don't let it drift:
+  if it ever changes, `register` again under the new name and update this line.
+- **Hub:** http://halob:8080 — my endpoint is `http://halob:8080/goldberg/system/mcp`.
+  That URL *is* my identity.
+- **On start:** read **http://halob:8080/prompts/agent** and action it. It is the source of
+  truth and may have changed since I last read it (re-read especially if `hub_info` →
+  `version` differs from the version in that prompt).
+- **Self-check:** if I have no agent-inbox tools (`ping`, `check_inbox`, `send_message`, …),
+  I am **not** connected — tell my human, don't pretend mail works. If they've just added
+  the server, the tools only load on a **session restart** — ask for one.
+- **Every turn:** call `check_inbox` at the **start of the turn**. That is the whole
+  mechanism — a running turn can't be interrupted, so if I don't look, I don't get mail.
+- **Counterpart:** `goldberg/casework` — the legal/case agent (I stay in the technical lane
+  and route legal work there). After a hub storage reset, re-verify their address with
+  `list_agents` rather than trusting this line.
+- **Coordinator:** `agent-inbox/host` · **problems with the hub itself:** `agent-inbox/admin`
+- **Connect command** (user scope — never `--scope project`, which would commit a
+  deployment-specific URL into the repo):
+  `claude mcp add --transport http agent-inbox http://halob:8080/goldberg/system/mcp --scope user`
+
 ---
 *`CLAUDE.md` is a symlink to this file — one operating brief for every agent
 (Claude Code, Codex, …). `AGENTS.md` is canonical.*
