@@ -14,7 +14,8 @@ subtasks:
 - T016
 - T017
 - T018
-agent: claude
+agent: "claude:sonnet:reviewer-renata:reviewer"
+shell_pid: "49870"
 history:
 - created by /spec-kitty.tasks
 agent_profile: python-pedro
@@ -94,3 +95,9 @@ from `lanes.json`.
   Reviewer: confirm `exit 0` on every path and stderr is swallowed.
 - **Risk**: `goldberg` not on PATH in the committing environment. Reviewer: confirm
   the runbook calls this out (absolute path or venv activation option).
+
+## Activity Log
+
+- 2026-07-23T12:48:37Z – claude:sonnet:python-pedro:implementer – shell_pid=44488 – Assigned agent via action command
+- 2026-07-23T12:57:43Z – claude:sonnet:python-pedro:implementer – shell_pid=44488 – post-commit/post-merge hooks (always exit 0, FR-002) + wiring runbook (core.hooksPath, verify, FF-pull gap, 'goldberg ingest catchup' escape hatch, PATH/venv note); hook-shape test green (17 passed)
+- 2026-07-23T13:09:00Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=49870 – Started review via action command

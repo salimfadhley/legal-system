@@ -22,7 +22,8 @@ subtasks:
 - T013
 - T014
 - T015
-agent: claude
+agent: "claude:sonnet:reviewer-renata:reviewer"
+shell_pid: "42704"
 history:
 - created by /spec-kitty.tasks
 agent_profile: python-pedro
@@ -145,3 +146,11 @@ from `lanes.json` at implement time.
   it runs exactly once per `ingest-serve` start.
 - **Risk**: `ack_wait` shorter than Docling+enrich → premature redelivery.
   Reviewer: confirm `ack_wait` sizing.
+
+## Activity Log
+
+- 2026-07-23T12:19:18Z – claude:sonnet:python-pedro:implementer – shell_pid=39175 – Assigned agent via action command
+- 2026-07-23T12:41:09Z – claude:sonnet:python-pedro:implementer – shell_pid=39175 – Ingest service: processor ack/nak/term+DLQ, one-shot catchup, CLI ingest-serve/publish-commit/ingest catchup; reuses process_one; unit tests green; ruff 0
+- 2026-07-23T12:42:16Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=42704 – Started review via action command
+- 2026-07-23T12:47:01Z – user – shell_pid=42704 – Review passed: reuses process_one (no forked extract/enrich/index); provenance refreshed before index; ack ONLY after all files terminal-ok (crash mid-commit redelivers, already-indexed skip idempotently via skipped-indexed); nak<max_deliver then term+DLQ failed event; catch-up is one bounded pass (no loop); ack_wait configurable via GOLDBERG_NATS_ACK_WAIT and premature redelivery is idempotency-safe; CLI ingest-serve/publish-commit/ingest catchup live; 33 unit tests pass, integration skips without GOLDBERG_INTEGRATION, ruff clean.
+- 2026-07-23T13:08:50Z – user – shell_pid=42704 – Moved to planned

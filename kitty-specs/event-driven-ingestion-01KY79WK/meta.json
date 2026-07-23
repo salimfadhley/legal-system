@@ -11,5 +11,7 @@
   "purpose_tldr": "Retire the polling reconciler; ingest each goldberg-raw commit via a git-hook → NATS → durable processor, with a one-shot startup catch-up so no legal document is silently dropped.",
   "slug": "event-driven-ingestion-01KY79WK",
   "target_branch": "feat/goldberg-nats-es-archive",
-  "topology": "coord"
+  "topology": "coord",
+  "vcs": "git",
+  "vcs_locked_at": "2026-07-23T11:51:05.622629+00:00"
 }

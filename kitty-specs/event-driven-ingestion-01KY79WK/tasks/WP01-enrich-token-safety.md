@@ -14,7 +14,8 @@ subtasks:
 - T003
 - T004
 - T005
-agent: claude
+agent: "claude:sonnet:reviewer-renata:reviewer"
+shell_pid: "38320"
 history:
 - created by /spec-kitty.tasks
 agent_profile: python-pedro
@@ -120,3 +121,10 @@ time — do not create branches manually.
   covered by Test B.
 - **Reviewer**: verify truncation keeps the *leading* text (most salient), the
   retry catch is narrow (not blanket), and the budget leaves real headroom.
+
+## Activity Log
+
+- 2026-07-23T11:51:28Z – claude:sonnet:python-pedro:implementer – shell_pid=33887 – Assigned agent via action command
+- 2026-07-23T12:14:25Z – claude:sonnet:python-pedro:implementer – shell_pid=33887 – Token-safe enrich: tiktoken budget (_BODY_TOKEN_BUDGET=100k) + shrink-retry; tests A/B/C green; ruff 0; _MAX_BODY_CHARS removed; storm-file class now handled (live backfill is WP06)
+- 2026-07-23T12:15:01Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=38320 – Started review via action command
+- 2026-07-23T12:18:09Z – user – shell_pid=38320 – Review passed: token-budget (tiktoken, 100k, leading-text kept) + narrow context_length_exceeded shrink-retry closes the storm class; _MAX_BODY_CHARS removed, tiktoken in deps/lock, contract unchanged, tests A/B/C + 19 enrichment tests green, ruff clean, live callers in pipeline/cli/service. Note: pyproject.toml also owned-touched by WP02 (lane-b) - trivial dep-add merge.

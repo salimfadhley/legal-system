@@ -15,7 +15,8 @@ subtasks:
 - T008
 - T009
 - T010
-agent: claude
+agent: "claude:sonnet:reviewer-renata:reviewer"
+shell_pid: "37237"
 history:
 - created by /spec-kitty.tasks
 agent_profile: python-pedro
@@ -111,3 +112,10 @@ per-lane from `lanes.json` at implement time.
   model is consistent and the public API is clean.
 - **Risk**: stream config drift vs the archive mission. Reviewer: confirm
   `GOLDBERG` / `goldberg.>` naming.
+
+## Activity Log
+
+- 2026-07-23T11:52:28Z – claude:sonnet:python-pedro:implementer – shell_pid=33887 – Assigned agent via action command
+- 2026-07-23T12:10:50Z – claude:sonnet:python-pedro:implementer – shell_pid=33887 – Messaging boundary: config/client/publisher; ensure_stream idempotent; Nats-Msg-Id dedup; fake-NATS unit tests green (14 passed); ruff 0; async public API (documented)
+- 2026-07-23T12:11:38Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=37237 – Started review via action command
+- 2026-07-23T12:14:14Z – user – shell_pid=37237 – Review passed: NATS JetStream boundary complete — messaging/{config,client,publisher} + injected-fake unit tests (14 passed), ruff clean, boundary holds (no nats imports outside messaging/), ensure_stream idempotent creating GOLDBERG over goldberg.> with dedup window, publish_commit sets Nats-Msg-Id=sha to goldberg.raw.commit with JSON body, durable pull-consumer exposes fetch+ack/nak/term, async-only API coherent (no per-call teardown), naming aligned with nats-es-archive.
