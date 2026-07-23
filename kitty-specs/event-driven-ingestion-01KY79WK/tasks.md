@@ -81,11 +81,11 @@ catch-up, and the CLI surface. **Priority**: P0 (core).
 ingests only the raw-vs-indexed difference.
 **Depends on**: WP01, WP02.
 
-- [ ] T011 `ingest/commit_files.py` — resolve changed allowlisted files for a SHA + test (WP03)
-- [ ] T012 `ingest/processor.py` — consume → per-file `process_one`; ack/nak/term + DLQ + test (WP03)
-- [ ] T013 `ingest/catchup.py` — extract reconcile diff into bounded one-shot pass + test (WP03)
-- [ ] T014 `cli.py` — `ingest-serve` + `/health`; `publish-commit`; `ingest catchup` (WP03)
-- [ ] T015 Integration test: commit→publish→consume→index (opt-in) (WP03)
+- [x] T011 `ingest/commit_files.py` — resolve changed allowlisted files for a SHA + test (WP03)
+- [x] T012 `ingest/processor.py` — consume → per-file `process_one`; ack/nak/term + DLQ + test (WP03)
+- [x] T013 `ingest/catchup.py` — extract reconcile diff into bounded one-shot pass + test (WP03)
+- [x] T014 `cli.py` — `ingest-serve` + `/health`; `publish-commit`; `ingest catchup` (WP03)
+- [x] T015 Integration test: commit→publish→consume→index (opt-in) (WP03)
 
 Prompt: `tasks/WP03-ingest-service.md` (~380 lines)
 
