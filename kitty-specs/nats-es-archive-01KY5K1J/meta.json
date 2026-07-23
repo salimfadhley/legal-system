@@ -7,6 +7,7 @@
   "mission_number": null,
   "mission_slug": "nats-es-archive-01KY5K1J",
   "mission_type": "software-dev",
+  "pr_bound": true,
   "purpose_context": "The system is moving to an event-driven, NATS-first design (DIR-004). As defence evidence, the ingestion PROCESS itself needs a durable, searchable audit trail — how every document entered the corpus, when, from which commit, what was derived, and what failed. This mission adds a lean, idempotent archiver: a durable JetStream consumer on goldberg.> that projects every message into an Elasticsearch archive index (extending the existing goldberg_pipeline_events pattern), with JetStream as the system of record and ES as the queryable forensic view. Deferred — defined now, built after the git-hook -> NATS ingestion redesign lands.",
   "purpose_tldr": "Archive every NATS pipeline message into Elasticsearch so the ingestion process has a searchable, forensically-inspectable history.",
   "slug": "nats-es-archive-01KY5K1J",

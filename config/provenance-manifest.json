@@ -59,6 +59,18 @@
     "sha256": "00aca3f3f890149bfb8f8f81ba2d6d7612510294286d56eb0177153f5ba877fe",
     "size": 1024736
   },
+  "00c443ace182234d449ae29570d4d20b3156a9908684ebd90a67d0e77f722edc": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "4fcd2b3d8388af621ece02e96d1231eb83410bbf",
+    "raw_path": "reports/private_prosecution/disclosure/digital_evidence_standards_in_private_prosecution.md",
+    "sha256": "00c443ace182234d449ae29570d4d20b3156a9908684ebd90a67d0e77f722edc",
+    "size": 9889
+  },
   "00cc6fa85e421da4285f299be582ad24d7231357512660265ac4214607fccfd8": {
     "document_type": null,
     "matters": [],
@@ -4371,6 +4383,18 @@
     "sha256": "3d274c70a5426c092b307154629bf2a4ef880319b50b6e6ce541f5e51a95f2be",
     "size": 4300
   },
+  "3d77a30a89e7b47bc868a5bb82e6b77a65efbd8634cb0c0d39f5192309510ef8": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "4fcd2b3d8388af621ece02e96d1231eb83410bbf",
+    "raw_path": "analysis/verification_criminal_procedure_citations.md",
+    "sha256": "3d77a30a89e7b47bc868a5bb82e6b77a65efbd8634cb0c0d39f5192309510ef8",
+    "size": 18933
+  },
   "3de5c87cf391bbcdaa32317ce8c7ff28732f59a03f50e24cd3cb3cb0869722e1": {
     "document_type": null,
     "matters": [],
@@ -4590,6 +4614,18 @@
     "raw_path": "evidence/simon_goldberg/fsa_mortgage_dossier/ocr_output/images/page-06.png",
     "sha256": "40639801e2d63e892b1ba4110230e794271cc52bf34eb9113c12b00ad38f5003",
     "size": 571847
+  },
+  "406ff32ae9d6c2a5fc2a6337951d3ff7f5a4fbd32d1865bbdb62422579177465": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "4fcd2b3d8388af621ece02e96d1231eb83410bbf",
+    "raw_path": "reports/digital_evidence/digital_evidence_bundle_serving_requirements.md",
+    "sha256": "406ff32ae9d6c2a5fc2a6337951d3ff7f5a4fbd32d1865bbdb62422579177465",
+    "size": 10953
   },
   "40a57968006d9526946ab8d1ae3f5d6c24d4b099e84692fbbc69ca99372f2fce": {
     "document_type": "evidence",
@@ -10111,6 +10147,18 @@
     "sha256": "89d389a7842408ec4e3af8daa788e96e64746fb7d9fd4248dd27ec79ec16d4bc",
     "size": 18282
   },
+  "89e6e05447da1e18022971e68aff9c0f5dca93a31b79bbfa126f32e242f840c7": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "",
+    "raw_path": "reports/digital_evidence/2026-07-23_serving_evidence_in_digital_form_verified.md",
+    "sha256": "89e6e05447da1e18022971e68aff9c0f5dca93a31b79bbfa126f32e242f840c7",
+    "size": 26045
+  },
   "8a1be9f60462ee5a3b27332313dc28f34a1d7bd6d17f2151308864c42835338c": {
     "document_type": "evidence",
     "matters": [
@@ -12194,6 +12242,18 @@
     "raw_path": "evidence/evidence_of_service/simon_goldberg/Goldberg v Fadhley & Others.eml",
     "sha256": "a59dad45d01e4aed08c2b7c57d44736928c36708c2303cd38be1b81627b8f532",
     "size": 9474
+  },
+  "a5f4d73fbdcc414f8240dbdf5aec2b657526189c554488fc2208f1b43b964360": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "4fcd2b3d8388af621ece02e96d1231eb83410bbf",
+    "raw_path": "reports/private_prosecution/2026-07-23_oppressive_evidence_format_authority.md",
+    "sha256": "a5f4d73fbdcc414f8240dbdf5aec2b657526189c554488fc2208f1b43b964360",
+    "size": 30337
   },
   "a603bf1a2d24d8d349b852d34ed52a32d544cba3c000b476f015850e82b5024a": {
     "document_type": "evidence",
