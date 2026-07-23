@@ -96,9 +96,9 @@ Prompt: `tasks/WP03-ingest-service.md` (~380 lines)
 `goldberg.raw.commit` message; a publish failure does not fail the commit.
 **Depends on**: WP03 (needs the `publish-commit` command).
 
-- [ ] T016 `hooks/post-commit` + `hooks/post-merge` → `goldberg publish-commit`; always exit 0 (WP04)
-- [ ] T017 `core.hooksPath` install steps + runbook (WP04)
-- [ ] T018 Manual delivery validation note (WP04)
+- [x] T016 `hooks/post-commit` + `hooks/post-merge` → `goldberg publish-commit`; always exit 0 (WP04)
+- [x] T017 `core.hooksPath` install steps + runbook (WP04)
+- [x] T018 Manual delivery validation note (WP04)
 
 Prompt: `tasks/WP04-trigger-hooks.md` (~170 lines)
 
