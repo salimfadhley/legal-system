@@ -109,9 +109,9 @@ Prompt: `tasks/WP04-trigger-hooks.md` (~170 lines)
 runs `ingest` not `reconciler`; ADR 0013 supersedes 0011.
 **Depends on**: WP03, WP04 (new path must work before old is removed).
 
-- [ ] T019 Remove `reconcile/` daemon + `goldberg watch` CLI command (WP05)
-- [ ] T020 `deploy/docker-compose.yml`: replace `reconciler` with `ingest`; `Dockerfile.ingest` (WP05)
-- [ ] T021 ADR 0013 (supersedes 0011); update ADR 0011/0012 status + ingestion runbook (WP05)
+- [x] T019 Remove `reconcile/` daemon + `goldberg watch` CLI command (WP05)
+- [x] T020 `deploy/docker-compose.yml`: replace `reconciler` with `ingest`; `Dockerfile.ingest` (WP05)
+- [x] T021 ADR 0013 (supersedes 0011); update ADR 0011/0012 status + ingestion runbook (WP05)
 
 Prompt: `tasks/WP05-decommission-and-deploy.md` (~230 lines)
 
