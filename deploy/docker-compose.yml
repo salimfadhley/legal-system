@@ -1,0 +1,151 @@
+# Goldberg portable processing stack (ADR 0012 topology; ADR 0013 ingest path).
+#
+# The *processing* services only — docling (OCR), ingest (event-driven auto-ingest
+# service, `goldberg ingest-serve`), mcp (query/observability server). Elasticsearch
+# and NATS are NOT here: they are already-running external shared infra reached over
+# TCP via ${GOLDBERG_ES_URL} and ${NATS_URL} (ADR 0012 — never bundle a second ES/NATS).
+# Point the stack at those URLs, mount goldberg-raw, set the .env, and bring it up on
+# any host (Portainer stack or `docker compose -f deploy/docker-compose.yml up -d`).
+# All host-specific / secret values come from the env file (NFR-002 / NFR-004).
+#
+# NOTE: build context is the repo root (`..`) because this compose file lives in
+# `deploy/`; the Dockerfiles COPY `src/` from that root.
+#
+# Copy .env.example -> .env and fill it in first.
+
+services:
+  # ── Docling OCR (external image, pinned by tag) ────────────────────────────
+  docling:
+    image: ghcr.io/docling-project/docling-serve-cpu:latest
+    restart: unless-stopped
+    ports:
+      - "${DOCLING_PORT:-5001}:5001"
+    healthcheck:
+      # docling-serve is a Python app; probe its /health with the stdlib (no curl needed).
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5001/health',timeout=4).status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          # Cap Docling so a large scan OOMs the container (dead-lettered + retried by
+          # the ingest service) rather than pegging the petite host (NFR-003).
+          memory: ${DOCLING_MEM_LIMIT:-4g}
+
+  # ── Ingest: the event-driven goldberg-raw ingest service (goldberg ingest-serve) ─
+  # ADR 0013 — supersedes the ADR 0011 `goldberg watch` reconciler. On start it runs
+  # ONE bounded catch-up, then consumes goldberg.raw.commit triggers from NATS via a
+  # durable pull consumer and ingests each commit's changed files provenance-first.
+  ingest:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.ingest
+    image: goldberg-ingest:local
+    restart: unless-stopped
+    depends_on:
+      - docling
+    environment:
+      # External Elasticsearch over TCP (e.g. http://192.168.86.31:9200) — never a
+      # second ES; the stack only connects (FR-002 / C-002).
+      GOLDBERG_ES_URL: ${GOLDBERG_ES_URL}
+      # External NATS carrying the goldberg.raw.commit triggers (ADR 0013). Default is
+      # the Halob broker; override via .env for other hosts.
+      NATS_URL: ${NATS_URL:-nats://192.168.86.31:4222}
+      # Reach Docling by its compose service name, not a host IP (FR-004).
+      GOLDBERG_DOCLING_URL: ${GOLDBERG_DOCLING_URL:-http://docling:5001}
+      # Container-tuned projects.yaml (raw.path=/data/goldberg-raw, system.path=/app)
+      # mounted read-only below and selected here so paths resolve inside the container.
+      GOLDBERG_PROJECTS_CONFIG: /etc/goldberg/projects.yaml
+      # Enrichment (optional; text/passthrough ingest without it).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      # goldberg-raw, read-only. MUST be the git working-tree root so that .git comes
+      # along — the ingest service runs `git log` / `git diff` over it to stamp
+      # raw_commit provenance and to compute the startup catch-up diff. The mount point
+      # must match projects.yaml `projects.raw.path` (default container path:
+      # /data/goldberg-raw).
+      - ${GOLDBERG_RAW_PATH:-../goldberg-raw}:/data/goldberg-raw:ro
+      # Config dir, READ-WRITE and persistent. Holds provenance-manifest.json, which the
+      # ingest service writes provenance-first every commit / catch-up pass. It must live
+      # on a writable, persistent volume so registrations survive restarts and are not
+      # lost inside an ephemeral image layer — the source of truth that lets a fresh host
+      # rebuild the corpus (FR-008).
+      - ${GOLDBERG_MANIFEST_PATH:-./config}:/app/config
+      # Container-tuned projects.yaml, read-only (ADR 0012).
+      - ./projects.container.yaml:/etc/goldberg/projects.yaml:ro
+    ports:
+      # ingest-serve exposes GET /health on 8098 (last activity + catch-up summary).
+      - "${INGEST_HEALTH_PORT:-8098}:8098"
+    # Startup catch-up, then consume commit triggers forever. Conservative,
+    # petite-host-friendly defaults (NFR-003), overridable via .env.
+    command:
+      [
+        "goldberg",
+        "ingest-serve",
+        "--durable",
+        "${INGEST_DURABLE:-ingest-processor}",
+        "--workers",
+        "${INGEST_WORKERS:-2}",
+        "--max-deliver",
+        "${INGEST_MAX_DELIVER:-5}",
+        "--batch",
+        "${INGEST_BATCH:-50}",
+        "--health-port",
+        "8098",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8098/health',timeout=4).status==200 else 1)",
+        ]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # ── MCP server: query + observability (incl. the component_health doctor tool) ─
+  mcp:
+    build:
+      context: ..
+      dockerfile: Dockerfile.mcp
+    image: goldberg:local
+    container_name: goldberg-mcp-server
+    restart: unless-stopped
+    depends_on:
+      - docling
+    environment:
+      GOLDBERG_ES_URL: ${GOLDBERG_ES_URL}
+      # The component_health MCP tool runs the doctor board, whose probes reach the
+      # sibling stack services by compose name (FR-004) and the enricher via the key.
+      GOLDBERG_DOCLING_URL: ${GOLDBERG_DOCLING_URL:-http://docling:5001}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOLDBERG_MCP_HOST: ${GOLDBERG_MCP_HOST:-0.0.0.0}
+      GOLDBERG_MCP_PORT: ${GOLDBERG_MCP_PORT:-8765}
+    ports:
+      - "${GOLDBERG_MCP_PORT:-8765}:8765"
+    # The /mcp endpoint rejects non-MCP requests by design, so health-check the port
+    # rather than an HTTP status (same check baked into Dockerfile.mcp; restated here
+    # for Portainer visibility).
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import socket,sys; socket.create_connection(('localhost',8765),3).close()",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

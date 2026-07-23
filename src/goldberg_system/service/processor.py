@@ -2,11 +2,11 @@
 
 .. deprecated:: M15
     **RETIRED / superseded** along with the Papra-webhook service (see
-    ``service/app.py``). The canonical automatic ingest path is the reconciler
-    (``goldberg watch`` / :class:`goldberg_system.reconcile.Reconciler`), which is
-    provenance-first (registers goldberg-raw provenance before indexing) and extracts
-    via direct Docling. See ADR 0011 and
-    ``doc/runbooks/auto-ingestion-reconciler.md``. Kept for reference; do not deploy.
+    ``service/app.py``). The canonical automatic ingest path is the event-driven
+    ingest service (``goldberg ingest-serve``), which is provenance-first (registers
+    goldberg-raw provenance before indexing) and extracts via direct Docling. See
+    ADR 0013 (event-driven ingestion, supersedes the reconciler ADR 0011) and
+    ``doc/runbooks/wiring-the-ingest-trigger.md``. Kept for reference; do not deploy.
 
 Papra fires ``document:created`` **immediately on ingest**, before Docling has
 finished extracting — so on receipt the document's ``content`` is often still

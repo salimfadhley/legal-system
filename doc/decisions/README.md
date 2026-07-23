@@ -31,8 +31,9 @@ Each ADR follows the same sections:
 | [0008](./0008-observability-architecture.md) | Observability architecture (events / DLQ / trace) | Accepted |
 | [0009](./0009-operations-dashboard.md) | Operations dashboard | Accepted |
 | [0010](./0010-mcp-server.md) | Hosted MCP server | Accepted |
-| [0011](./0011-auto-ingestion-reconciler.md) | Auto-ingestion reconciler (`goldberg watch`) | Accepted |
-| [0012](./0012-deployment-topology.md) | Deployment topology — portable processing stack vs. external ES | Accepted |
+| [0011](./0011-auto-ingestion-reconciler.md) | Auto-ingestion reconciler (`goldberg watch`) | Superseded by 0013 |
+| [0012](./0012-deployment-topology.md) | Deployment topology — portable processing stack vs. external ES | Accepted (ingest service per 0013) |
+| [0013](./0013-event-driven-ingestion.md) | Event-driven ingestion — git-hook → NATS → durable processor (`goldberg ingest-serve`) | Accepted |
 
 *Resolved outside an ADR (recorded here for completeness): trigger locus =
 Halob-local filesystem watcher; data boundary = cloud LLM/Ragie permitted (logged

@@ -1,6 +1,19 @@
 # Runbook — Auto-ingestion reconciler (`goldberg watch`)
 
-The reconciler is the **canonical automatic ingest path** ([ADR 0011](../decisions/0011-auto-ingestion-reconciler.md),
+> **RETIRED (2026-07-23) — superseded by event-driven ingestion.** The polling
+> reconciler (`goldberg watch`) and its `goldberg_system.reconcile` daemon have been
+> **removed**. The canonical automatic ingest path is now the event-driven ingest
+> service (`goldberg ingest-serve`): a `goldberg-raw` commit publishes a
+> `goldberg.raw.commit` event onto NATS, and a durable processor ingests that commit's
+> changed files provenance-first (with a one-shot startup catch-up). See
+> **[ADR 0013](../decisions/0013-event-driven-ingestion.md)** for the decision and
+> **[Wiring the ingest trigger](./wiring-the-ingest-trigger.md)** for the operational
+> recipe (git hooks → NATS → `goldberg ingest-serve`). This runbook is kept as the
+> historical record of the reconciler; the reconcile *model* (provenance-first,
+> manifest + direct Docling) is preserved unchanged in the new service, but the
+> `goldberg watch` commands below no longer exist.
+
+The reconciler was the **canonical automatic ingest path** ([ADR 0011](../decisions/0011-auto-ingestion-reconciler.md),
 supersedes the retired Papra webhook of [ADR 0005](../decisions/0005-live-service-webhook-driven.md)).
 Drop a file into `goldberg-raw`, and within one reconcile interval it is registered
 with provenance, extracted, enriched, indexed, and queryable — no manual

@@ -1,4 +1,4 @@
-# Container-tuned projects config for the reconciler running INSIDE the stack.
+# Container-tuned projects config for the ingest service running INSIDE the stack.
 # Mounted at /etc/goldberg/projects.yaml and selected via GOLDBERG_PROJECTS_CONFIG.
 # Paths are the in-CONTAINER mount points, not host paths (ADR 0012).
 root: /data

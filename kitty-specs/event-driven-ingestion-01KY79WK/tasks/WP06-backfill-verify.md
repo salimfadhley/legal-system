@@ -15,7 +15,6 @@ subtasks:
 - T023
 - T024
 agent: claude
-shell_pid: '67477'
 history:
 - created by /spec-kitty.tasks
 agent_profile: reviewer-renata
@@ -89,7 +88,3 @@ from `lanes.json`.
   (bounded) and confirm no unintended re-index storm.
 - **Risk**: audit gaps unrelated to this mission. Reviewer: distinguish pre-existing
   coverage holes from regressions and note them separately.
-
-## Activity Log
-
-- 2026-07-23T14:45:33Z – user – shell_pid=67477 – Approved: live backfill + e2e verified (raw_commit provenance confirmed), DLQ clean on fixed path; results in doc/verification/event-driven-ingestion-results.md

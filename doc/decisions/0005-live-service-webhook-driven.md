@@ -8,8 +8,10 @@ auto-ingestion reconciler) · **Date:** 2026-07-21
 > `goldberg-raw` provenance, so documents landed without `raw_commit` / `matters` —
 > exactly the provenance gap ADR 0006/0008 called out. M8 then moved real ingestion to
 > `goldberg-raw` + the provenance manifest + **direct Docling** (`reingest_from_raw`),
-> but nothing was left watching `goldberg-raw`. ADR 0011 closes that gap with a
-> provenance-first **reconciler** (`goldberg watch`). The service code
+> but nothing was left watching `goldberg-raw`. ADR 0011 closed that gap with a
+> provenance-first reconciler (`goldberg watch`), now itself superseded by the
+> event-driven ingest service of [ADR 0013](./0013-event-driven-ingestion.md)
+> (`goldberg ingest-serve`). The service code
 > (`goldberg_system.service`) is kept for reference but no longer deployed. The rest of
 > this ADR is preserved as the historical record.
 

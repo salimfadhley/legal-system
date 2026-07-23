@@ -1,6 +1,13 @@
 # ADR 0011 — Auto-ingestion reconciler: the canonical automatic ingest path (M15)
 
-**Status:** Accepted (built + tested) · **Date:** 2026-07-22 · **Supersedes:** [ADR 0005](./0005-live-service-webhook-driven.md) (trigger) · **Builds on:** [ADR 0006](./0006-ingestion-provenance-architecture.md), [ADR 0008](./0008-observability-architecture.md)
+**Status:** Superseded by [ADR 0013](./0013-event-driven-ingestion.md) (event-driven ingestion — git-hook → NATS → durable processor) · **Date:** 2026-07-22 · **Supersedes:** [ADR 0005](./0005-live-service-webhook-driven.md) (trigger) · **Builds on:** [ADR 0006](./0006-ingestion-provenance-architecture.md), [ADR 0008](./0008-observability-architecture.md)
+
+> **Superseded (2026-07-23).** The polling reconciler (`goldberg watch`) was retired in
+> favour of an event-driven ingest service (`goldberg ingest-serve`) — its constant
+> re-hash-the-whole-tree polling was wasteful (DIR-004) and slow. The provenance-first
+> ingest *model* below is preserved unchanged; only the *trigger* moved from a timer to
+> a git-commit → NATS event with a one-shot startup catch-up. See
+> [ADR 0013](./0013-event-driven-ingestion.md). This ADR is kept as the historical record.
 
 ## Context
 

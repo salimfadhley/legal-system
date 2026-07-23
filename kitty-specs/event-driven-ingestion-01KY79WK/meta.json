@@ -4,7 +4,7 @@
   "flattened": false,
   "friendly_name": "Event-Driven Trigger-Based Ingestion",
   "mission_id": "01KY79WKXTF5KQYBTZMJ78T3R0",
-  "mission_number": null,
+  "mission_number": 1,
   "mission_slug": "event-driven-ingestion-01KY79WK",
   "mission_type": "software-dev",
   "purpose_context": "The pipeline currently ingests documents with a reconciler daemon that re-hashes the entire goldberg-raw corpus every two minutes and retries failures forever — wasteful, and contrary to charter DIR-004 (trigger, don't poll). This mission replaces it with an event-driven flow: a git post-commit hook publishes each commit to NATS JetStream, a durable consumer performs provenance-first extract→enrich→index for the changed files, and a bounded one-shot startup catch-up sweeps anything missed while the processor was down. It also fixes an enrichment bug where oversized OCR documents exceed the model context and fail permanently. The reconciler is decommissioned. The result is timely, cheap, provenance-safe ingestion that never silently drops a legal document.",

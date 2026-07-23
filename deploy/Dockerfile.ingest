@@ -1,0 +1,51 @@
+# Event-driven ingest service (ADR 0013 — supersedes the ADR 0011 reconciler).
+# The canonical always-on ingest path: on start it runs ONE bounded catch-up, then
+# consumes `goldberg.raw.commit` triggers from NATS via a durable pull consumer and
+# ingests each commit's changed files provenance-first (git-hook → NATS → processor).
+#
+# Build from the repo root (context is the parent dir so `src/` resolves):
+#   docker build -f deploy/Dockerfile.ingest -t goldberg-ingest .
+# Or via the compose stack: `docker compose -f deploy/docker-compose.yml build ingest`.
+FROM python:3.12-slim
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1
+
+# git is needed for the manifest's raw_commit lookups + the startup catch-up diff
+# over the goldberg-raw checkout.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git \
+  && rm -rf /var/lib/apt/lists/*
+
+# The container runs as root but goldberg-raw is bind-mounted owned by the host user,
+# so git refuses ("detected dubious ownership") and every commit resolution / raw_commit
+# lookup fails. Mark the mount safe so git works for any UID mismatch. Without this,
+# the processor NAKs every commit (→ DLQ) and the catch-up loses raw_commit provenance.
+RUN git config --system --add safe.directory /data/goldberg-raw
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install --no-cache-dir .
+
+# Ingest-service configuration (override at `docker run` / via compose env):
+#   GOLDBERG_ES_URL        Halob Elasticsearch (documents + pipeline events).
+#   NATS_URL               NATS server carrying goldberg.raw.commit triggers.
+#   GOLDBERG_DOCLING_URL   how this container reaches docling-serve (text/passthrough
+#                          files still ingest without it; OCR files dead-letter+retry).
+#   OPENAI_API_KEY         enrichment (optional).
+#   Tuning is via the CLI flags: --durable / --workers / --max-deliver / --batch.
+ENV GOLDBERG_ES_URL=http://elasticsearch:9200 \
+    GOLDBERG_DOCLING_URL=http://docling:5001 \
+    NATS_URL=nats://192.168.86.31:4222
+
+EXPOSE 8098
+# start-period is generous because the health endpoint only opens AFTER the one-shot
+# startup catch-up completes (which can take a few minutes on a full corpus scan). A
+# short start-period would mark the container unhealthy mid-catch-up and let an
+# autoheal-style supervisor restart it into a catch-up loop. (Follow-up: start the
+# health server BEFORE the catch-up so this tolerance is unnecessary.)
+HEALTHCHECK --interval=60s --timeout=5s --start-period=900s --retries=3 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8098/health',timeout=4).status==200 else 1)"
+
+# Default: startup catch-up, then consume commit triggers forever. Override the CMD to tune.
+CMD ["goldberg", "ingest-serve"]

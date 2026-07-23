@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# goldberg-raw post-commit trigger (WP04, FR-001/FR-002).
+#
+# Publishes a `goldberg.raw.commit` event for the just-created commit so the
+# event-driven ingest processor picks it up. This hook MUST NEVER fail `git`:
+# a broker outage, a missing `goldberg` binary, or any other error is swallowed
+# and the commit is still recovered by the processor's startup catch-up.
+#
+# The only assumption is that `goldberg` is on PATH in the committing
+# environment (see doc/runbooks/wiring-the-ingest-trigger.md for venv/abs-path
+# options). No `set -e`: every path exits 0.
+
+sha="$(git rev-parse HEAD)"
+goldberg publish-commit "$sha" --source post-commit >/dev/null 2>&1 || \
+  logger -t goldberg-hook "publish-commit failed for $sha (will be caught up at startup)"
+exit 0

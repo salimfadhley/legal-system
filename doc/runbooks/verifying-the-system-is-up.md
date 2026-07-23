@@ -1,12 +1,24 @@
 # Runbook — Verifying the system is up
 
+> **Updated (2026-07-23) — ingest is now event-driven ([ADR 0013](../decisions/0013-event-driven-ingestion.md)).**
+> The `reconciler` service (`goldberg watch`) has been replaced by an **`ingest`**
+> service (`goldberg ingest-serve`, `/health` on **8098**). Read every `reconciler`
+> below as the `ingest` service. Two behavioural changes matter for verification:
+> **(a)** there is no "reconcile interval" — a `goldberg-raw` commit publishes a
+> `goldberg.raw.commit` NATS trigger and ingest begins near-immediately (so the step-5
+> smoke test's "wait one interval" becomes "commit the drop, then wait a few seconds");
+> **(b)** the `live_index_watcher` freshness probe now reflects event-driven activity
+> rather than a periodic heartbeat. Wire the trigger per
+> [Wiring the ingest trigger](./wiring-the-ingest-trigger.md). The service-name /
+> health-check / doctor steps below are otherwise current.
+
 The five checks that confirm the Goldberg processing stack ([ADR 0012](../decisions/0012-deployment-topology.md))
 is genuinely live: all three services healthy, each reachable, the doctor board green,
-the reconciler heartbeating, and a real document making it end-to-end from
+the ingest service active, and a real document making it end-to-end from
 `goldberg-raw` to a provenance-carrying search hit.
 
 Run these after a `docker compose up -d` (or a Portainer stack deploy). The stack is the
-**processing services only** — docling, reconciler, mcp; Elasticsearch is external and
+**processing services only** — docling, ingest, mcp; Elasticsearch is external and
 reached via `${GOLDBERG_ES_URL}`, so "is ES up?" is answered by the doctor board, not by
 a stack container.
 
@@ -16,7 +28,7 @@ a stack container.
 > `projects.yaml` with `projects.raw.path: /data/goldberg-raw`, `projects.system.path:
 > /app`, and the persistent `provenance-manifest.json`).
 
-All commands assume you are in the repo root (where `docker-compose.yml` lives).
+All commands assume you are in the `deploy/` directory (where `docker-compose.yml` lives), or pass `-f deploy/docker-compose.yml`.
 
 ## 1. All services report healthy
 
@@ -24,7 +36,7 @@ All commands assume you are in the repo root (where `docker-compose.yml` lives).
 docker compose ps
 ```
 
-Expected: three services — `docling`, `reconciler`, `mcp` — each `running (healthy)`.
+Expected: three services — `docling`, `ingest`, `mcp` — each `running (healthy)`.
 `(health: starting)` is normal for up to ~40s after boot (Docling loads first); re-run
 until all three read `healthy`. Anything `restarting` or `exited` → jump to
 Troubleshooting.
@@ -67,9 +79,9 @@ synthesis. Run it two ways; both must agree.
 **CLI** (from inside the reconciler or mcp container, which have `goldberg` + env):
 
 ```bash
-docker compose exec reconciler goldberg doctor
+docker compose exec ingest goldberg doctor
 # machine-readable:
-docker compose exec reconciler goldberg doctor --yaml
+docker compose exec ingest goldberg doctor --yaml
 ```
 
 **MCP tool** `component_health` — the same board for MCP-capable agents, no shell needed
@@ -101,7 +113,7 @@ interval:
 
 ```bash
 # reconciler logs — look for cycle output roughly every RECONCILE_INTERVAL (default 300s)
-docker compose logs --tail=20 reconciler
+docker compose logs --tail=20 ingest
 
 # or straight from ES — most recent pipeline event timestamp:
 curl -fsS "${GOLDBERG_ES_URL}/goldberg_pipeline_events/_search?size=1&sort=ts:desc&_source=ts,stage,status" && echo
@@ -129,7 +141,7 @@ printf '# Verify smoke test\n\nUnique marker: %s\n' "${MARKER}" > "${DROP}/${MAR
 sleep 330
 
 # 3. Confirm it is queryable WITH provenance (doc_id + raw_path shown by search).
-docker compose exec reconciler goldberg search "${MARKER}"
+docker compose exec ingest goldberg search "${MARKER}"
 ```
 
 Expected: one hit whose `raw_path` points at `verify-smoketest/<marker>.md`. That the hit
@@ -140,7 +152,7 @@ full provenance record:
 
 ```bash
 # grab the doc_id from the search output, then:
-docker compose exec reconciler goldberg get <doc_id>
+docker compose exec ingest goldberg get <doc_id>
 ```
 
 **Clean up** — remove the marker so it does not pollute the corpus:
@@ -155,7 +167,7 @@ rm -rf "${DROP}"
 ```
 
 If the marker never appears after a full interval, check the reconciler logs and the DLQ
-(`docker compose exec reconciler goldberg dlq`) — the file may be outside an allowlisted
+(`docker compose exec ingest goldberg dlq`) — the file may be outside an allowlisted
 tree, or its extraction dead-lettered.
 
 ## Troubleshooting
@@ -163,7 +175,7 @@ tree, or its extraction dead-lettered.
 **ES unreachable (doctor `elasticsearch` DOWN, or step 4 curl fails).**
 The stack does not host ES — confirm the external instance is up and that
 `GOLDBERG_ES_URL` in `.env` is correct and reachable *from inside the containers*
-(`docker compose exec reconciler python3 -c "import urllib.request as u,os;print(u.urlopen(os.environ['GOLDBERG_ES_URL'],timeout=4).status)"`).
+(`docker compose exec ingest python3 -c "import urllib.request as u,os;print(u.urlopen(os.environ['GOLDBERG_ES_URL'],timeout=4).status)"`).
 By design the services start and report DEGRADED/DOWN rather than crash-loop, and recover
 when ES returns.
 
@@ -179,7 +191,7 @@ The reconciler writes `config/provenance-manifest.json`; it must be on the writa
 persistent `${GOLDBERG_MANIFEST_PATH}` mount (`/app/config`). Symptoms: reconciler logs a
 write/permission error, or every restart re-registers the same files. Check the host dir
 exists and is writable by the container UID
-(`docker compose exec reconciler sh -c 'touch /app/config/.wtest && rm /app/config/.wtest && echo writable'`).
+(`docker compose exec ingest sh -c 'touch /app/config/.wtest && rm /app/config/.wtest && echo writable'`).
 Do **not** let the manifest live inside the image layer.
 
 **Reconciler up but `live_index_watcher` DOWN.**
@@ -190,6 +202,6 @@ reconciler` for a stuck cycle; confirm ES is writable (the heartbeat is an ES wr
 The reconciler runs `git` over the bind-mounted `goldberg-raw`, which may be owned by a
 different UID than the container user. If provenance stamping fails with a dubious-
 ownership error, mark the mount safe inside the container
-(`docker compose exec reconciler git config --global --add safe.directory /data/goldberg-raw`)
+(`docker compose exec ingest git config --global --add safe.directory /data/goldberg-raw`)
 or bake it into the image; ensure `GOLDBERG_RAW_PATH` is the working-tree root so `.git`
 is present at all.

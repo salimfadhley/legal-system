@@ -4,7 +4,7 @@ wp_id: WP03
 mission_slug: event-driven-ingestion-01KY79WK
 reviewer_agent: claude:opus:reviewer-renata:reviewer
 verdict: approved
-reviewed_at: 2026-07-23T13:29:55Z
+reviewed_at: "2026-07-23T13:29:55Z"
 affected_files:
 - path: src/goldberg_system/ingest/commit_files.py
 - path: src/goldberg_system/ingest/processor.py

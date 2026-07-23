@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# goldberg-raw post-merge trigger (WP04, FR-001/FR-002).
+#
+# Covers non-fast-forward pull-merges (a real merge commit), which `post-commit`
+# does NOT fire for. Publishes a `goldberg.raw.commit` event for the merge HEAD.
+# Fast-forward pulls fire neither hook — that gap is closed by the processor's
+# startup catch-up (documented in the wiring runbook).
+#
+# Like post-commit, this hook MUST NEVER fail `git`: all errors are swallowed and
+# the commit is recovered by startup catch-up. No `set -e`: every path exits 0.
+# The only assumption is that `goldberg` is on PATH in the committing environment.
+
+sha="$(git rev-parse HEAD)"
+goldberg publish-commit "$sha" --source post-merge >/dev/null 2>&1 || \
+  logger -t goldberg-hook "publish-commit failed for $sha (will be caught up at startup)"
+exit 0

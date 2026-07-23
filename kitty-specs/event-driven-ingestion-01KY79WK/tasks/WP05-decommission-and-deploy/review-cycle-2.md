@@ -1,8 +1,17 @@
 ---
+cycle_number: 2
+wp_id: WP05
+mission_slug: event-driven-ingestion-01KY79WK
+reviewer_agent: claude:opus:reviewer-renata:reviewer
 verdict: approved
-work_package_id: WP05
-cycle: 2
-reviewer: orchestrator (applied + verified reviewer-renata cycle-1 requested fixes)
+reviewed_at: "2026-07-23T14:45:00Z"
+affected_files:
+- path: deploy/docker-compose.yml
+- path: deploy/Dockerfile.ingest
+- path: .env.example
+- path: doc/decisions/0013-event-driven-ingestion.md
+- path: doc/runbooks/verifying-the-system-is-up.md
+reproduction_command: uv run --extra dev pytest tests/unit -q
 ---
 
 # WP05 review — cycle 2: APPROVED

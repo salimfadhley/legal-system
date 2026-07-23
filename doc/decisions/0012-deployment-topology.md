@@ -2,6 +2,14 @@
 
 **Status:** Accepted · **Date:** 2026-07-22 · **Builds on:** [ADR 0006](./0006-ingestion-provenance-architecture.md), [ADR 0008](./0008-observability-architecture.md), [ADR 0010](./0010-mcp-server.md), [ADR 0011](./0011-auto-ingestion-reconciler.md) · **Retires:** Papra from the deploy ([ADR 0003](./0003-document-management-papra-integration.md))
 
+> **Revised (2026-07-23) by [ADR 0013](./0013-event-driven-ingestion.md).** The stack's
+> `reconciler` service (`goldberg watch`, `/health` on 8080) is replaced by an `ingest`
+> service (`goldberg ingest-serve`, `/health` on 8098), and the compose file now lives at
+> `deploy/docker-compose.yml`. The topology below (three stateless processing services
+> against external ES + NATS, source-of-truth = goldberg-raw + manifest) is unchanged;
+> only the ingest service's name, trigger, and health port moved — read "reconciler"
+> below as "the ingest service".
+
 ## Context
 
 By M15 the system had all the runnable pieces — a Docling OCR service, the
@@ -27,7 +35,7 @@ Two facts shape the topology:
 - **The source of truth is `goldberg-raw` + the provenance manifest, not ES.** Per
   [ADR 0006](./0006-ingestion-provenance-architecture.md), the corpus in ES is a
   *derived* artifact: given `goldberg-raw` (git) and `config/provenance-manifest.json`,
-  the reconciler can rebuild/refresh the ES corpus from scratch. That is what makes the
+  the ingest service can rebuild/refresh the ES corpus from scratch. That is what makes the
   stack portable — a new host needs the code, the raw tree, and an ES endpoint, not a
   data migration.
 
@@ -45,14 +53,15 @@ Two facts shape the topology:
 
 ## Decision
 
-Ship a root **`docker-compose.yml`** defining three services and nothing else:
+Ship a **`deploy/docker-compose.yml`** defining three services and nothing else:
 
 - **docling** — `ghcr.io/docling-project/docling-serve-cpu:latest`, port 5001, a
   stdlib `GET /health` healthcheck, memory-capped so a large scan OOMs the container
-  (dead-lettered + retried by the reconciler) rather than the petite host.
-- **reconciler** — built from the existing `Dockerfile.reconciler`, runs
-  `goldberg watch` with conservative defaults (interval 300s / workers 2 / batch 50),
-  exposes `/health` on 8080.
+  (dead-lettered + retried by the ingest service) rather than the petite host.
+- **ingest** — built from `deploy/Dockerfile.ingest`, runs `goldberg ingest-serve`
+  (startup catch-up, then consumes `goldberg.raw.commit` from NATS — [ADR 0013](./0013-event-driven-ingestion.md))
+  with conservative defaults (workers 2 / batch 50 / max-deliver 5), exposes `/health`
+  on 8098. (Was the `reconciler` service running `goldberg watch` on 8080.)
 - **mcp** — built from the existing `Dockerfile.mcp`, runs `goldberg mcp-serve` on 8765.
 
 **The shared infrastructure is not in the stack.** Elasticsearch is reached over TCP via
@@ -62,7 +71,7 @@ when a component starts using it, is referenced the same way via `${NATS_URL}` �
 and shared, never bundled into this stack.
 
 **Inter-service addressing is by compose service name, never IP** (FR-004). The
-reconciler and mcp reach Docling at `http://docling:5001`; only the external ES URL is a
+ingest service and mcp reach Docling at `http://docling:5001`; only the external ES URL is a
 host value in `.env`.
 
 **All host-specific / secret configuration is a single `.env`** (templated by
@@ -73,18 +82,18 @@ paths, ports, or secrets are hard-coded in the compose file.
 
 - **`goldberg-raw`, read-only, including `.git`.** Mounted `${GOLDBERG_RAW_PATH}` →
   `/data/goldberg-raw:ro`. `GOLDBERG_RAW_PATH` must be the **git working-tree root** so
-  the `.git` directory travels with the mount: the reconciler runs `git log` over the
-  tree to stamp `raw_commit` provenance ([ADR 0006](./0006-ingestion-provenance-architecture.md)),
+  the `.git` directory travels with the mount: the ingest service runs `git log` / `git diff`
+  over the tree to stamp `raw_commit` provenance and compute the startup catch-up diff ([ADR 0006](./0006-ingestion-provenance-architecture.md)),
   and a mount without `.git` would break provenance.
-- **The provenance manifest on a writable, persistent volume.** The reconciler *writes*
-  `config/provenance-manifest.json` every cycle (it registers new content before
-  indexing, ADR 0011). If that lived inside the image layer it would be lost on every
+- **The provenance manifest on a writable, persistent volume.** The ingest service
+  *writes* `config/provenance-manifest.json` provenance-first on every commit / catch-up
+  pass (it registers new content before indexing, ADR 0013). If that lived inside the image layer it would be lost on every
   restart/redeploy — and with it the record that makes the corpus rebuildable. So the
   config directory is mounted **read-write** (`${GOLDBERG_MANIFEST_PATH}` → `/app/config`)
   and holds both the persistent manifest and the container-tuned `projects.yaml`
-  (`projects.raw.path=/data/goldberg-raw`, `projects.system.path=/app`). `goldberg watch`
-  is invoked with an explicit `--manifest /app/config/provenance-manifest.json` so
-  manifest resolution never depends on path inference.
+  (`projects.raw.path=/data/goldberg-raw`, `projects.system.path=/app`), which the ingest
+  service reads (`GOLDBERG_PROJECTS_CONFIG`) so `config/provenance-manifest.json` resolves
+  inside the container without path inference.
 
 ### Doctor as an MCP tool
 
@@ -99,8 +108,9 @@ compose name and ES via `${GOLDBERG_ES_URL}` (FR-004).
 
 `goldberg-raw` + the manifest are the source of truth; ES is derived. To lift-and-shift:
 copy the repo + `.env`, set `GOLDBERG_ES_URL` and `GOLDBERG_RAW_PATH`, and
-`docker compose up -d`. The reconciler rebuilds/refreshes the ES corpus on the new host
-from the raw tree and manifest — no ES data migration (FR-008).
+`docker compose -f deploy/docker-compose.yml up -d`. The ingest service rebuilds/refreshes
+the ES corpus on the new host from the raw tree and manifest (startup catch-up) — no ES
+data migration (FR-008).
 
 ## Consequences
 
@@ -113,7 +123,7 @@ from the raw tree and manifest — no ES data migration (FR-008).
 - **Portable by construction (FR-007 / FR-008 / NFR-004):** standard compose, pinned
   image + relative build contexts, deployable as a Portainer stack; a new host is a new
   `.env`.
-- **Petite-host-safe (NFR-003):** conservative reconciler concurrency/batch and a
+- **Petite-host-safe (NFR-003):** conservative ingest concurrency/batch and a
   Docling memory cap; a large scan degrades (dead-letter + retry) instead of taking the
   host down.
 - **Papra retired from the deployment (FR-009):** consistent with ADR 0011 retiring the

@@ -91,9 +91,9 @@ def build_entry(
     Returns ``None`` when the file is not migratable evidence (``.git`` internals,
     a folder ``metadata.yaml``, an ``exclude_globs`` match, or a file outside any
     allowlisted tree) — or when ``known_shas`` is given and the file's content hash
-    is already registered (so the reconciler's per-cycle git-commit lookups are
-    bounded to genuinely new files). This is the single per-file derivation reused
-    by both the bulk :func:`build_manifest` and the polling reconciler.
+    is already registered (so the ingest catch-up's git-commit lookups are bounded
+    to genuinely new files). This is the single per-file derivation reused by both
+    the bulk :func:`build_manifest` and the event-driven ingest catch-up.
     """
     root = Path(root)
     rel = Path(rel)

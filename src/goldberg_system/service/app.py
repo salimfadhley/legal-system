@@ -5,11 +5,12 @@
     auto-ingestion path. It indexed off Papra's extraction *without* registering
     ``goldberg-raw`` provenance first, so documents landed with no ``raw_commit`` /
     ``matters`` (the flaw ADR 0006/0008 exposed). The canonical automatic ingest path
-    is now the **reconciler** — ``goldberg watch`` /
-    :class:`goldberg_system.reconcile.Reconciler` — which registers provenance from
-    goldberg-raw + the manifest *before* indexing and extracts via direct Docling. See
-    ADR 0005 (superseded), ADR 0011 (reconciler), and
-    ``doc/runbooks/auto-ingestion-reconciler.md``. Kept for reference; do not deploy.
+    is now the **event-driven ingest service** — ``goldberg ingest-serve`` — which
+    consumes ``goldberg.raw.commit`` triggers from NATS and registers provenance from
+    goldberg-raw + the manifest *before* indexing, extracting via direct Docling. See
+    ADR 0005 (superseded), ADR 0013 (event-driven ingestion, supersedes the reconciler
+    ADR 0011), and ``doc/runbooks/wiring-the-ingest-trigger.md``. Kept for reference;
+    do not deploy.
 
 `POST /webhooks/papra` accepts a Papra `document:created` event, returns 200
 immediately, and processes the document in a background thread (fetch content →

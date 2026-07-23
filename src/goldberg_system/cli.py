@@ -547,130 +547,6 @@ def reindex(max_docs, extracted_root, manifest_path, events) -> None:  # type: i
     )
 
 
-@main.command()
-@click.option(
-    "--interval",
-    default=300,
-    show_default=True,
-    help="Seconds between reconcile cycles.",
-)
-@click.option(
-    "--workers",
-    default=2,
-    show_default=True,
-    help="Concurrent documents per cycle (conservative — Halob is 4-core).",
-)
-@click.option(
-    "--batch",
-    default=50,
-    show_default=True,
-    help="Max documents ingested per cycle (bounds CPU per cycle).",
-)
-@click.option(
-    "--once", is_flag=True, help="Run exactly one cycle and exit (testing / cron)."
-)
-@click.option(
-    "--index",
-    "index_override",
-    default=None,
-    help="Target index (e.g. goldberg_documents_test for isolated testing).",
-)
-@click.option(
-    "--health-port",
-    default=8080,
-    show_default=True,
-    help="Port for GET /health (0 to disable). Ignored with --once.",
-)
-@click.option(
-    "--manifest",
-    "manifest_path",
-    default=None,
-    help="Provenance manifest (default: config/provenance-manifest.json).",
-)
-def watch(interval, workers, batch, once, index_override, health_port, manifest_path) -> None:  # type: ignore[no-untyped-def]
-    """Auto-ingestion reconciler — poll goldberg-raw and ingest new files (M15).
-
-    The canonical automatic ingest path (ADR 0011, supersedes the Papra webhook):
-    each cycle registers provenance for new files BEFORE indexing, then extracts →
-    enriches → indexes the difference via the direct-Docling reingest path, emitting
-    pipeline events. Text/passthrough files flow even when Docling is down; OCR files
-    dead-letter and retry. Runs forever unless --once.
-    """
-    import threading
-
-    from goldberg_system.config import project_path
-    from goldberg_system.enrichment import OpenAIEnricher
-    from goldberg_system.extract.docling_client import DoclingClient
-    from goldberg_system.migrate.allowlist import Allowlist
-    from goldberg_system.observability.events import ElasticsearchEventSink
-    from goldberg_system.reconcile import Reconciler, make_health_server
-    from goldberg_system.sinks import ElasticsearchIndexer
-
-    raw_root = project_path("raw")
-    mpath = manifest_path or (
-        project_path("system") / "config" / "provenance-manifest.json"
-    )
-    allowlist = Allowlist.load()
-
-    # Do NOT hard-gate on Docling health: the reconciler degrades gracefully — text /
-    # passthrough files ingest without Docling; OCR files dead-letter and retry.
-    docling = DoclingClient.from_env()
-    if not docling.health():
-        click.echo(
-            f"⚠ docling not reachable at {docling.base_url} — text/passthrough files "
-            "will still ingest; OCR files will dead-letter and retry next cycle."
-        )
-
-    enricher = OpenAIEnricher.from_settings()
-    indexer = ElasticsearchIndexer.from_env()
-    if index_override:
-        indexer.index = index_override
-    indexer.ensure_index()
-    event_sink = ElasticsearchEventSink.from_env()
-    event_sink.ensure_index()
-
-    def already_indexed() -> set:  # type: ignore[type-arg]
-        resp = indexer.client.search(
-            index=indexer.index,
-            query={"exists": {"field": "raw_sha256"}},
-            size=10000,
-            source_includes=["raw_sha256"],
-        )
-        return {
-            h["_source"]["raw_sha256"]
-            for h in resp["hits"]["hits"]
-            if h["_source"].get("raw_sha256")
-        }
-
-    reconciler = Reconciler(
-        raw_root=raw_root,
-        manifest_path=mpath,
-        allowlist=allowlist,
-        docling=docling,
-        enricher=enricher,
-        sinks=[indexer],
-        already_indexed=already_indexed,
-        events=event_sink,
-        batch=batch,
-        workers=workers,
-    )
-
-    def summary(cycle) -> None:  # type: ignore[no-untyped-def]
-        click.echo(cycle.summary_line())
-
-    if once:
-        summary(reconciler.run_cycle())
-        return
-
-    if health_port:
-        server = make_health_server(reconciler, port=health_port)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        click.echo(f"health endpoint: GET :{health_port}/health")
-    click.echo(
-        f"reconciler polling {raw_root} every {interval}s "
-        f"(batch={batch}, workers={workers}) → {indexer.index}"
-    )
-    reconciler.run_forever(interval, on_cycle=summary)
 
 
 @main.group()
@@ -856,6 +732,290 @@ def migrate_reingest(manifest_path, max_docs, only, events, index_override, work
         f"skipped_indexed={report.skipped_indexed} "
         f"missing={report.missing_file} failures={report.failures}"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Event-driven ingest service (WP03) — consume raw-commit triggers from NATS and
+# ingest each commit's changed files via the existing provenance-first pipeline.
+# ─────────────────────────────────────────────────────────────────────────────
+def _build_ingest_deps(index_override: str | None = None):  # type: ignore[no-untyped-def]
+    """Build the shared ingest dependencies (raw root, manifest, pipeline, resume).
+
+    Mirrors the wiring the retired ``watch`` reconciler used, so the event-driven
+    service reuses exactly the same Docling → enrich → index path and the same
+    already-indexed resume set (idempotency).
+    """
+    from goldberg_system.config import project_path
+    from goldberg_system.enrichment import OpenAIEnricher
+    from goldberg_system.extract.docling_client import DoclingClient
+    from goldberg_system.migrate.allowlist import Allowlist
+    from goldberg_system.observability.events import ElasticsearchEventSink
+    from goldberg_system.sinks import ElasticsearchIndexer
+
+    raw_root = project_path("raw")
+    manifest_path = project_path("system") / "config" / "provenance-manifest.json"
+    allowlist = Allowlist.load()
+
+    # Do NOT hard-gate on Docling: text/passthrough files ingest without it; OCR files
+    # dead-letter and are retried on redelivery.
+    docling = DoclingClient.from_env()
+    if not docling.health():
+        click.echo(
+            f"⚠ docling not reachable at {docling.base_url} — text/passthrough files "
+            "will still ingest; OCR files will dead-letter and retry."
+        )
+    enricher = OpenAIEnricher.from_settings()
+    indexer = ElasticsearchIndexer.from_env()
+    if index_override:
+        indexer.index = index_override
+    indexer.ensure_index()
+    event_sink = ElasticsearchEventSink.from_env()
+    event_sink.ensure_index()
+
+    def already_indexed() -> set:  # type: ignore[type-arg]
+        resp = indexer.client.search(
+            index=indexer.index,
+            query={"exists": {"field": "raw_sha256"}},
+            size=10000,
+            source_includes=["raw_sha256"],
+        )
+        return {
+            h["_source"]["raw_sha256"]
+            for h in resp["hits"]["hits"]
+            if h["_source"].get("raw_sha256")
+        }
+
+    return raw_root, manifest_path, allowlist, docling, enricher, indexer, event_sink, already_indexed
+
+
+@main.command("ingest-serve")
+@click.option(
+    "--durable", default="ingest-processor", show_default=True,
+    help="Durable consumer name to bind.",
+)
+@click.option(
+    "--workers", default=2, show_default=True,
+    help="Concurrent documents per commit (conservative — Halob is 4-core).",
+)
+@click.option(
+    "--max-deliver", default=5, show_default=True,
+    help="Redeliveries before a commit is terminated + dead-lettered.",
+)
+@click.option(
+    "--batch", default=50, show_default=True, help="Messages fetched per pull."
+)
+@click.option(
+    "--health-port", default=8098, show_default=True,
+    help="Port for GET /health (0 to disable).",
+)
+@click.option(
+    "--no-catchup", is_flag=True, help="Skip the one-shot startup catch-up pass."
+)
+@click.option(
+    "--index", "index_override", default=None,
+    help="Target index (e.g. goldberg_documents_test for isolated testing).",
+)
+def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, index_override) -> None:  # type: ignore[no-untyped-def]
+    """Event-driven ingest service: startup catch-up, then consume commit triggers.
+
+    On start it runs ONE bounded catch-up (unless --no-catchup) to close any gap from
+    downtime, then opens the durable NATS pull consumer and ingests each raw-commit's
+    changed files via the existing pipeline — ack when all files are terminal, nak to
+    retry, term + DLQ event after --max-deliver. Exposes GET /health with last activity
+    and the catch-up summary. Runs until SIGINT/SIGTERM.
+    """
+    import asyncio
+    import dataclasses
+    import signal
+    import threading
+
+    from goldberg_system.ingest import (
+        IngestProcessor,
+        build_commit_processor,
+        make_health_server,
+        run_catchup,
+    )
+    from goldberg_system.messaging import (
+        MessagingConfig,
+        connect,
+        ensure_stream,
+        pull_consumer,
+    )
+
+    (
+        raw_root, manifest_path, allowlist, docling, enricher, indexer,
+        event_sink, already_indexed,
+    ) = _build_ingest_deps(index_override)
+
+    cfg = dataclasses.replace(
+        MessagingConfig.from_env(), durable=durable, max_deliver=max_deliver
+    )
+
+    # One bounded startup catch-up (no loop) — closes gaps from downtime.
+    catchup_report = None
+    if not no_catchup:
+        click.echo("running startup catch-up …")
+        catchup_report = run_catchup(
+            raw_root=raw_root,
+            manifest_path=manifest_path,
+            allowlist=allowlist,
+            docling=docling,
+            enricher=enricher,
+            sinks=[indexer],
+            already_indexed=already_indexed,
+            events=event_sink,
+            batch=batch,
+            workers=workers,
+        )
+        click.echo(catchup_report.summary_line())
+
+    process_commit = build_commit_processor(
+        raw_root=raw_root,
+        manifest_path=manifest_path,
+        allowlist=allowlist,
+        docling=docling,
+        enricher=enricher,
+        sinks=[indexer],
+        already_indexed=already_indexed,
+        events=event_sink,
+        workers=workers,
+    )
+
+    async def _serve() -> None:
+        conn = await connect(cfg)
+        await ensure_stream(conn.js, cfg)
+        consumer = await pull_consumer(conn.js, cfg)
+        processor = IngestProcessor(
+            consumer=consumer,
+            process_commit=process_commit,
+            max_deliver=cfg.max_deliver,
+            events=event_sink,
+            batch=batch,
+        )
+
+        if health_port:
+            def payload() -> dict:  # type: ignore[type-arg]
+                from dataclasses import asdict
+
+                catchup_dict = None
+                degraded = False
+                if catchup_report is not None:
+                    catchup_dict = asdict(catchup_report)
+                    # `degraded` is a property (not a field) so asdict omits it — add
+                    # it explicitly so a startup backlog is visible on /health (FR-007).
+                    catchup_dict["degraded"] = catchup_report.degraded
+                    degraded = catchup_report.degraded
+                return {
+                    "status": "degraded" if degraded else "ok",
+                    "durable": cfg.durable,
+                    "handled": processor.handled,
+                    "dead_lettered": processor.dead_lettered,
+                    "last_activity": processor.last_activity,
+                    "catchup": catchup_dict,
+                }
+
+            server = make_health_server(payload, port=health_port)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            click.echo(f"health endpoint: GET :{health_port}/health")
+
+        stop = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            try:
+                loop.add_signal_handler(sig, stop.set)
+            except (NotImplementedError, RuntimeError):  # pragma: no cover
+                pass
+
+        click.echo(
+            f"consuming {cfg.commit_subject} (durable={cfg.durable}, "
+            f"max_deliver={cfg.max_deliver}) → {indexer.index}"
+        )
+        try:
+            await processor.run_forever(should_stop=stop.is_set)
+        finally:
+            await conn.close()
+
+    asyncio.run(_serve())
+
+
+@main.command("publish-commit")
+@click.argument("sha")
+@click.option(
+    "--source", default="post-commit", show_default=True,
+    help="Producer identifier recorded on the event.",
+)
+def publish_commit_cmd(sha, source) -> None:  # type: ignore[no-untyped-def]
+    """Publish one raw-commit trigger onto JetStream (used by the git post-commit hook).
+
+    Exits non-zero on failure so a git hook can surface a broker problem (the hook
+    itself tolerates a non-zero exit and does not block the commit).
+    """
+    import asyncio
+
+    from goldberg_system.messaging import (
+        MessagingConfig,
+        connect,
+        ensure_stream,
+        publish_commit,
+    )
+    from goldberg_system.provenance import now_iso
+
+    cfg = MessagingConfig.from_env()
+
+    async def _pub() -> None:
+        conn = await connect(cfg)
+        try:
+            await ensure_stream(conn.js, cfg)
+            await publish_commit(conn.js, cfg, sha, now_iso(), source)
+        finally:
+            await conn.close()
+
+    try:
+        asyncio.run(_pub())
+    except Exception as exc:  # noqa: BLE001 - report + non-zero exit for the hook
+        raise SystemExit(f"publish-commit failed: {exc}") from exc
+    click.echo(f"published commit {sha} to {cfg.commit_subject}")
+
+
+@main.group()
+def ingest() -> None:
+    """Event-driven ingest maintenance (catch-up)."""
+
+
+@ingest.command("catchup")
+@click.option(
+    "--batch", default=50, show_default=True,
+    help="Max documents ingested in the pass (bounds CPU).",
+)
+@click.option(
+    "--workers", default=2, show_default=True, help="Concurrent documents."
+)
+@click.option(
+    "--index", "index_override", default=None,
+    help="Target index (e.g. goldberg_documents_test for isolated testing).",
+)
+def ingest_catchup(batch, workers, index_override) -> None:  # type: ignore[no-untyped-def]
+    """Run ONE bounded catch-up pass over goldberg-raw, then exit (no loop)."""
+    from goldberg_system.ingest import run_catchup
+
+    (
+        raw_root, manifest_path, allowlist, docling, enricher, indexer,
+        event_sink, already_indexed,
+    ) = _build_ingest_deps(index_override)
+
+    report = run_catchup(
+        raw_root=raw_root,
+        manifest_path=manifest_path,
+        allowlist=allowlist,
+        docling=docling,
+        enricher=enricher,
+        sinks=[indexer],
+        already_indexed=already_indexed,
+        events=event_sink,
+        batch=batch,
+        workers=workers,
+    )
+    click.echo(report.summary_line())
 
 
 if __name__ == "__main__":
