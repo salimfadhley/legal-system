@@ -1167,6 +1167,18 @@
     "sha256": "0f2a626d67883e013207ef6688e4a7920563aafd5203986b044a5e4242c533da",
     "size": 404
   },
+  "0f4dd380e185f8d731901cda9872d2e046232f48f16ff5e452d21356a0abe06e": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "f4b6d068bab17c2b7849ab276034117cc4ff8332",
+    "raw_path": "reports/case_contacts_directory.md",
+    "sha256": "0f4dd380e185f8d731901cda9872d2e046232f48f16ff5e452d21356a0abe06e",
+    "size": 4717
+  },
   "0f73674a00c6010c2258f4e090b4a430af8e18adaa4b48767ef587157f9d8f85": {
     "document_type": null,
     "matters": [],
@@ -6395,6 +6407,18 @@
     "sha256": "5b7ef0d5889f37b6ee96b7f89c88659704874e48fd45bc18589a1afe80049649",
     "size": 616
   },
+  "5b90d459accfb46fc5c38cb472a07fb6351afe6b4320631090e2394a4839cd3a": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "",
+    "raw_path": "evidence/empower_the_people/public_website/etp_functions_page.md",
+    "sha256": "5b90d459accfb46fc5c38cb472a07fb6351afe6b4320631090e2394a4839cd3a",
+    "size": 1674
+  },
   "5b91890e27b0ab6979c8d6dd6bac3855766007e672171e53e17ea80bb4dd0dbd": {
     "document_type": "evidence",
     "matters": [
@@ -10112,6 +10136,18 @@
     "raw_path": "evidence/deacon_v_goldberg/2026_04_20_n244_disclosure_dispute/ocr_goldberg/p-11.png",
     "sha256": "8986c3b95193fbb97b36223ee07880f3013275e1145bec5b649f580b656293d2",
     "size": 3064497
+  },
+  "89abe31d85b37d8c2ce379458608663f0ef1eaf469fea50bdfd75e79978d8583": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "",
+    "raw_path": "evidence/salim_fadhley/emails/20260719_goldberg-describing-prosecution-as-etp-648MC011.md",
+    "sha256": "89abe31d85b37d8c2ce379458608663f0ef1eaf469fea50bdfd75e79978d8583",
+    "size": 4076
   },
   "89ba6fd793b72c1d101e8c664b431f434c96bdb1f2786aef6bd2d39b469dd0b3": {
     "document_type": null,
@@ -14777,6 +14813,18 @@
     "sha256": "c52123c6a170e954f490550f62cef47cc772feda1bc6660bdfd3cb56145d3cc4",
     "size": 24334
   },
+  "c52d3ca6383a978d3ad2e2fffdc4ea89d0b7acb3984c158317f98d47de633c70": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "e570eb83249d9568517ce0150e599fad43a19868",
+    "raw_path": "reports/INDEX.md",
+    "sha256": "c52d3ca6383a978d3ad2e2fffdc4ea89d0b7acb3984c158317f98d47de633c70",
+    "size": 41455
+  },
   "c55735036e3ac056aaf8358a38e1d8eb036be154a71c56cd44a0e840e74df22e": {
     "document_type": "evidence",
     "matters": [
@@ -15560,6 +15608,18 @@
     "raw_path": "telegram/data/The_Shill_Hunter/media/2025/08/20250806_101011_72.jpg",
     "sha256": "ce879e3be09a804a253443b7f7fa06f4f1c95cb7e1759014eb18631ab655d9cb",
     "size": 37930
+  },
+  "ce96afd863dd0cca027d774d4da475c56789cf31a4ba5474f5ae346b1968caf0": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "co-defendant",
+    "raw_commit": "",
+    "raw_path": "evidence/tracey_edwards/emails/20260614_etp-selling-private-prosecution-access-contempt-concern.md",
+    "sha256": "ce96afd863dd0cca027d774d4da475c56789cf31a4ba5474f5ae346b1968caf0",
+    "size": 2268
   },
   "cea3500d60af7b47f233a45c4fa7ed07432c65f91cdb0a42161be6cd9a9348fb": {
     "document_type": "evidence",
@@ -18267,6 +18327,18 @@
     "sha256": "f181ab2c69a163cb0a94addd4cafaa52446a7cb05a54bf56ec249206a45dbb61",
     "size": 32468
   },
+  "f24e0fe5025816d4c60db0135241cf2b1b662771a0bf217a7eef81ba69195297": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "",
+    "raw_path": "reports/case_contacts_directory.md",
+    "sha256": "f24e0fe5025816d4c60db0135241cf2b1b662771a0bf217a7eef81ba69195297",
+    "size": 4632
+  },
   "f2641775421e561ea2f8a9cb6e9815f3972344c9d65a0097032d20e6294c84b4": {
     "document_type": "evidence",
     "matters": [
@@ -18794,6 +18866,18 @@
     "raw_path": "analysis/2025_12_04_witness_statement_analysis/sections/07_evidentiary_issues.tex",
     "sha256": "faa9cbf1314fbf729f2347e5aa95baa4b177e84874da08e041927deec2f1297c",
     "size": 14469
+  },
+  "fab1c626711ab16cad41fd3cfe1bb5d01ef55de7fc5d60b8fc60982400f2f214": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "",
+    "raw_path": "reports/private_prosecution/2026-07-23_oppressive_evidence_format_authority.md",
+    "sha256": "fab1c626711ab16cad41fd3cfe1bb5d01ef55de7fc5d60b8fc60982400f2f214",
+    "size": 30443
   },
   "fab2a12b00bb693d26e70e38801026c0b191fecfb4a5c3dd251c8b85097b9c16": {
     "document_type": "evidence",

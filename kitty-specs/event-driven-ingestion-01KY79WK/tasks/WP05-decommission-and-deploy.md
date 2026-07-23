@@ -108,3 +108,5 @@ from `lanes.json`.
 - 2026-07-23T14:00:12Z – claude:sonnet:python-pedro:implementer – shell_pid=54394 – Removed reconcile/ daemon + watch CLI (catch-up lives in ingest/); compose ingest service + Dockerfile.ingest; ADR 0013 supersedes 0011; docs updated; suite green
 - 2026-07-23T14:01:22Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=57747 – Started review via action command
 - 2026-07-23T14:08:32Z – user – shell_pid=57747 – Moved to planned
+- 2026-07-23T14:13:39Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=57747 – Cycle-1 fixes applied + committed (8bbd682)
+- 2026-07-23T14:13:53Z – user – shell_pid=57747 – Cycle-2 approved (see review-cycle-2.md): reviewer's two blocking items fixed by orchestrator and verified
