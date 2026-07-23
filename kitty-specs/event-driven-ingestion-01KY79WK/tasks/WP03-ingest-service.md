@@ -23,7 +23,7 @@ subtasks:
 - T014
 - T015
 agent: "claude:sonnet:reviewer-renata:reviewer"
-shell_pid: "42704"
+shell_pid: "52605"
 history:
 - created by /spec-kitty.tasks
 agent_profile: python-pedro
@@ -154,3 +154,7 @@ from `lanes.json` at implement time.
 - 2026-07-23T12:42:16Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=42704 – Started review via action command
 - 2026-07-23T12:47:01Z – user – shell_pid=42704 – Review passed: reuses process_one (no forked extract/enrich/index); provenance refreshed before index; ack ONLY after all files terminal-ok (crash mid-commit redelivers, already-indexed skip idempotently via skipped-indexed); nak<max_deliver then term+DLQ failed event; catch-up is one bounded pass (no loop); ack_wait configurable via GOLDBERG_NATS_ACK_WAIT and premature redelivery is idempotency-safe; CLI ingest-serve/publish-commit/ingest catchup live; 33 unit tests pass, integration skips without GOLDBERG_INTEGRATION, ruff clean.
 - 2026-07-23T13:08:50Z – user – shell_pid=42704 – Moved to planned
+- 2026-07-23T13:09:36Z – claude:sonnet:python-pedro:implementer – shell_pid=50390 – Started implementation via action command
+- 2026-07-23T13:22:09Z – claude:sonnet:python-pedro:implementer – shell_pid=50390 – Cycle-2 fixes: FIX1 nak-not-ack on unresolved/merge/git-fail (+merge -m), FIX2 ack_wait 300s + nak backoff, FIX3 catch-up drains/surfaces backlog; new tests green; ruff 0
+- 2026-07-23T13:23:18Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=52605 – Started review via action command
+- 2026-07-23T13:30:40Z – user – shell_pid=52605 – Cycle-2 approved: FIX1 nak-not-ack + merge -m verified empirically, FIX2 ack_wait 300s+backoff, FIX3 backlog surfaced via remaining_pending/degraded; 43 ingest+messaging tests green, 18 WP02 messaging tests green, ruff clean

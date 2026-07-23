@@ -14,7 +14,8 @@ subtasks:
 - T019
 - T020
 - T021
-agent: claude
+agent: "claude:sonnet:reviewer-renata:reviewer"
+shell_pid: "57747"
 history:
 - created by /spec-kitty.tasks
 agent_profile: curator-carla
@@ -100,3 +101,10 @@ from `lanes.json`.
   confirm `ingest/catchup.py` fully covers the extracted diff and WP03 is merged.
 - **Risk**: stale doc references to `goldberg watch`. Reviewer: grep docs for
   `watch`/`reconciler` and confirm they're updated.
+
+## Activity Log
+
+- 2026-07-23T13:38:34Z – claude:sonnet:python-pedro:implementer – shell_pid=54394 – Assigned agent via action command
+- 2026-07-23T14:00:12Z – claude:sonnet:python-pedro:implementer – shell_pid=54394 – Removed reconcile/ daemon + watch CLI (catch-up lives in ingest/); compose ingest service + Dockerfile.ingest; ADR 0013 supersedes 0011; docs updated; suite green
+- 2026-07-23T14:01:22Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=57747 – Started review via action command
+- 2026-07-23T14:08:32Z – user – shell_pid=57747 – Moved to planned

@@ -101,3 +101,4 @@ from `lanes.json`.
 - 2026-07-23T12:48:37Z – claude:sonnet:python-pedro:implementer – shell_pid=44488 – Assigned agent via action command
 - 2026-07-23T12:57:43Z – claude:sonnet:python-pedro:implementer – shell_pid=44488 – post-commit/post-merge hooks (always exit 0, FR-002) + wiring runbook (core.hooksPath, verify, FF-pull gap, 'goldberg ingest catchup' escape hatch, PATH/venv note); hook-shape test green (17 passed)
 - 2026-07-23T13:09:00Z – claude:sonnet:reviewer-renata:reviewer – shell_pid=49870 – Started review via action command
+- 2026-07-23T13:11:54Z – user – shell_pid=49870 – Review passed: hooks always exit 0 (no set -e, || logger, verified by failing-stub behavioral test); tree mode 100755; correct --source per hook; bash -n clean; runbook covers core.hooksPath/empty-commit/FF-pull+catchup/escape-hatch/PATH; 17 tests pass, ruff clean
