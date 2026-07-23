@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "mission_slug": "event-driven-ingestion-01KY79WK",
+  "mission_id": "01KY79WKXTF5KQYBTZMJ78T3R0",
+  "mission_branch": "kitty/mission-event-driven-ingestion-01KY79WK",
+  "target_branch": "feat/goldberg-nats-es-archive",
+  "lanes": [
+    {
+      "lane_id": "lane-a",
+      "wp_ids": [
+        "WP01"
+      ],
+      "write_scope": [
+        "pyproject.toml",
+        "src/goldberg_system/enrichment/openai_enricher.py",
+        "tests/unit/test_enrichment_token_safety.py"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "legacy-cleanup",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-b",
+      "wp_ids": [
+        "WP02"
+      ],
+      "write_scope": [
+        "src/goldberg_system/messaging/**",
+        "tests/unit/test_messaging_client.py",
+        "tests/unit/test_messaging_publisher.py"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "tests",
+        "tracker-integration"
+      ],
+      "depends_on_lanes": [],
+      "parallel_group": 0
+    },
+    {
+      "lane_id": "lane-c",
+      "wp_ids": [
+        "WP03"
+      ],
+      "write_scope": [
+        "src/goldberg_system/cli.py",
+        "src/goldberg_system/ingest/**",
+        "tests/integration/test_ingest_e2e.py",
+        "tests/unit/test_ingest_catchup.py",
+        "tests/unit/test_ingest_commit_files.py",
+        "tests/unit/test_ingest_processor.py"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "legacy-cleanup",
+        "tests"
+      ],
+      "depends_on_lanes": [
+        "lane-a",
+        "lane-b"
+      ],
+      "parallel_group": 1
+    },
+    {
+      "lane_id": "lane-d",
+      "wp_ids": [
+        "WP04"
+      ],
+      "write_scope": [
+        "doc/runbooks/wiring-the-ingest-trigger.md",
+        "hooks/**"
+      ],
+      "predicted_surfaces": [
+        "api"
+      ],
+      "depends_on_lanes": [
+        "lane-c"
+      ],
+      "parallel_group": 2
+    },
+    {
+      "lane_id": "lane-f",
+      "wp_ids": [
+        "WP06"
+      ],
+      "write_scope": [
+        "doc/verification/**"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "artifact-rendering"
+      ],
+      "depends_on_lanes": [
+        "lane-a",
+        "lane-c"
+      ],
+      "parallel_group": 2
+    },
+    {
+      "lane_id": "lane-e",
+      "wp_ids": [
+        "WP05"
+      ],
+      "write_scope": [
+        "deploy/**",
+        "doc/decisions/0011-auto-ingestion-reconciler.md",
+        "doc/decisions/0012-deployment-topology.md",
+        "doc/decisions/0013-event-driven-ingestion.md",
+        "doc/runbooks/auto-ingestion-reconciler.md",
+        "src/goldberg_system/reconcile/**"
+      ],
+      "predicted_surfaces": [
+        "api",
+        "legacy-cleanup",
+        "tests"
+      ],
+      "depends_on_lanes": [
+        "lane-c",
+        "lane-d"
+      ],
+      "parallel_group": 3
+    }
+  ],
+  "computed_at": "2026-07-23T11:10:56.460343+00:00",
+  "computed_from": "dependency_graph+ownership",
+  "planning_artifact_wps": []
+}

@@ -7,7 +7,7 @@ requirement_refs:
 tracker_refs: []
 planning_base_branch: feat/goldberg-nats-es-archive
 merge_target_branch: feat/goldberg-nats-es-archive
-branch_strategy: feature-branch
+branch_strategy: Planning artifacts for this mission were generated on feat/goldberg-nats-es-archive. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into feat/goldberg-nats-es-archive unless the human explicitly redirects the landing branch.
 subtasks:
 - T001
 - T002
@@ -19,7 +19,8 @@ history:
 - created by /spec-kitty.tasks
 agent_profile: python-pedro
 authoritative_surface: src/goldberg_system/enrichment/
-create_intent: []
+create_intent:
+- tests/unit/test_enrichment_token_safety.py
 execution_mode: code_change
 owned_files:
 - src/goldberg_system/enrichment/openai_enricher.py

@@ -9,7 +9,7 @@ requirement_refs:
 tracker_refs: []
 planning_base_branch: feat/goldberg-nats-es-archive
 merge_target_branch: feat/goldberg-nats-es-archive
-branch_strategy: feature-branch
+branch_strategy: Planning artifacts for this mission were generated on feat/goldberg-nats-es-archive. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into feat/goldberg-nats-es-archive unless the human explicitly redirects the landing branch.
 subtasks:
 - T022
 - T023
@@ -18,11 +18,12 @@ agent: claude
 history:
 - created by /spec-kitty.tasks
 agent_profile: reviewer-renata
-authoritative_surface: kitty-specs/event-driven-ingestion-01KY79WK/verification/
-create_intent: []
-execution_mode: planning_artifact
+authoritative_surface: doc/verification/
+create_intent:
+- doc/verification/event-driven-ingestion-results.md
+execution_mode: code_change
 owned_files:
-- kitty-specs/event-driven-ingestion-01KY79WK/verification/**
+- doc/verification/**
 role: reviewer
 tags: []
 ---
@@ -65,7 +66,7 @@ artifact under the mission.
 - Confirm **no** `reconcile-heartbeat` events accrue while idle (poll gone, NFR-002).
 
 ### T024 — Record evidence
-- Write `kitty-specs/event-driven-ingestion-01KY79WK/verification/results.md`:
+- Write `doc/verification/event-driven-ingestion-results.md`:
   the commands run, their output (audit %, status health, traces), timestamps, and
   a PASS/FAIL against SC-005 (100% coverage + healthy) and SC-002 (no idle polling).
 

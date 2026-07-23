@@ -15,7 +15,7 @@ requirement_refs:
 tracker_refs: []
 planning_base_branch: feat/goldberg-nats-es-archive
 merge_target_branch: feat/goldberg-nats-es-archive
-branch_strategy: feature-branch
+branch_strategy: Planning artifacts for this mission were generated on feat/goldberg-nats-es-archive. During /spec-kitty.implement this WP may branch from a dependency-specific base, but completed changes must merge back into feat/goldberg-nats-es-archive unless the human explicitly redirects the landing branch.
 subtasks:
 - T011
 - T012
@@ -27,7 +27,15 @@ history:
 - created by /spec-kitty.tasks
 agent_profile: python-pedro
 authoritative_surface: src/goldberg_system/ingest/
-create_intent: []
+create_intent:
+- src/goldberg_system/ingest/__init__.py
+- src/goldberg_system/ingest/commit_files.py
+- src/goldberg_system/ingest/processor.py
+- src/goldberg_system/ingest/catchup.py
+- tests/unit/test_ingest_commit_files.py
+- tests/unit/test_ingest_processor.py
+- tests/unit/test_ingest_catchup.py
+- tests/integration/test_ingest_e2e.py
 execution_mode: code_change
 owned_files:
 - src/goldberg_system/ingest/**
