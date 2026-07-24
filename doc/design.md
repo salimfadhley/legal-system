@@ -1,6 +1,18 @@
 # Design — corpus model, metadata schema, and ingestion
 
-This is the technical backbone the pipeline missions are sliced from. It builds on
+> **HISTORICAL — this is the record of the 2026-07-20 design session, not the current
+> state of the system.** It is preserved because it explains *why* the corpus model and
+> metadata schema are shaped as they are, and that reasoning still holds. But the
+> pipeline described in §5–§6 (a filesystem watcher, a per-mime extractor set, the
+> `goldberg_files` index) was superseded during implementation, and the "open decisions"
+> in §10 were all decided.
+>
+> **For the current system, read [`architecture.md`](./architecture.md)** — the canonical
+> technical description. Sections still accurate here: §1 (purpose), §2 (two-axis
+> taxonomy), §3 (the document unit), §4 (metadata schema), §7 (claim-aware enrichment),
+> §11 (data boundary). Corrections are marked inline below.
+
+This is the technical backbone the pipeline missions were sliced from. It built on
 [architecture.md](./architecture.md) (four-repo topology + Halob) and
 [workflow.md](./workflow.md) (the per-document pipeline), and records the design
 decisions taken in the 2026-07-20 design session.
@@ -110,6 +122,13 @@ multi-valued `matters` list. Known matters:
 
 ## 5. Two ingest paths
 
+> **SUPERSEDED.** The stage *shape* below (extract → enrich → persist → index) survived,
+> but the extractor set did not: extraction is a single call to a self-hosted **Docling**
+> server, not a per-mime dispatch to pdftotext/tesseract/pandoc, and the index is
+> `goldberg_documents`, not `goldberg_files`. See
+> [architecture.md §5](./architecture.md#5-the-ingestion-path-write-side) and
+> [§7](./architecture.md#7-why-docling--and-not-the-alternatives).
+
 Both paths converge on the same enrich + index stages and the same RAG.
 
 ```
@@ -137,6 +156,15 @@ B. Input passthrough (authored inputs already in markdown: reports, analysis)
 Authored outputs (`briefings`, `filings`) ride neither path — they are deliverables.
 
 ## 6. Trigger behaviour
+
+> **SUPERSEDED — the trigger is a git commit hook publishing to NATS, not a filesystem
+> watcher.** A filesystem watcher was rejected on implementation: the corpus is on an
+> SMB-mounted NAS where change notifications are unreliably delivered, and a silently
+> missed event is an invisible hole in a legal corpus. The properties listed below
+> (per-document scope, idempotency, safe/non-looping, raw is never written) all survived
+> and are still true. Full reasoning, including the intermediate polling design and why
+> it was retired: [architecture.md §6](./architecture.md#6-why-trigger-not-poll) and
+> [ADR 0013](./decisions/0013-event-driven-ingestion.md).
 
 The corpus lives on Halob **specifically so file changes can trigger the
 pipeline** — the trigger is a **Halob-local filesystem watcher**, not a GitHub
@@ -178,13 +206,18 @@ The enrichment engine is reused, not reinvented, from Mind of Steele
 linkage; MoS already does summarise + claim-extract + Elasticsearch chunk/index +
 Ragie upload. Exact module names are mapped when wiring the enrich mission (M3).
 
-## 10. Open decisions (for the M0 spike)
+## 10. Open decisions (for the M0 spike) — **all now closed**
 
-- **Wiki sink**: Ragie (managed RAG; cloud permitted) vs Obsidian vault vs
-  RAG-on-Elasticsearch.
-- **Large binaries** in goldberg-raw: plain git vs git-LFS.
-- *(Resolved: trigger locus = Halob-local filesystem watcher. Data boundary =
-  cloud LLM/Ragie permitted as a logged exception.)*
+- **Wiki sink** → **RAG on Elasticsearch** ([ADR 0001](./decisions/0001-wiki-rag-sink-backend.md)).
+  Ragie was rejected: managed chunking weakens attribution fidelity and cannot express
+  cross-document claim comparison. Obsidian is a browse surface, not a retrieval engine.
+- **Large binaries** → **selective git-LFS** via `.gitattributes`
+  ([ADR 0002](./decisions/0002-large-binary-handling.md)); media excluded from the raw
+  repo entirely.
+- **Trigger locus** → **git commit hook → NATS**, not a filesystem watcher
+  ([ADR 0013](./decisions/0013-event-driven-ingestion.md)) — see §6 above.
+- **Data boundary** → cloud LLM permitted as a **logged charter exception** (still true;
+  Ragie is not used).
 
 ## 11. Data boundary
 

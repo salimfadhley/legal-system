@@ -1,6 +1,16 @@
 # ADR 0008 — Observability: event backbone, dead-letter queue, reconciliation (M12)
 
-**Status:** Proposed (spec for mission M12) · **Date:** 2026-07-21
+**Status:** **Accepted — core delivered** (phases 1–3; phase 4 reduced) · **Date:** 2026-07-21
+
+> **Built, with one deviation from the design below.** The event model, the ES projection
+> (`goldberg_pipeline_events`), reconciliation (`goldberg audit`), `trace`, `status`,
+> `dlq`, and the `doctor` component-health board are all built and in use. The deviation:
+> events are written **directly** to the Elasticsearch projection rather than through the
+> JetStream stream set described in §2; the dead-letter queue is realised on the ingest
+> consumer's nak/term semantics ([ADR 0013](./0013-event-driven-ingestion.md)) rather than
+> via `$JS.EVENT.ADVISORY` routing. The §2 design remains the target if durability of the
+> event stream itself becomes a requirement. §7 (OpenTelemetry) remains unbuilt by choice.
+> Current state: [architecture.md §12](../architecture.md#12-observability).
 
 ## Context
 

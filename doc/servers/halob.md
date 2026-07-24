@@ -11,11 +11,13 @@ Halob is the home NAS that runs the entire platform.
 
 | Service | Endpoint | Use |
 |---|---|---|
-| Elasticsearch | `http://halob:9200` (index `goldberg_files`) | search index |
-| NATS | `nats://halob:4222` (UI `:31311`) | trigger / event bus |
-| Docker + Portainer | `:19943` | runs the `live-index` service |
-| Copyparty / Syncthing | `:3923` / `:28384` | optional file-drop inbox |
-| Obsidian | vault at `/share/Docker/Obsidian/config` (`:8780/:8781`) | candidate LLM-wiki sink |
+| Elasticsearch | `http://halob:9200` | The corpus (`goldberg_documents`), the event log (`goldberg_pipeline_events`), the wiki index (`silverbullet-goldberg`). `goldberg_files` is the **frozen legacy** index — not used by this pipeline. |
+| NATS + JetStream | `nats://halob:4222` (UI `:31311`) | Stream `GOLDBERG`, subject `goldberg.raw.commit` — the ingest trigger |
+| Docker + Portainer | `:19943` | Runs the processing stack: `docling` (`:5001`), `ingest` (`/health` on `:8098`), `mcp` (`:8765`) |
+| SilverBullet | `:3100` | The concept-wiki space |
+| Copyparty / Syncthing | `:3923` / `:28384` | Optional file-drop inbox |
+
+Elasticsearch and NATS are **shared, stateful infrastructure** that outlives any redeploy; the processing services are stateless and portable ([ADR 0012](../decisions/0012-deployment-topology.md)).
 
 The project checkouts live under `/Volumes/Home/work/project_goldberg/` (Halob `/share/home/.../work/project_goldberg/`).
 

@@ -1,6 +1,11 @@
 # Workflow — what happens to a document when it is ingested
 
-This is the end-to-end pipeline, framed as: *you tell an LLM (or yourself) to ingest some content — what happens to it.*
+This is the pipeline framed from the **document author's** point of view: *you tell an
+LLM (or yourself) to ingest some content — what happens to it, and what you are
+responsible for.*
+
+For the full technical description — component contracts, external dependencies, and the
+reasoning behind each choice — see [`architecture.md`](./architecture.md).
 
 ## The contract: the LLM's job ends at "raw + push"
 
@@ -12,40 +17,51 @@ When told to ingest content, the agent:
 
 1. Takes the raw content (uploaded file, email, URL, pasted text).
 2. Determines provenance — source, date, party, case number, and handling flags (e.g. **CPIA s.17**, sensitivity, obtained-via-unofficial-channel).
-3. Writes the **original, unmodified** file into `goldberg-raw/…` at the conventional path, plus a `metadata.yaml` capturing that provenance.
-4. `git add` → commit (descriptive message) → **push**.
+3. Writes the **original, unmodified** file into `goldberg-raw/…` at the conventional path, plus a folder-level `metadata.yaml` capturing that provenance.
+4. `git add` → commit (descriptive message).
 5. **Done.** The agent walks away; it does not wait for or perform indexing.
+
+The file must land in a tree named in [`config/evidence-allowlist.yaml`](../config/evidence-allowlist.yaml) — anything outside those trees is deliberately ignored.
 
 ## What then happens automatically
 
 ```
-goldberg-raw push
+git commit in goldberg-raw
       │
       ▼
-[1] TRIGGER  ── hook/watcher on the Halob clone → NATS event  goldberg.raw.ingested
-      │        (payload: path, commit sha, mime type, metadata)
+[1] TRIGGER  ── post-commit / post-merge hook → `goldberg publish-commit <sha>`
+      │        → NATS JetStream, subject  goldberg.raw.commit  (payload: {sha, ts, source})
+      │        The hook NEVER fails git: a broker outage costs a trigger, not a commit.
       ▼
-[2] EXTRACT → markdown   (live-index service dispatches by type)
-      │   PDF-text→pdftotext · PDF-scan→OCR(tesseract) · .eml→eml-to-md · docx→pandoc · url→readability · txt→passthrough
-      ▼
-[3] ENRICH   (reuse Mind of Steele llm_support)
-      │   summary + keywords + entities → assemble markdown with YAML frontmatter
-      ▼
-[4] PERSIST → goldberg-extracted   (bot commit; mirrors the raw path; links back to source commit)
+[2] CONSUME  ── durable pull consumer `ingest-processor` (survives service downtime)
       │
-      ├──▶ [5] INDEX → Elasticsearch (goldberg_files)   (MoS chunker + indexer; deterministic doc-id)
-      │
-      └──▶ [6] WIKI  → RAG sink (Ragie / Obsidian / vector store)
       ▼
-[7] DONE → emit goldberg.indexed event / log; the document is now searchable + queryable
+[3] PROVENANCE FIRST ── register sha256 → {raw_path, raw_commit, matters} in the manifest
+      │                 BEFORE anything is indexed. No provenance, no index entry.
+      ▼
+[4] RESOLVE  ── `git` names exactly which allowlisted files this commit changed
+      ▼
+[5] EXTRACT → markdown   (self-hosted Docling, async submit/poll; text & .csv/.json pass through)
+      ▼
+[6] ENRICH   (OpenAI gpt-4o-mini → summary, entities, author, attributed CLAIMS)
+      ▼
+[7] SINKS    ├──▶ Elasticsearch `goldberg_documents`  (deterministic doc-id; claims nested)
+             ├──▶ goldberg-extracted  (markdown + YAML frontmatter, mirroring the raw path)
+             └──▶ concept wiki  (renderer built; automatic synthesis not yet wired)
+      ▼
+[8] DONE → the document is searchable, quotable and attributed.
+           Every stage emitted an event to `goldberg_pipeline_events`.
+           Ack only when every file is terminal; otherwise retry, then dead-letter.
 ```
 
 ## Properties baked in
 
-- **Idempotent / reprocessable** — deterministic doc-ids keyed on the raw file, so re-ingesting updates (not duplicates); a `--force` backfill re-runs stages 2–6 over all raw when the model/prompt changes.
-- **Provenance end-to-end** — every extracted doc and ES record links back to the exact raw path + commit sha.
-- **Raw is sacred** — extraction failures never touch `goldberg-raw`; the original is always preserved, and failures dead-letter to a log/NATS subject.
+- **Idempotent / reprocessable** — deterministic doc-ids keyed on the raw file, so re-ingesting updates (not duplicates); a redelivered or replayed commit re-ingests nothing new.
+- **Provenance end-to-end** — every extracted doc and ES record links back to the exact raw path + commit sha + content hash, and provenance is recorded *before* indexing.
+- **Raw is sacred** — the pipeline never writes to `goldberg-raw`; extraction failures dead-letter and the original is always preserved.
 - **One-way** — `goldberg-extracted` is written *by* the pipeline and is **not** itself a trigger (no two-hop, no loops).
+- **Nothing is silently dropped** — a commit that cannot be resolved is retried, never acked as "nothing to do"; a backlog the startup catch-up could not reach is reported as degraded health; `goldberg audit` proves expected-vs-actual.
+- **Degrades, doesn't die** — if Docling is down, text files still ingest and OCR files retry; if the enricher is down, one document dead-letters, not the service.
 
 ## Metadata
 
@@ -77,6 +93,11 @@ whom" and surfaces contradictions; `goldberg search` is full-text; `goldberg get
 reads a document; `goldberg facets` orients. Full runbook:
 [runbooks/querying-the-corpus.md](runbooks/querying-the-corpus.md).
 
-## Open decisions
+## Where to read further
 
-See [architecture.md](architecture.md#open-decisions) — wiki sink, trigger locus, large-binary handling.
+- [architecture.md](./architecture.md) — the canonical technical description: components,
+  contracts, external dependencies, and the reasoning behind every significant choice.
+- [runbooks/wiring-the-ingest-trigger.md](./runbooks/wiring-the-ingest-trigger.md) — how a
+  `goldberg-raw` clone is wired to fire the trigger (`core.hooksPath`).
+- [runbooks/verifying-the-system-is-up.md](./runbooks/verifying-the-system-is-up.md) — the
+  operator's acceptance procedure.

@@ -1,6 +1,13 @@
 # ADR 0009 — Operations dashboard: one `SystemState`, two renderers (M13)
 
-**Status:** Proposed (spec for mission M13) · **Date:** 2026-07-21 · **Depends on:** ADR 0008 (M12)
+**Status:** **Accepted — phases 1–2 built** · **Date:** 2026-07-21 · **Depends on:** ADR 0008 (M12)
+
+> **Built:** the canonical `SystemState` + `aggregate()` + the LLM-readable
+> `goldberg status --yaml` (phase 1), and the Streamlit UI (`goldberg dashboard`,
+> phase 2, optional `--extra dashboard`). Phase 3 (deploying the UI as a Halob container)
+> is not done — the dashboard is not part of the compose stack
+> ([ADR 0012](./0012-deployment-topology.md)); the always-on LLM-facing surface is the MCP
+> server instead ([ADR 0010](./0010-mcp-server.md)).
 
 ## Context
 

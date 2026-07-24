@@ -1,6 +1,19 @@
 # ADR 0003 — Document management: integrate the existing Papra (Papra + Docling)
 
-**Status:** Accepted · **Date:** 2026-07-20 · **Mission:** research spike · **Reshapes:** M2, M3, M6, M1
+**Status:** **Partly superseded** · **Date:** 2026-07-20 · **Mission:** research spike · **Reshapes:** M2, M3, M6, M1
+
+> **Partly superseded (2026-07-22/23).** The **Docling** half of this decision stands and
+> is the current extraction engine. The **Papra** half does not: Papra 26.4.0 was found to
+> ignore its Docling configuration and fall back to its slow internal OCR, so M8 moved to
+> calling `docling-serve` **directly** (`reingest_from_raw`). Papra was then retired as a
+> trigger ([ADR 0011](./0011-auto-ingestion-reconciler.md)) and removed from the deployment
+> ([ADR 0012](./0012-deployment-topology.md)). It may remain a human drop-target/viewer,
+> but it is off the ingest path. The `.eml` gap identified below is still real and is
+> covered by our own `extract/eml.py`. Current state:
+> [architecture.md §7](../architecture.md#7-why-docling--and-not-the-alternatives).
+> The rest of this ADR is preserved as the historical record — in particular the reasoning
+> for *why a content-addressed DMS cannot be the system of record* (no commit concept),
+> which is still load-bearing.
 
 ## Context
 
