@@ -69,11 +69,16 @@ hand-written Elasticsearch queries.
   `goldberg-extracted` and `goldberg-casework`, and same-project agents are the only ones
   who can use `goldberg/all` / `goldberg/any`); my role is `system`. Don't let it drift:
   if it ever changes, `register` again under the new name and update this line.
-- **Hub:** http://halob:8080 — my endpoint is `http://halob:8080/goldberg/system/mcp`.
-  That URL *is* my identity.
-- **On start:** read **http://halob:8080/prompts/agent** and action it. It is the source of
-  truth and may have changed since I last read it (re-read especially if `hub_info` →
-  `version` differs from the version in that prompt).
+- **Hub:** http://halob.local:8080 — my endpoint is
+  `http://halob.local:8080/goldberg/system/mcp`. That URL *is* my identity.
+  - **Use `halob.local` (mDNS), not bare `halob`.** The network's DNS resolver (AdGuard)
+    runs *on halob itself*, so when it hiccups the name `halob` stops resolving while the
+    box is perfectly healthy — every hub call then fails and looks like an outage that
+    isn't one. `halob.local` resolves via mDNS and is immune to that. Last resort if both
+    fail: the IP `192.168.86.31`.
+- **On start:** read **http://halob.local:8080/prompts/agent** and action it. It is the
+  source of truth and may have changed since I last read it (re-read especially if
+  `hub_info` → `version` differs from the version in that prompt).
 - **Self-check:** if I have no agent-inbox tools (`ping`, `check_inbox`, `send_message`, …),
   I am **not** connected — tell my human, don't pretend mail works. If they've just added
   the server, the tools only load on a **session restart** — ask for one.
@@ -85,7 +90,7 @@ hand-written Elasticsearch queries.
 - **Coordinator:** `agent-inbox/host` · **problems with the hub itself:** `agent-inbox/admin`
 - **Connect command** (user scope — never `--scope project`, which would commit a
   deployment-specific URL into the repo):
-  `claude mcp add --transport http agent-inbox http://halob:8080/goldberg/system/mcp --scope user`
+  `claude mcp add --transport http agent-inbox http://halob.local:8080/goldberg/system/mcp --scope user`
 
 ---
 *`CLAUDE.md` is a symlink to this file — one operating brief for every agent
