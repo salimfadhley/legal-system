@@ -10,6 +10,7 @@ from goldberg_system.observability.reconcile import (
     Reconciler,
     all_indexed_raw_paths,
     expected_from_manifest,
+    find_orphans,
     reconcile,
 )
 
@@ -88,3 +89,56 @@ def test_reconciler_end_to_end(tmp_path: Path) -> None:
     report = Reconciler(es, "goldberg_documents").run(path)
     assert report.missing == ["evidence/b.pdf"]
     assert report.matched == ["evidence/a.pdf"]
+
+
+# --- orphan detection: the deletion axis the join can't see -------------------
+
+
+def test_find_orphans_flags_deleted_source_still_indexed(tmp_path: Path) -> None:
+    """A manifest entry whose raw file is gone but whose ES doc survives → orphan."""
+    raw = tmp_path / "raw"
+    (raw / "evidence").mkdir(parents=True)
+    (raw / "evidence" / "a.pdf").write_text("present")  # a exists; b was deleted
+    expected = {
+        "evidence/a.pdf": {"sha256": "sha_a"},
+        "evidence/b.pdf": {"sha256": "sha_b"},
+    }
+    indexed = {"evidence/a.pdf": "gb_a", "evidence/b.pdf": "gb_b"}
+    report = find_orphans(expected, raw, indexed)
+    assert report.checked == 2
+    assert not report.clean
+    assert [o.raw_path for o in report.orphans] == ["evidence/b.pdf"]
+    orphan = report.orphans[0]
+    assert orphan.indexed and orphan.doc_id == "gb_b"  # expungeable from ES
+    assert orphan.sha256 == "sha_b"
+    assert report.indexed_orphans == report.orphans
+
+
+def test_find_orphans_clean_when_all_present(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    (raw / "evidence").mkdir(parents=True)
+    (raw / "evidence" / "a.pdf").write_text("present")
+    report = find_orphans({"evidence/a.pdf": {"sha256": "sha_a"}}, raw, {})
+    assert report.clean and report.orphans == []
+
+
+def test_find_orphans_manifest_only_when_no_es_doc(tmp_path: Path) -> None:
+    """Source deleted AND no ES doc → still an orphan, but not expungeable."""
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    report = find_orphans({"evidence/gone.pdf": {"sha256": "s"}}, raw, indexed={})
+    assert not report.clean
+    assert report.orphans[0].indexed is False
+    assert report.orphans[0].doc_id is None
+    assert report.indexed_orphans == []
+
+
+def test_reconcile_reports_complete_while_orphan_hides(tmp_path: Path) -> None:
+    """The whole point: the join says COMPLETE, --orphans catches the deletion."""
+    raw = tmp_path / "raw"
+    raw.mkdir()  # the source file was deleted → not on disk
+    expected = {"evidence/deleted.pdf": {"sha256": "s", "matters": ["M1"]}}
+    indexed = {"evidence/deleted.pdf": "gb_x"}  # manifest + index still agree
+    assert reconcile(expected, indexed).complete  # join is blind to the deletion
+    orphans = find_orphans(expected, raw, indexed)  # the axis that isn't
+    assert not orphans.clean and orphans.orphans[0].doc_id == "gb_x"

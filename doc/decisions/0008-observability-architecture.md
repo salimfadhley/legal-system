@@ -91,6 +91,17 @@ Report **missing** (expected − actual), **extra** (actual − expected), **sta
 projection / DLQ to attach the last-known stage + reason. This is the direct answer
 to "is there something that did not ingest?".
 
+> **Amendment (2026-07-25) — the orphan axis.** The join above compares two sets
+> (manifest, index) and is therefore blind to a *third* source of truth: the raw tree on
+> disk. A document **deleted from goldberg-raw** survives in both the manifest and the
+> index (the pipeline has no delete path — a deletion commit is acked as a zero-file
+> no-op), so it still "matches" and the corpus reports COMPLETE. Established empirically
+> by the deletion probe of 2026-07-25. Closed by **`goldberg audit --orphans`**
+> (`reconcile.find_orphans`), which checks each manifest `raw_path` against the actual raw
+> tree and flags every one whose file is gone, marking which still have an ES `doc_id` to
+> expunge (indexed orphan) vs. provenance-only entries for pruned media (manifest-only).
+> See `doc/architecture.md` §12/§14 for the current truth.
+
 ### 4a. Correlation ID — the raw SHA-256 (preserved in metadata)
 
 **Decision: the raw file's SHA-256 is the pipeline's preservable correlation ID**, and

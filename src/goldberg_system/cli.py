@@ -216,17 +216,32 @@ def facets() -> None:
     is_flag=True,
     help="List indexed raw_paths not in the manifest.",
 )
-def audit(manifest_path, show_missing, show_extra) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--orphans",
+    "check_orphans",
+    is_flag=True,
+    help="Also flag documents whose source file was deleted from goldberg-raw "
+    "(manifest raw_path no longer on disk) — the deletions the join can't see.",
+)
+def audit(manifest_path, show_missing, show_extra, check_orphans) -> None:  # type: ignore[no-untyped-def]
     """Reconcile the corpus: expected (manifest) vs actual (index) → what did not ingest.
 
     Completeness is a correctness property for a legal corpus (ADR 0008): a document
     that never ingested is an invisible hole. This joins on raw_path and reports the
     gap.
+
+    ``--orphans`` adds the third axis the manifest-vs-index join is blind to: a document
+    *deleted* from goldberg-raw survives in both the manifest and the index (a deletion
+    commit is acked as a zero-file no-op), so the plain join reports the corpus COMPLETE
+    while a stale ES document lingers. ``--orphans`` checks each manifest raw_path against
+    the actual raw tree and reports every one whose file is gone.
     """
+    from goldberg_system.config import project_path
     from goldberg_system.observability.reconcile import Reconciler
 
     q = _query()
-    report = Reconciler(q.client, q.index).run(manifest_path)
+    reconciler = Reconciler(q.client, q.index)
+    report = reconciler.run(manifest_path)
     status = "✓ COMPLETE" if report.complete else "✗ GAPS FOUND"
     click.echo(f"{status}")
     click.echo(f"  expected (manifest): {report.expected_count}")
@@ -246,7 +261,21 @@ def audit(manifest_path, show_missing, show_extra) -> None:  # type: ignore[no-u
         click.echo("\nExtra (indexed, not in manifest):")
         for rp in report.extra:
             click.echo(f"  - {rp}")
-    if not report.complete:
+
+    orphans = None
+    if check_orphans:
+        orphans = reconciler.orphans(manifest_path, project_path("raw"))
+        n_indexed = len(orphans.indexed_orphans)
+        ostatus = "✓ NONE" if orphans.clean else "✗ ORPHANS FOUND"
+        click.echo(f"\nOrphans (source deleted from goldberg-raw): {ostatus}")
+        click.echo(f"  manifest entries checked: {orphans.checked}")
+        click.echo(f"  orphaned (file gone):     {len(orphans.orphans)}")
+        click.echo(f"    of which still indexed: {n_indexed}  (expungeable from ES)")
+        for o in orphans.orphans:
+            tag = f"ES _id {o.doc_id}" if o.indexed else "manifest-only (no ES doc)"
+            click.echo(f"  - {o.raw_path}  [{tag}]")
+
+    if not report.complete or (orphans is not None and not orphans.clean):
         raise SystemExit(1)
 
 

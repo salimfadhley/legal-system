@@ -848,6 +848,18 @@ since indexing), and joining the event log to attach each missing document's las
 stage and reason. This is the direct answer to "is there something that did not ingest?"
 — and it is what makes a bulk migration self-verifying.
 
+A **third axis — `goldberg audit --orphans`** — closes a hole the manifest-vs-index join
+cannot see. That join compares two sets (manifest, index) but is blind to a *third* source
+of truth: the raw tree on disk. A document **deleted from goldberg-raw** survives in both
+the manifest and the index (see §14 — the pipeline has no delete path), so the plain join
+still reports it "matched" and the corpus COMPLETE. `--orphans` checks each manifest
+`raw_path` against the actual files in goldberg-raw and reports every one whose source is
+gone, annotating each with the ES `doc_id` when a document still exists to be expunged. It
+distinguishes the dangerous class (**indexed orphan** — a stale ES document whose source
+was removed) from the benign one (**manifest-only** — provenance for a pruned large binary
+that was never indexed anyway, per ADR 0002). Verified 2026-07-25: the live corpus has 36
+manifest-only orphans (all pruned `.mp4`) and **zero indexed orphans**.
+
 ### Component health — `goldberg doctor`
 
 Audit and trace are **data-plane** questions ("did this document ingest?"). They do not
@@ -982,6 +994,19 @@ Stated so that nothing above reads as more complete than it is.
 - **Document versioning.** A content change to an existing file produces a *new*
   `doc_id`; the previous version lingers in the index rather than being superseded. This
   needs a dedup/versioning decision.
+- **Deletion is not propagated — by design, but incompletely guarded.** The pipeline has
+  **no delete path**. A deletion commit resolves to zero ingestable files
+  (`commit_files.changed_files` drops `D`-status paths) and is acked as a no-op; catch-up
+  and `refresh_provenance` only ever *add*; no sink implements delete. So removing a file
+  from goldberg-raw leaves its ES document and manifest entry in place indefinitely. This
+  is the correct default for an immutable evidence corpus (nothing silently vanishes), but
+  it means **there is no supported way to expunge a document** — a legitimate need (e.g.
+  privilege or an order to destroy). Expunging today is manual: `DELETE` the ES doc by
+  `_id` in `goldberg_documents` and remove the manifest entry. Detection *is* now
+  automated — **`goldberg audit --orphans`** flags every manifest `raw_path` whose source
+  file is gone and marks which still have an ES document to expunge (verified against the
+  live corpus 2026-07-25: 36 manifest-only, 0 indexed). Empirically established by the
+  deletion probe of 2026-07-25; a supported `goldberg expunge <doc_id>` remains unbuilt.
 - **Health before catch-up.** `/health` should open before the startup catch-up runs, so
   a long catch-up cannot trip a supervisor. Currently mitigated with a long start-period.
 - **Fast-forward `git pull` fires no hook.** Covered by startup catch-up and `audit`, not
