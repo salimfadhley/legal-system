@@ -78,6 +78,8 @@ uv run goldberg doctor --yaml || echo "pipeline not fully healthy — investigat
 - `goldberg status` — full system overview (health checks + corpus + pipeline + DLQ),
   now with the compact `components:` board.
 - `goldberg trace <raw_path|sha256|doc_id>` — why one *document* did (not) ingest.
-- `goldberg audit --manifest <m.json>` — completeness (did anything not ingest).
+- `goldberg audit --manifest <m.json>` — completeness (did anything not ingest, or get
+  deleted from raw and left behind). Full runbook:
+  [Auditing completeness](./auditing-completeness.md).
 - [ADR 0008 §6b](../decisions/0008-observability-architecture.md) — the design and
   probe semantics.

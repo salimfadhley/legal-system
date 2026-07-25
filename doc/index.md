@@ -26,6 +26,8 @@ analysis platform.
 - [Verifying the system is up](./runbooks/verifying-the-system-is-up.md) — the operator's
   acceptance procedure
 - [Component health](./runbooks/component-health.md) — the `goldberg doctor` board
+- [Auditing completeness](./runbooks/auditing-completeness.md) — `goldberg audit`:
+  missing / extra / stale, and `--orphans` (documents deleted from `goldberg-raw`)
 - [Auto-ingestion reconciler](./runbooks/auto-ingestion-reconciler.md) — *historical*
   (the polling daemon, retired; see ADR 0013)
 - [The live-index service](./runbooks/live-index-service.md) — *historical* (the
