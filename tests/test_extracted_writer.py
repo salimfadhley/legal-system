@@ -46,3 +46,43 @@ def test_overwrite_is_idempotent(tmp_path: Path) -> None:
     writer.write(_doc())
     writer.write(_doc())  # second write must not error
     assert (tmp_path / "evidence/cps/x/msg.eml.md").exists()
+
+
+def _traversal_doc() -> EnrichedDocument:
+    # raw_path is Elasticsearch-controlled; a hostile/corrupt value must not escape root.
+    return EnrichedDocument(
+        doc_id="gb_evil",
+        raw_path="../../escape",
+        raw_commit="c0ffee",
+        markdown="pwned",
+        metadata=DocumentMetadata(
+            summary="short",
+            matters=["422500059892"],
+            raw_path="../../escape",
+            raw_commit="c0ffee",
+        ),
+    )
+
+
+def test_write_rejects_path_traversal_outside_root(tmp_path: Path) -> None:
+    root = tmp_path / "extracted"
+    root.mkdir()
+    writer = ExtractedRepoWriter(root)
+
+    result = writer.write(_traversal_doc())
+
+    assert result.ok is False
+    assert "traversal" in (result.detail or "")
+    # nothing was written outside the root
+    assert not (tmp_path / "escape.md").exists()
+    assert list(root.rglob("*.md")) == []
+
+
+def test_target_path_raises_on_traversal(tmp_path: Path) -> None:
+    root = tmp_path / "extracted"
+    root.mkdir()
+    writer = ExtractedRepoWriter(root)
+    import pytest
+
+    with pytest.raises(ValueError):
+        writer.target_path(_traversal_doc())

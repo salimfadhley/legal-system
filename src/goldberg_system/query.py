@@ -9,10 +9,20 @@ attributed answer — the tools do retrieval, not answer-generation.
 
 from __future__ import annotations
 
+import os
 from itertools import combinations
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
+
+
+# Max atomic claims retrieved per document via nested ``inner_hits``. A document that
+# decomposes into more than this many claims would silently lose the overflow, dropping
+# candidate claims from contradiction detection. 1000 is a safe high cap for legal
+# documents (full nested pagination is out of scope — raising the cap is the accepted
+# fix). NB the OUTER ``size`` (candidate *documents*, default 2000) is a separate cap.
+_INNER_HITS_CLAIM_CAP = 1000
 
 
 def _norm(text: str | None) -> str:
@@ -61,18 +71,45 @@ class ClaimHit(BaseModel):
     asserted_by: str | None = None
 
 
-# Known aliases of one person → a canonical key, so a within-speaker contradiction
-# hunt runs ACROSS the labels that fragment a single account (casework's finding: a
-# party appears as "Simon Goldberg" in the criminal matter, "Simon John Goldberg" in
-# the civil one, and "Goldberg" — and the seam between the labels is exactly where the
+# Aliases of one person → a canonical key, so a within-speaker contradiction hunt runs
+# ACROSS the labels that fragment a single account (a party may appear under several
+# matter-specific labels, and the seam between the labels is exactly where the
 # cross-matter contradictions live). Unknown names fall through to their normalized form.
-_SPEAKER_ALIASES = {
-    "simon goldberg": "goldberg",
-    "simon john goldberg": "goldberg",
-    "goldberg": "goldberg",
-    "s j goldberg": "goldberg",
-    "sjg": "goldberg",
-}
+#
+# PUBLIC-REPO HYGIENE: real party names must NEVER be committed here. The map is loaded
+# at runtime from an untracked (gitignored) config file; when the file is absent the map
+# is EMPTY and ``_canonical_speaker`` degrades to plain normalization (names map to
+# themselves). Ship no real names in code or in any tracked file.
+_SPEAKER_ALIASES_ENV = "GOLDBERG_SPEAKER_ALIASES"
+_DEFAULT_ALIASES_PATH = (
+    Path(__file__).resolve().parents[2] / "config" / "speaker-aliases.yaml"
+)
+
+
+def load_speaker_aliases(path: Path | str | None = None) -> dict[str, str]:
+    """Load the alias→canonical speaker map (normalized) from a config file.
+
+    The file is a simple YAML mapping of ``alias: canonical`` (e.g. a party's several
+    labels all mapping to one canonical key). Keys and values are normalized with
+    :func:`_norm`. Returns ``{}`` when the file is absent — the safe public default, so
+    no real names are required for the query layer to work. An explicit ``path`` (or the
+    ``GOLDBERG_SPEAKER_ALIASES`` env var) overrides the repo-root default location.
+    """
+    if path is None:
+        path = os.environ.get(_SPEAKER_ALIASES_ENV) or _DEFAULT_ALIASES_PATH
+    p = Path(path)
+    if not p.exists():
+        return {}
+    import yaml
+
+    raw = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {_norm(str(k)): _norm(str(v)) for k, v in raw.items() if k and v}
+
+
+# Loaded once at import from the untracked config file (empty by default — see above).
+_SPEAKER_ALIASES: dict[str, str] = load_speaker_aliases()
 
 
 def _canonical_speaker(name: str | None) -> str | None:
@@ -306,7 +343,7 @@ class CorpusQuery:
             "nested": {
                 "path": "claims",
                 "query": {"bool": {"must": nested_must or [{"match_all": {}}]}},
-                "inner_hits": {"size": 100},
+                "inner_hits": {"size": _INNER_HITS_CLAIM_CAP},
             }
         }
         filters: list[dict[str, Any]] = []

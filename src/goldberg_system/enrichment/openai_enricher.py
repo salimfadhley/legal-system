@@ -13,6 +13,7 @@ call; :meth:`from_settings` builds a live client from the secrets loader.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Protocol
 
 import tiktoken
@@ -20,6 +21,8 @@ from openai import BadRequestError
 
 from goldberg_system.enrichment.adapter import EnrichmentRequest, EnrichmentResult
 from goldberg_system.metadata.schema import Claim
+
+logger = logging.getLogger(__name__)
 
 # Full-context enrichment (ADR 0006): pass the whole document, not just its head, so
 # claims/summary reflect the entire text. WP01/FR-008: the previous *character* cap
@@ -171,6 +174,7 @@ class OpenAIEnricher:
         # BadRequestError propagates unchanged.
         token_budget = _BODY_TOKEN_BUDGET
         last_error: BadRequestError | None = None
+        last_content: str | None = None
         for _ in range(_MAX_CONTEXT_ATTEMPTS):
             try:
                 response = self._client.chat.completions.create(
@@ -185,16 +189,54 @@ class OpenAIEnricher:
                 last_error = exc
                 token_budget = max(token_budget // 2, 1)
                 continue
-            content = response.choices[0].message.content or "{}"
+            choice = response.choices[0]
+            content = choice.message.content or "{}"
+            # A ``length`` finish means the model ran out of *output* tokens mid-JSON, so
+            # ``content`` is almost certainly truncated (invalid) JSON. Treat it as a SOFT
+            # failure: shrink the input body budget and retry, giving the completion more
+            # room — never emit/parse truncated JSON as if it were a real result.
+            if _finish_reason(choice) == "length":
+                logger.warning(
+                    "enricher: completion truncated (finish_reason=length) for %s; "
+                    "shrinking body budget and retrying",
+                    request.doc_id,
+                )
+                last_content = content
+                token_budget = max(token_budget // 2, 1)
+                continue
             return _parse_result(content)
-        # Exhausted attempts on a truly impossible document: re-raise so the
-        # processor DLQs it (the correct outcome for an un-enrichable doc).
-        assert last_error is not None  # loop only exits here after a caught error
-        raise last_error
+        # Exhausted attempts. Context-length BadRequests re-raise so the processor DLQs
+        # the doc (the correct outcome for an un-enrichable one). A run of ``length``
+        # truncations instead returns the best partial parse we can — a truncated doc
+        # must degrade to partial/empty, never crash the whole batch.
+        if last_error is not None:
+            raise last_error
+        return _parse_result(last_content or "{}")
+
+
+def _finish_reason(choice: Any) -> str | None:
+    """The completion's ``finish_reason`` if the client exposes one, else None."""
+    return getattr(choice, "finish_reason", None)
 
 
 def _parse_result(content: str) -> EnrichmentResult:
-    data = json.loads(content)
+    # A truncated/invalid completion must NOT hard-fail the whole document (one bad doc
+    # cannot be allowed to crash the batch) — log and degrade to an empty result.
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, ValueError):
+        logger.warning(
+            "enricher: completion was not valid JSON; returning empty result "
+            "(content length=%d)",
+            len(content),
+        )
+        return EnrichmentResult(summary="")
+    if not isinstance(data, dict):
+        logger.warning(
+            "enricher: completion JSON was not an object (%s); returning empty result",
+            type(data).__name__,
+        )
+        return EnrichmentResult(summary="")
     return EnrichmentResult(
         summary=str(data.get("summary", "")),
         long_summary=data.get("long_summary"),
@@ -209,6 +251,10 @@ def _parse_result(content: str) -> EnrichmentResult:
 def _claim(raw: Any) -> Claim | None:
     if not isinstance(raw, dict):
         return None
+    # Coerce the triple via str(): the model occasionally returns a number/bool/None for
+    # subject/predicate/object, which previously raised pydantic ``string_type`` errors
+    # and failed the whole document (two such failures in a live run). Coerce, then drop
+    # any claim missing a real triple.
     subject = str(raw.get("subject", "")).strip()
     predicate = str(raw.get("predicate", "")).strip()
     obj = str(raw.get("object", "")).strip()
@@ -223,6 +269,11 @@ def _claim(raw: Any) -> Claim | None:
         polarity=_polarity(raw.get("polarity")),
         source_span=_opt_str(raw.get("source_span")),
         epistemic_status=_epistemic_status(raw.get("epistemic_status")),
+        # Claim-graph fields the model returns best-effort — parse defensively so a
+        # missing/malformed value is ignored rather than failing extraction.
+        claim_date=_opt_str(raw.get("claim_date")),
+        confidence=_opt_float(raw.get("confidence")),
+        derived_from=_str_list(raw.get("derived_from")),
     )
 
 
@@ -246,6 +297,29 @@ def _opt_str(value: Any) -> str | None:
         return None
     trimmed = value.strip()
     return trimmed or None
+
+
+def _opt_float(value: Any) -> float | None:
+    """A confidence float in [0, 1], else None (ignore malformed / out-of-range)."""
+    if isinstance(value, bool):  # bool is an int subclass — never a confidence score
+        return None
+    if isinstance(value, (int, float)):
+        f = float(value)
+    elif isinstance(value, str):
+        try:
+            f = float(value.strip())
+        except ValueError:
+            return None
+    else:
+        return None
+    return f if 0.0 <= f <= 1.0 else None
+
+
+def _str_list(value: Any) -> list[str]:
+    """A list of non-empty coerced strings, else empty (ignore a malformed value)."""
+    if not isinstance(value, list):
+        return []
+    return [s for s in (str(x).strip() for x in value) if s]
 
 
 def _epistemic_status(value: Any) -> str | None:

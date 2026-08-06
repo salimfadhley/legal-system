@@ -699,12 +699,17 @@ def re_enrich(model, max_docs, matters, paths, extracted_root, index_override) -
         })
     q = {"query": {"bool": {"filter": filters}}} if filters else {"query": {"match_all": {}}}
     click.echo(f"Re-enriching {index} with {model} (no Docling; content from ES) …")
+    # Materialize the matching documents FIRST (one fast paginated pass), then run the
+    # slow per-doc LLM enrichment over the in-memory list. Holding a scroll open ACROSS
+    # the LLM calls expired mid-run ("No search context found" at 545/574): the per-doc
+    # enrichment is far slower than any reasonable scroll TTL. Collecting up front means
+    # no scroll context is held open during the slow work.
+    hits = list(helpers.scan(client, index=index, query=q, preserve_order=False))
+    if max_docs is not None:
+        hits = hits[:max_docs]
+    click.echo(f"  collected {len(hits)} document(s); enriching …")
     done = failed = 0
-    for i, hit in enumerate(
-        helpers.scan(client, index=index, query=q, preserve_order=False)
-    ):
-        if max_docs is not None and i >= max_docs:
-            break
+    for hit in hits:
         src = hit["_source"]
         try:
             base = enriched_from_es_source(src, doc_id_fallback=hit["_id"])

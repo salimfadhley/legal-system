@@ -188,9 +188,18 @@ def test_contradictions_splits_within_speaker_from_contested() -> None:
     assert {contested.left.doc_id, contested.right.doc_id} == {"gb_a", "gb_c"}
 
 
-def test_contradictions_run_across_speaker_aliases() -> None:
+def test_contradictions_run_across_speaker_aliases(monkeypatch: Any) -> None:
     # The same person under two matter-specific labels; a within-speaker hunt must run
     # ACROSS them — that seam (criminal vs civil) is where the contradiction lives.
+    # The alias map is loaded at runtime from an untracked config file (no real names in
+    # the repo), so the test injects the aliases it needs directly.
+    import goldberg_system.query as query_mod
+
+    monkeypatch.setattr(
+        query_mod,
+        "_SPEAKER_ALIASES",
+        {"simon goldberg": "goldberg", "simon john goldberg": "goldberg"},
+    )
     resp = {
         "hits": {
             "hits": [
@@ -318,3 +327,43 @@ def test_facets_parses_buckets() -> None:
     facets = CorpusQuery(_FakeES(resp), "idx").facets()
     assert facets["matters"] == [("422500059892", 3)]
     assert facets["document_type"] == [("email", 2)]
+
+
+def test_load_speaker_aliases_empty_when_file_absent(tmp_path: Any) -> None:
+    from goldberg_system.query import load_speaker_aliases
+
+    missing = tmp_path / "does-not-exist.yaml"
+    assert load_speaker_aliases(missing) == {}
+
+
+def test_load_speaker_aliases_reads_and_normalizes(tmp_path: Any) -> None:
+    from goldberg_system.query import load_speaker_aliases
+
+    path = tmp_path / "speaker-aliases.yaml"
+    # aliases with mixed case / whitespace must normalize to lowercase collapsed form
+    path.write_text('"Alpha  Beta": Canonical Key\nGamma: Canonical Key\n')
+    aliases = load_speaker_aliases(path)
+    assert aliases == {"alpha beta": "canonical key", "gamma": "canonical key"}
+
+
+def test_canonical_speaker_degrades_to_normalization_with_empty_map(
+    monkeypatch: Any,
+) -> None:
+    # With no alias config, a name simply normalizes to itself (no real names required).
+    import goldberg_system.query as query_mod
+
+    monkeypatch.setattr(query_mod, "_SPEAKER_ALIASES", {})
+    assert query_mod._canonical_speaker("  Some  Name ") == "some name"
+    assert query_mod._canonical_speaker(None) is None
+
+
+def test_fetch_claim_refs_uses_high_inner_hits_cap() -> None:
+    # A doc can decompose into many atomic claims; the nested inner_hits cap must be high
+    # enough not to silently drop them (regression: was 100).
+    from goldberg_system.query import _INNER_HITS_CLAIM_CAP
+
+    assert _INNER_HITS_CLAIM_CAP >= 1000
+    es = _FakeES()
+    CorpusQuery(es, "idx")._fetch_claim_refs()
+    nested = es.last_search["query"]["bool"]["must"][0]["nested"]
+    assert nested["inner_hits"]["size"] == _INNER_HITS_CLAIM_CAP

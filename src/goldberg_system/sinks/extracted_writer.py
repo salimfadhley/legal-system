@@ -24,13 +24,33 @@ class ExtractedRepoWriter:
         return "goldberg-extracted"
 
     def target_path(self, document: EnrichedDocument) -> Path:
-        """The extracted `.md` path, mirroring the raw file path."""
+        """The extracted `.md` path, mirroring the raw file path.
+
+        The ``raw_path`` is Elasticsearch-controlled data, so a hostile/corrupt value
+        like ``../../escape`` must never let a write land OUTSIDE ``extracted_root``.
+        We resolve the candidate and assert containment (``relative_to``); a path that
+        escapes the root raises :class:`ValueError`, which :meth:`write` turns into a
+        failed :class:`SinkResult` rather than writing outside the repo.
+        """
         rel = document.metadata.raw_path or document.raw_path or document.doc_id
-        return self.extracted_root / f"{rel}.md"
+        root = self.extracted_root.resolve()
+        candidate = (root / f"{rel}.md").resolve()
+        # Raises ValueError if the resolved candidate is not contained within root
+        # (i.e. the raw_path traversed out of the extracted repository).
+        candidate.relative_to(root)
+        return candidate
 
     def write(self, document: EnrichedDocument) -> SinkResult:
         try:
             dest = self.target_path(document)
+        except ValueError:
+            rel = document.metadata.raw_path or document.raw_path or document.doc_id
+            return SinkResult(
+                sink=self.name,
+                ok=False,
+                detail=f"refusing path-traversal write outside extracted_root: {rel!r}",
+            )
+        try:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(
                 to_frontmatter_document(document.metadata, document.markdown),
