@@ -1,7 +1,16 @@
 # ADR 0014 — Retire the SilverBullet concept-wiki; keep ES + claims as the substrate
 
-**Status:** Proposed (recommendation) · **Date:** 2026-08-06 ·
+**Status:** Accepted · **Date:** 2026-08-06 ·
 **Supersedes:** [ADR 0007](0007-concept-wiki-output.md)
+> **Accepted 2026-08-06** by the client and the casework agent, both explicitly: "nobody
+> uses them, retire." Casework's evidence: **zero** findings/analyses/filings in
+> `goldberg-casework` cite a wiki page; every `goldberg wiki`/`search_concepts`/`:3100`
+> mention is boilerplate they wrote and never acted on; they have never called
+> `search_concepts`; and the synthesised layer produced **0** contradiction pages in four
+> months — it never did the thing it was for. Casework also flagged that `CLAUDE.md`,
+> `AGENTS.md` and the spec-kitty charter currently *mandate* using "both representations",
+> so those must be stripped or every future session opens by being told to consult a dead
+> server (they own those files and will strip them; the two adversarial-review prompts too).
 
 ## Context
 

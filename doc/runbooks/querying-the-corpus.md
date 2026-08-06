@@ -66,25 +66,11 @@ Searches `content` + `summary` + `long_summary` + `keywords` + `entities`, with
 optional filters. Output per hit: `doc_id`, `document_type`, score, `raw_path`,
 `matters`, `author`, `summary`, and highlighted snippets.
 
-### `goldberg wiki` — search the concept wiki (the synthesised view)
-
-```
-goldberg wiki "<keywords>" [--layer entity|concept|comparison|query|summary] \
-             [--tag <tag>] [--size N]
-```
-
-Searches the **SilverBullet concept wiki** (`silverbullet-goldberg` index) — the
-*second representation* of the corpus (ADR 0007): curated, cross-linked
-`entity`/`concept`/`comparison` pages synthesised **downstream of enrichment**. Raw
-and archived pages are excluded, so you get synthesised knowledge only. Output per
-page: `title`, `layer`, score, `page` path, `tags`, `sources` (corpus `raw_path`
-citations), outbound `[[wikilinks]]`, and highlighted snippets.
-
-**Query both representations.** `search`/`claims` find the *primary evidence* to
-quote; `wiki` finds the *synthesised context* — who an entity is, how parties
-connect, where accounts contradict — that the raw documents don't state in one
-place. Follow a wiki page's `sources` back into the document index to quote the
-underlying evidence.
+> **Note (ADR 0014):** the `goldberg wiki` command and the SilverBullet concept wiki
+> are **retired** — nobody used them and the synthesised layer was never authored. There
+> is now one substrate: the document index (plus the `goldberg-extracted` git store for
+> greppable, versioned markdown+frontmatter). Ignore any older "query both
+> representations" instruction.
 
 ### `goldberg get` — read a document
 
@@ -125,7 +111,7 @@ goldberg status [--yaml]
 ```
 
 The canonical system state (M12/M13, [ADR 0009](../decisions/0009-operations-dashboard.md)):
-health checks, corpus counts by matter/type, wiki pages by layer, per-stage/status
+health checks, corpus counts by matter/type, per-stage/status
 pipeline counts, and DLQ depth. Default is a human table; **`--yaml`** emits the same
 `SystemState` as YAML so an LLM can read the whole system in one call.
 
@@ -164,10 +150,9 @@ idempotent `reindex` cover reprocessing).
 
 ## How to answer a question
 
-1. **Pick the tool.** Attribution / "who said" → `claims`. Topic / keyword →
-   `search`. Orientation on people/concepts/contradictions → `wiki`. Then `get` the
-   most relevant document(s) to read the exact text. For a thorough answer, check
-   both the wiki (synthesised map) and the documents (primary evidence).
+1. **Pick the tool.** Attribution / "who said" / contradiction-hunting → `claims`.
+   Topic / keyword → `search` (or `grep` the `goldberg-extracted` store). Then `get`
+   the most relevant document(s) to read the exact text.
 2. **Synthesise** the answer only from what you retrieved. If nothing relevant is
    found, say so — do not guess.
 3. **Cite every claim**: source `doc_id` + `raw_path`, the **speaker**

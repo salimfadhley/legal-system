@@ -24,19 +24,18 @@ Goldberg say was the prosecuting entity?"), **do not answer from memory** — ru
 (`doc_id` + `raw_path` + speaker + date). Never invent; if nothing relevant is
 indexed, say so.
 
-The corpus has **two representations — query both**: the *document index*
-(primary evidence) and the *concept wiki* (synthesised, cross-linked pages). They're
-complementary — the wiki gives you the map (who's who, how they connect); the
-documents give you the quotable primary source.
+Query the **document index** — the primary evidence — for everything. (The old
+SilverBullet *concept wiki* was retired in [ADR 0014](doc/decisions/0014-retire-silverbullet-wiki.md);
+there is one substrate now.)
 
 - `uv run goldberg claims [--by <speaker>] [--subject X] [--object X]` — who
   asserted what (attributed; use for "who said" + contradiction-hunting).
 - `uv run goldberg search "<keywords>" [--matter M] [--author A]` — full-text over
   the evidence documents.
-- `uv run goldberg wiki "<keywords>" [--layer entity|concept|comparison] [--tag T]`
-  — search the **concept wiki** (synthesised entity/concept/contradiction pages).
 - `uv run goldberg get <doc_id>` — read a document's full text to quote it.
 - `uv run goldberg facets` — orient (counts by matter/author/type/party).
+- Or `grep`/browse the **`goldberg-extracted`** git store — every doc as
+  markdown+frontmatter (extracted text + attributed `claims`), versioned and citable.
 
 **Full instructions: [`doc/runbooks/querying-the-corpus.md`](doc/runbooks/querying-the-corpus.md).**
 
@@ -57,7 +56,7 @@ observability commands (M12, [ADR 0008](doc/decisions/0008-observability-archite
 The same observability + query capabilities are exposed as a **hosted MCP server**
 ([ADR 0010](doc/decisions/0010-mcp-server.md)) for any MCP-capable agent (Claude,
 Codex, …): tools `system_status`, `recent_failures`, `trace_document`,
-`search_evidence`, `find_claims`, `search_concepts`, `get_document`. Run it with
+`search_evidence`, `find_claims`, `get_document`. Run it with
 `uv run goldberg mcp-serve` (needs `uv sync --extra mcp`); connect at
 `http://<host>:8765/mcp`. Tools return structured, citable data — no shell, no
 hand-written Elasticsearch queries.

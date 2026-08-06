@@ -1,11 +1,11 @@
 # ADR 0007 — Concept-wiki output: SilverBullet LLM-wiki generated from the enriched corpus
 
-**Status:** Accepted (spike-validated) · **Date:** 2026-07-21
-> ⚠️ **Retirement proposed (2026-08-06):** the `WikiAuthorSink` this ADR designed was
-> never built, the wiki is unused and three months stale, and it carries running infra
-> for no consumer. See **[ADR 0014](0014-retire-silverbullet-wiki.md)** (Proposed),
-> which recommends retiring the SilverBullet wiki and keeping ES + attributed claims as
-> the substrate.
+**Status:** ~~Accepted (spike-validated)~~ **Superseded by [ADR 0014](0014-retire-silverbullet-wiki.md)** · **Date:** 2026-07-21
+> ⚠️ **Superseded (2026-08-06):** the `WikiAuthorSink` this ADR designed was never built,
+> the wiki went unused and three months stale (0 contradiction pages in four months), and
+> it carried running infra for no consumer. **[ADR 0014](0014-retire-silverbullet-wiki.md)**
+> retires the SilverBullet wiki and keeps ES + attributed claims as the substrate. The
+> design below is retained as history.
 
 ## Context
 
