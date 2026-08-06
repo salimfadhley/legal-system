@@ -507,75 +507,6 @@ def trace(key) -> None:  # type: ignore[no-untyped-def]
             click.echo(f"       error: {e.error}")
 
 
-@main.command()
-@click.option(
-    "--max", "max_docs", type=int, default=None, help="Limit documents processed."
-)
-@click.option(
-    "--extracted-root",
-    default=None,
-    help="Also write frontmatter .md files under this root.",
-)
-@click.option(
-    "--manifest",
-    "manifest_path",
-    default=None,
-    help="Provenance manifest (JSON) to attach real raw_path/matters by SHA-256.",
-)
-@click.option(
-    "--events/--no-events",
-    default=True,
-    help="Emit pipeline audit events to goldberg_pipeline_events (M12).",
-)
-def reindex(max_docs, extracted_root, manifest_path, events) -> None:  # type: ignore[no-untyped-def]
-    """Backfill the ES index from documents already in Papra (enrich + index)."""
-    from goldberg_system.enrichment import OpenAIEnricher
-    from goldberg_system.migrate.manifest import Manifest
-    from goldberg_system.observability.events import ElasticsearchEventSink
-    from goldberg_system.papra import PapraClient
-    from goldberg_system.pipeline import backfill_from_papra
-    from goldberg_system.provenance import now_iso
-    from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
-
-    papra = PapraClient.from_env()
-    enricher = OpenAIEnricher.from_settings()
-    indexer = ElasticsearchIndexer.from_env()
-    indexer.ensure_index()
-    sinks: list = [indexer]
-    if extracted_root:
-        sinks.append(ExtractedRepoWriter(extracted_root))
-    manifest = Manifest.load(manifest_path) if manifest_path else None
-    if manifest is not None:
-        click.echo(f"Using provenance manifest ({len(manifest)} entries)")
-    event_sink = None
-    run_id = None
-    if events:
-        event_sink = ElasticsearchEventSink.from_env()
-        event_sink.ensure_index()
-        run_id = f"reindex-{now_iso()}"
-        click.echo(f"Emitting audit events (run {run_id}) → {event_sink.index}")
-
-    def on_doc(stub, status) -> None:  # type: ignore[no-untyped-def]
-        click.echo(f"  [{status}] {stub.original_name or stub.id}")
-
-    click.echo(f"Backfilling into {indexer.index} …")
-    report = backfill_from_papra(
-        papra,
-        enricher,
-        sinks,
-        max_docs=max_docs,
-        manifest=manifest,
-        events=event_sink,
-        run_id=run_id,
-        on_doc=on_doc,
-    )
-    click.echo(f"  with real provenance: {report.with_provenance}")
-    click.echo(
-        f"\nprocessed={report.processed} indexed={report.indexed} "
-        f"skipped_empty={report.skipped_empty} failures={report.failures}"
-    )
-
-
 @main.command("backfill-extracted")
 @click.option(
     "--extracted-root",
@@ -599,15 +530,13 @@ def backfill_extracted(extracted_root, max_docs, index_override) -> None:  # typ
     """
     from elasticsearch import helpers
 
-    from goldberg_system.metadata.schema import DocumentMetadata
+    from goldberg_system.extracted import enriched_from_es_source
     from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
-    from goldberg_system.sinks.base import EnrichedDocument
 
     indexer = ElasticsearchIndexer.from_env()
     client = indexer.client
     index = index_override or indexer.index
     writer = ExtractedRepoWriter(extracted_root)
-    fields = set(DocumentMetadata.model_fields)
 
     click.echo(f"Backfilling {extracted_root} from {index} (no re-enrich) …")
     written = failed = 0
@@ -620,30 +549,75 @@ def backfill_extracted(extracted_root, max_docs, index_override) -> None:  # typ
         if max_docs is not None and i >= max_docs:
             break
         src = hit["_source"]
-        raw_path = src.get("raw_path") or src.get("doc_id") or hit["_id"]
         try:
-            meta = DocumentMetadata.model_validate(
-                {k: v for k, v in src.items() if k in fields}
-            )
-            doc = EnrichedDocument(
-                doc_id=src.get("doc_id") or hit["_id"],
-                raw_path=raw_path,
-                raw_commit=src.get("raw_commit") or "",
-                markdown=src.get("content") or "",
-                metadata=meta,
-            )
+            doc = enriched_from_es_source(src, doc_id_fallback=hit["_id"])
             res = writer.write(doc)
             if res.ok:
                 written += 1
             else:
                 failed += 1
-                click.echo(f"  [fail] {raw_path}: {res.detail}")
+                click.echo(f"  [fail] {doc.raw_path}: {res.detail}")
         except Exception as exc:  # noqa: BLE001 - one bad doc must not stop the backfill
             failed += 1
-            click.echo(f"  [error] {raw_path}: {exc}")
+            click.echo(f"  [error] {src.get('raw_path') or hit['_id']}: {exc}")
         if (written + failed) % 200 == 0:
             click.echo(f"  … {written} written, {failed} failed")
     click.echo(f"\ndone: written={written} failed={failed} → {extracted_root}")
+
+
+@main.command("reindex-from-extracted")
+@click.option(
+    "--extracted-root",
+    required=True,
+    help="goldberg-extracted repository root to rebuild the index from.",
+)
+@click.option(
+    "--index", "index_override", default=None, help="Target ES index (override)."
+)
+@click.option(
+    "--max", "max_docs", type=int, default=None, help="Limit documents (for testing)."
+)
+def reindex_from_extracted(extracted_root, index_override, max_docs) -> None:  # type: ignore[no-untyped-def]
+    """Rebuild the ES index from goldberg-extracted — no re-extract, no LLM (ADR 0015).
+
+    Walks the frontmatter ``.md`` files under ``--extracted-root``, reconstructs each
+    :class:`EnrichedDocument` (``doc_id`` recomputed from ``raw_path`` + body), and
+    indexes it. This makes Elasticsearch a disposable projection of the git derived
+    store: drop the index and rebuild it from files, without Docling or the enricher.
+    Idempotent (ES ``_id`` == ``doc_id``).
+    """
+    from pathlib import Path
+
+    from goldberg_system.extracted import enriched_from_frontmatter
+    from goldberg_system.sinks import ElasticsearchIndexer
+
+    root = Path(extracted_root)
+    indexer = ElasticsearchIndexer.from_env()
+    if index_override:
+        indexer.index = index_override
+    indexer.ensure_index()
+
+    click.echo(f"Rebuilding {indexer.index} from {root} (no re-enrich) …")
+    indexed = failed = 0
+    for i, path in enumerate(sorted(root.rglob("*.md"))):
+        if path.name == "README.md":
+            continue
+        if max_docs is not None and i >= max_docs:
+            break
+        try:
+            doc = enriched_from_frontmatter(path.read_text(encoding="utf-8"))
+            res = indexer.write(doc)
+            if res.ok:
+                indexed += 1
+            else:
+                failed += 1
+                click.echo(f"  [fail] {path}: {res.detail}")
+        except Exception as exc:  # noqa: BLE001 - one bad file must not stop the rebuild
+            failed += 1
+            click.echo(f"  [error] {path}: {exc}")
+        if (indexed + failed) % 200 == 0:
+            click.echo(f"  … {indexed} indexed, {failed} failed")
+    click.echo(f"\ndone: indexed={indexed} failed={failed} → {indexer.index}")
 
 
 @main.group()
