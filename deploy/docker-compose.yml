@@ -48,7 +48,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.ingest
-    image: goldberg-ingest:local
+    image: legal-ingest:local
     restart: unless-stopped
     depends_on:
       - docling

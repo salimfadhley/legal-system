@@ -9,7 +9,7 @@ deployed live and verified end-to-end. This records the evidence.
 
 ## Deployment
 
-- Container **`goldberg-ingest`** (image `goldberg-ingest:local`, built from the mission
+- Container **`legal-ingest`** (image `legal-ingest:local`, built from the mission
   code) runs `goldberg ingest-serve` on **host network**, mounts: `goldberg-raw:ro`
   (incl. `.git`), the live writable `config/` (manifest) → `/app/config`,
   `deploy/projects.container.yaml` → `/etc/goldberg/projects.yaml:ro`. Env: `GOLDBERG_ES_URL`,
