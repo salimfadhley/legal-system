@@ -116,7 +116,15 @@ def claims(asserted_by, subject, object_, text, matters, size) -> None:  # type:
 @click.option(
     "--size", default=2000, show_default=True, help="Max candidate documents to scan."
 )
-def contradictions(subject, matters, size) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--path", "paths", multiple=True,
+    help="Restrict to raw_path prefix(es); repeatable (scope to a document subset).",
+)
+@click.option(
+    "--include-analysis", is_flag=True, default=False,
+    help="Include claims from analysis/ (default excluded — they are mis-attributed).",
+)
+def contradictions(subject, matters, size, paths, include_analysis) -> None:  # type: ignore[no-untyped-def]
     """Find conflicting claims on the same (subject, predicate).
 
     WITHIN one speaker (asserted_by) — opposite polarity or a changed object — is that
@@ -125,12 +133,14 @@ def contradictions(subject, matters, size) -> None:  # type: ignore[no-untyped-d
     "contested (not a defect)". Each side cites doc_id + raw_path + claim_date.
     """
     result = _query().contradictions(
-        subject=subject, matters=list(matters) or None, size=size
+        subject=subject, matters=list(matters) or None, size=size,
+        paths=list(paths) or None, exclude_analysis=not include_analysis,
     )
 
     def _cite(ref) -> str:  # type: ignore[no-untyped-def]
         when = f", {ref.claim_date}" if ref.claim_date else ""
-        return f"{ref.doc_id} ({ref.raw_path or '?'}{when})"
+        span = f'\n       "{ref.source_span}"' if ref.source_span else ""
+        return f"{ref.doc_id} ({ref.raw_path or '?'}{when}){span}"
 
     click.echo(
         f"within-speaker contradictions (integrity signal): {len(result.within_speaker)}"

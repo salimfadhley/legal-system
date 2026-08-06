@@ -188,6 +188,43 @@ def test_contradictions_splits_within_speaker_from_contested() -> None:
     assert {contested.left.doc_id, contested.right.doc_id} == {"gb_a", "gb_c"}
 
 
+def test_contradictions_run_across_speaker_aliases() -> None:
+    # The same person under two matter-specific labels; a within-speaker hunt must run
+    # ACROSS them — that seam (criminal vs civil) is where the contradiction lives.
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_crim", "evidence/simon_goldberg/statement.pdf",
+                    {
+                        "subject": "the bundle", "predicate": "was", "object": "served",
+                        "asserted_by": "Simon Goldberg", "polarity": True,
+                        "source_span": "The bundle was served on 20 July.",
+                    },
+                ),
+                _claim_doc(
+                    "gb_civ", "evidence/deacon_v_goldberg/counterclaim.pdf",
+                    {
+                        "subject": "the bundle", "predicate": "was", "object": "served",
+                        "asserted_by": "Simon John Goldberg", "polarity": False,
+                        "source_span": "The bundle was NOT served.",
+                    },
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert len(result.within_speaker) == 1  # caught as one person's shift, not contested
+    assert len(result.contested) == 0
+    pair = result.within_speaker[0]
+    assert pair.kind == "opposite_polarity"
+    # each side keeps its real (distinct) label, and both carry the quotable span
+    assert {pair.left.asserted_by, pair.right.asserted_by} == {
+        "Simon Goldberg", "Simon John Goldberg",
+    }
+    assert pair.left.source_span and pair.right.source_span
+
+
 def test_contradictions_conflicting_object_within_speaker() -> None:
     resp = {
         "hits": {

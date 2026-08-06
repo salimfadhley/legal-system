@@ -61,6 +61,26 @@ class ClaimHit(BaseModel):
     asserted_by: str | None = None
 
 
+# Known aliases of one person → a canonical key, so a within-speaker contradiction
+# hunt runs ACROSS the labels that fragment a single account (casework's finding: a
+# party appears as "Simon Goldberg" in the criminal matter, "Simon John Goldberg" in
+# the civil one, and "Goldberg" — and the seam between the labels is exactly where the
+# cross-matter contradictions live). Unknown names fall through to their normalized form.
+_SPEAKER_ALIASES = {
+    "simon goldberg": "goldberg",
+    "simon john goldberg": "goldberg",
+    "goldberg": "goldberg",
+    "s j goldberg": "goldberg",
+    "sjg": "goldberg",
+}
+
+
+def _canonical_speaker(name: str | None) -> str | None:
+    if not name:
+        return None
+    return _SPEAKER_ALIASES.get(_norm(name), _norm(name))
+
+
 class ClaimRef(BaseModel):
     """A single claim with just enough to cite and compare it (contradiction detection)."""
 
@@ -72,6 +92,7 @@ class ClaimRef(BaseModel):
     asserted_by: str | None = None
     polarity: bool = True
     claim_date: str | None = None
+    source_span: str | None = None  # the sentence the claim came from (casework must quote it)
 
 
 class ContradictionPair(BaseModel):
@@ -269,6 +290,8 @@ class CorpusQuery:
         subject: str | None = None,
         matters: str | list[str] | None = None,
         size: int = 2000,
+        exclude_analysis: bool = True,
+        paths: str | list[str] | None = None,
     ) -> list[ClaimRef]:
         """Retrieve candidate claims (with polarity/claim_date) for pairing in Python.
 
@@ -289,9 +312,22 @@ class CorpusQuery:
         filters: list[dict[str, Any]] = []
         if matters:
             filters.append({"terms": {"matters": _as_list(matters)}})
+        if paths:
+            filters.append({
+                "bool": {
+                    "should": [{"prefix": {"raw_path": p}} for p in _as_list(paths)],
+                    "minimum_should_match": 1,
+                }
+            })
+        bool_q: dict[str, Any] = {"must": [nested], "filter": filters}
+        if exclude_analysis:
+            # Never let claims extracted from our OWN work product poison the detector —
+            # they are currently mis-attributed to the parties they are *about* (the
+            # claim-source-hygiene bug). Excluded until that is fixed.
+            bool_q["must_not"] = [{"prefix": {"raw_path": "analysis/"}}]
         resp = self.client.search(
             index=self.index,
-            query={"bool": {"must": [nested], "filter": filters}},
+            query={"bool": bool_q},
             size=size,
         )
         refs: list[ClaimRef] = []
@@ -315,6 +351,7 @@ class CorpusQuery:
                         asserted_by=c.get("asserted_by"),
                         polarity=c.get("polarity", True),
                         claim_date=c.get("claim_date"),
+                        source_span=c.get("source_span"),
                     )
                 )
         return refs
@@ -325,6 +362,8 @@ class CorpusQuery:
         subject: str | None = None,
         matters: str | list[str] | None = None,
         size: int = 2000,
+        exclude_analysis: bool = True,
+        paths: str | list[str] | None = None,
     ) -> Contradictions:
         """Find conflicting claims on the same normalized (subject, predicate).
 
@@ -351,7 +390,10 @@ class CorpusQuery:
         subject/predicate wording will not group (a later embedding/NLI stage, ADR
         0001, is the follow-up for fuzzy paraphrase).
         """
-        refs = self._fetch_claim_refs(subject=subject, matters=matters, size=size)
+        refs = self._fetch_claim_refs(
+            subject=subject, matters=matters, size=size,
+            exclude_analysis=exclude_analysis, paths=paths,
+        )
 
         # Group by the normalized (subject, predicate) — the axis a contradiction
         # lives on. Object/polarity are what then conflict *within* a group.
@@ -366,13 +408,15 @@ class CorpusQuery:
                 kind = _conflict_kind(a, b)
                 if kind is None:
                     continue
-                same_speaker = (
-                    a.asserted_by is not None
-                    and _norm(a.asserted_by) == _norm(b.asserted_by)
-                )
+                a_can = _canonical_speaker(a.asserted_by)
+                b_can = _canonical_speaker(b.asserted_by)
+                # Same *person* — across alias labels — is a within-speaker shift.
+                same_speaker = a_can is not None and a_can == b_can
                 if same_speaker:
                     within.append(
                         ContradictionPair(
+                            # display the left side's original label; left/right carry
+                            # each side's real label (they may differ across aliases).
                             asserted_by=a.asserted_by,
                             subject=subj,
                             predicate=pred,
