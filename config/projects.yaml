@@ -1,4 +1,4 @@
-# projects.yaml — the single source of truth for where the Goldberg platform's
+# projects.yaml — the single source of truth for where the platform's
 # sibling projects and services live. Read by goldberg_system.config.
 #
 # All four working repos are checked out under a common parent on Halob, which is

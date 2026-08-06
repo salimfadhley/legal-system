@@ -1,7 +1,7 @@
 [project]
 name = "goldberg-system"
 version = "0.1.0"
-description = "Pipeline and tooling for the Goldberg document analysis platform (ingest -> extract -> summarize -> index -> wiki)"
+description = "A document-intelligence pipeline: ingest, extract, enrich, and index documents into a searchable, citable knowledge base."
 authors = [
   { name = "Salim Fadhley", email = "salimfadhley@gmail.com" },
 ]
