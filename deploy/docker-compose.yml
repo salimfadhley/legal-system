@@ -61,6 +61,10 @@ services:
       NATS_URL: ${NATS_URL:-nats://192.168.86.31:4222}
       # Reach Docling by its compose service name, not a host IP (FR-004).
       GOLDBERG_DOCLING_URL: ${GOLDBERG_DOCLING_URL:-http://docling:5001}
+      # Fail a single conversion fast so one pathological file (a huge scan, an
+      # encrypted PDF) dead-letters instead of wedging a worker for the 900s default
+      # and blocking the ordered commit queue behind it (Halob is a 4-core Celeron).
+      GOLDBERG_DOCLING_MAX_WAIT: ${GOLDBERG_DOCLING_MAX_WAIT:-180}
       # Container-tuned projects.yaml (raw.path=/data/goldberg-raw, system.path=/app)
       # mounted read-only below and selected here so paths resolve inside the container.
       GOLDBERG_PROJECTS_CONFIG: /etc/goldberg/projects.yaml
