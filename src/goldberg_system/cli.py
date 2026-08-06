@@ -633,6 +633,82 @@ def reindex_from_extracted(extracted_root, index_override, max_docs) -> None:  #
     click.echo(f"\ndone: indexed={indexed} failed={failed} → {indexer.index}")
 
 
+@main.command("re-enrich")
+@click.option(
+    "--model", default="gpt-4o-mini", show_default=True,
+    help="OpenAI model for enrichment (e.g. gpt-4o for higher-resolution claims).",
+)
+@click.option(
+    "--max", "max_docs", type=int, default=None, help="Limit documents (for testing)."
+)
+@click.option("--matter", "matters", multiple=True, help="Restrict to matter(s).")
+@click.option(
+    "--extracted-root", default=None,
+    help="Also mirror re-enriched docs to this goldberg-extracted root.",
+)
+@click.option("--index", "index_override", default=None, help="Source/target ES index.")
+def re_enrich(model, max_docs, matters, extracted_root, index_override) -> None:  # type: ignore[no-untyped-def]
+    """Re-run the LLM enricher over each document's stored content; update its claims.
+
+    Populates the new claim fields (polarity, source_span, epistemic_status) and any
+    higher-resolution extraction, WITHOUT re-running Docling — it reads the already-
+    extracted ``content`` from Elasticsearch. One LLM call per document; idempotent
+    (ES ``_id`` == ``doc_id``, so it updates in place). Preserves provenance/handling.
+    """
+    from elasticsearch import helpers
+
+    from goldberg_system.enrichment import OpenAIEnricher
+    from goldberg_system.extracted import enriched_from_es_source
+    from goldberg_system.pipeline import build_enriched_from_raw, write_to_sinks
+    from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
+
+    indexer = ElasticsearchIndexer.from_env()
+    client = indexer.client
+    if index_override:
+        indexer.index = index_override
+    index = indexer.index
+    indexer.ensure_index()
+    enricher = OpenAIEnricher.from_settings(model=model)
+    sinks: list = [indexer]
+    if extracted_root:
+        sinks.append(ExtractedRepoWriter(extracted_root))
+
+    q = (
+        {"query": {"terms": {"matters": list(matters)}}}
+        if matters
+        else {"query": {"match_all": {}}}
+    )
+    click.echo(f"Re-enriching {index} with {model} (no Docling; content from ES) …")
+    done = failed = 0
+    for i, hit in enumerate(
+        helpers.scan(client, index=index, query=q, preserve_order=False)
+    ):
+        if max_docs is not None and i >= max_docs:
+            break
+        src = hit["_source"]
+        try:
+            base = enriched_from_es_source(src, doc_id_fallback=hit["_id"])
+            if not base.markdown.strip():
+                continue
+            new_doc = build_enriched_from_raw(
+                base.raw_path, base.markdown, enricher,
+                base=base.metadata, ingested_at=base.metadata.ingested_at,
+            )
+            results = write_to_sinks(new_doc, sinks)
+            if all(r.ok for r in results):
+                done += 1
+            else:
+                failed += 1
+                bad = "; ".join(r.detail for r in results if not r.ok and r.detail)
+                click.echo(f"  [fail] {base.raw_path}: {bad}")
+        except Exception as exc:  # noqa: BLE001 - one bad doc must not stop the pass
+            failed += 1
+            click.echo(f"  [error] {src.get('raw_path') or hit['_id']}: {exc}")
+        if (done + failed) % 50 == 0 and (done + failed) > 0:
+            click.echo(f"  … {done} re-enriched, {failed} failed")
+    click.echo(f"\ndone: re-enriched={done} failed={failed}")
+
+
 @main.group()
 def migrate() -> None:
     """Corpus migration (M8): populate goldberg-raw and build the provenance manifest."""
