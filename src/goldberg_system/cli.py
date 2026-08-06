@@ -576,6 +576,74 @@ def reindex(max_docs, extracted_root, manifest_path, events) -> None:  # type: i
     )
 
 
+@main.command("backfill-extracted")
+@click.option(
+    "--extracted-root",
+    required=True,
+    help="goldberg-extracted repository root to populate.",
+)
+@click.option(
+    "--max", "max_docs", type=int, default=None, help="Limit documents (for testing)."
+)
+@click.option(
+    "--index", "index_override", default=None, help="Source ES index (override)."
+)
+def backfill_extracted(extracted_root, max_docs, index_override) -> None:  # type: ignore[no-untyped-def]
+    """Populate goldberg-extracted from the ES index — no re-extract, no LLM.
+
+    Reads each already-enriched document out of Elasticsearch and writes it as a
+    markdown+frontmatter file (ADR 0004) mirroring its ``raw_path`` under
+    ``--extracted-root``. This is the cheap backfill (ADR 0015): the ES index is the
+    source of truth, so no Docling re-extraction and no enrichment call is made, and
+    the live index is never modified. Idempotent — safe to re-run.
+    """
+    from elasticsearch import helpers
+
+    from goldberg_system.metadata.schema import DocumentMetadata
+    from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
+    from goldberg_system.sinks.base import EnrichedDocument
+
+    indexer = ElasticsearchIndexer.from_env()
+    client = indexer.client
+    index = index_override or indexer.index
+    writer = ExtractedRepoWriter(extracted_root)
+    fields = set(DocumentMetadata.model_fields)
+
+    click.echo(f"Backfilling {extracted_root} from {index} (no re-enrich) …")
+    written = failed = 0
+    for i, hit in enumerate(
+        helpers.scan(
+            client, index=index, query={"query": {"match_all": {}}},
+            preserve_order=False,
+        )
+    ):
+        if max_docs is not None and i >= max_docs:
+            break
+        src = hit["_source"]
+        raw_path = src.get("raw_path") or src.get("doc_id") or hit["_id"]
+        try:
+            meta = DocumentMetadata.model_validate(
+                {k: v for k, v in src.items() if k in fields}
+            )
+            doc = EnrichedDocument(
+                doc_id=src.get("doc_id") or hit["_id"],
+                raw_path=raw_path,
+                raw_commit=src.get("raw_commit") or "",
+                markdown=src.get("content") or "",
+                metadata=meta,
+            )
+            res = writer.write(doc)
+            if res.ok:
+                written += 1
+            else:
+                failed += 1
+                click.echo(f"  [fail] {raw_path}: {res.detail}")
+        except Exception as exc:  # noqa: BLE001 - one bad doc must not stop the backfill
+            failed += 1
+            click.echo(f"  [error] {raw_path}: {exc}")
+        if (written + failed) % 200 == 0:
+            click.echo(f"  … {written} written, {failed} failed")
+    click.echo(f"\ndone: written={written} failed={failed} → {extracted_root}")
 
 
 @main.group()
@@ -844,7 +912,12 @@ def _build_ingest_deps(index_override: str | None = None):  # type: ignore[no-un
     "--index", "index_override", default=None,
     help="Target index (e.g. goldberg_documents_test for isolated testing).",
 )
-def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, index_override) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--extracted-root", default=None,
+    help="Also mirror each ingested doc as a frontmatter .md under this root "
+         "(goldberg-extracted, ADR 0015). Defaults to $GOLDBERG_EXTRACTED_ROOT.",
+)
+def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, index_override, extracted_root) -> None:  # type: ignore[no-untyped-def]
     """Event-driven ingest service: startup catch-up, then consume commit triggers.
 
     On start it runs ONE bounded catch-up (unless --no-catchup) to close any gap from
@@ -876,6 +949,17 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
         event_sink, already_indexed,
     ) = _build_ingest_deps(index_override)
 
+    # Sink list: ES always; also mirror to goldberg-extracted (ADR 0015) when a root
+    # is given (flag or $GOLDBERG_EXTRACTED_ROOT), so the git derived-store stays live.
+    import os as _os
+
+    from goldberg_system.sinks import ExtractedRepoWriter
+    extracted_root = extracted_root or _os.environ.get("GOLDBERG_EXTRACTED_ROOT")
+    sinks: list = [indexer]
+    if extracted_root:
+        sinks.append(ExtractedRepoWriter(extracted_root))
+        click.echo(f"mirroring extracted docs → {extracted_root}")
+
     cfg = dataclasses.replace(
         MessagingConfig.from_env(), durable=durable, max_deliver=max_deliver
     )
@@ -890,7 +974,7 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
             allowlist=allowlist,
             docling=docling,
             enricher=enricher,
-            sinks=[indexer],
+            sinks=sinks,
             already_indexed=already_indexed,
             events=event_sink,
             batch=batch,
@@ -904,7 +988,7 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
         allowlist=allowlist,
         docling=docling,
         enricher=enricher,
-        sinks=[indexer],
+        sinks=sinks,
         already_indexed=already_indexed,
         events=event_sink,
         workers=workers,

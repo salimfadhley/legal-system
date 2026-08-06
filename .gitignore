@@ -58,3 +58,8 @@ venv/
 
 # Spec Kitty runtime worktrees
 .worktrees/
+agent-mailbox.toml
+agent-inbox.toml
+
+# Graphify output artifacts
+graphify-out/

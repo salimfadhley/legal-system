@@ -18,11 +18,14 @@ ADR 0007 §2 defined three downstream sinks off the enricher:
 
 ```
 enrich ─┬─▶ ElasticsearchIndexer (query)      ← BUILT, and it is what everyone uses
-        ├─▶ ExtractedRepoWriter  (git mirror) ← NEVER BUILT (goldberg-extracted is empty)
+        ├─▶ ExtractedRepoWriter  (git mirror) ← BUILT but never WIRED (see ADR 0015)
         └─▶ WikiAuthorSink       (wiki)       ← NEVER BUILT (only the pure renderer exists)
 ```
 
-Only the ES indexer shipped. The wiki has just the pure page **renderer**
+Only the ES indexer ran. `ExtractedRepoWriter` existed but was reachable only behind the
+retired Papra-backfill flag, so `goldberg-extracted` stayed empty until
+[ADR 0015](0015-extracted-repo-as-derived-store.md) wired and populated it. The wiki has
+just the pure page **renderer**
 (`src/goldberg_system/wiki/page.py`); the LLM "orient → author → validate → apply"
 loop, the `comparison/` (contradiction) pages, and the event hook — the whole point of
 M11 — were left as "remaining for M11 proper" and never completed.
