@@ -62,6 +62,10 @@ def _doc() -> EnrichedDocument:
                     predicate="is",
                     object="Empower the People",
                     asserted_by="Simon Goldberg",
+                    polarity=False,
+                    source_span="The prosecuting entity is not Empower the People.",
+                    epistemic_status="asserted",
+                    derived_from=["gb_source"],
                 )
             ],
         ),
@@ -85,6 +89,11 @@ def test_to_es_document_maps_the_rich_fields() -> None:
     # claims are structured (nested) with attribution
     assert es["claims"][0]["asserted_by"] == "Simon Goldberg"
     assert es["claims"][0]["object"] == "Empower the People"
+    # claim-graph fields flow through model_dump
+    assert es["claims"][0]["polarity"] is False
+    assert es["claims"][0]["source_span"].startswith("The prosecuting entity")
+    assert es["claims"][0]["epistemic_status"] == "asserted"
+    assert es["claims"][0]["derived_from"] == ["gb_source"]
     # handling flags present with safe defaults
     assert es["handling"]["cpia_s17"] is True
 
@@ -122,3 +131,13 @@ def test_mapping_has_nested_claims_and_keyword_matters_and_correlation_id() -> N
     assert props["content"]["type"] == "text"
     # the pipeline correlation ID (ADR 0008)
     assert props["raw_sha256"]["type"] == "keyword"
+
+
+def test_mapping_has_claim_graph_nested_fields() -> None:
+    claim_props = INDEX_MAPPING["mappings"]["properties"]["claims"]["properties"]
+    assert claim_props["polarity"]["type"] == "boolean"
+    assert claim_props["epistemic_status"]["type"] == "keyword"
+    assert claim_props["source_span"]["type"] == "text"
+    assert claim_props["claim_date"]["type"] == "keyword"
+    assert claim_props["confidence"]["type"] == "float"
+    assert claim_props["derived_from"]["type"] == "keyword"

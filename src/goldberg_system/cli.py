@@ -109,6 +109,55 @@ def claims(asserted_by, subject, object_, text, matters, size) -> None:  # type:
 
 
 @main.command()
+@click.option("--subject", default=None, help="Restrict to claims about this subject.")
+@click.option(
+    "--matter", "matters", multiple=True, help="Filter by matter (repeatable)."
+)
+@click.option(
+    "--size", default=2000, show_default=True, help="Max candidate documents to scan."
+)
+def contradictions(subject, matters, size) -> None:  # type: ignore[no-untyped-def]
+    """Find conflicting claims on the same (subject, predicate).
+
+    WITHIN one speaker (asserted_by) — opposite polarity or a changed object — is that
+    speaker's account shifting over time: an integrity signal, surfaced loudly. ACROSS
+    speakers is normal adversarial disagreement, reported separately and labelled
+    "contested (not a defect)". Each side cites doc_id + raw_path + claim_date.
+    """
+    result = _query().contradictions(
+        subject=subject, matters=list(matters) or None, size=size
+    )
+
+    def _cite(ref) -> str:  # type: ignore[no-untyped-def]
+        when = f", {ref.claim_date}" if ref.claim_date else ""
+        return f"{ref.doc_id} ({ref.raw_path or '?'}{when})"
+
+    click.echo(
+        f"within-speaker contradictions (integrity signal): {len(result.within_speaker)}"
+    )
+    for p in result.within_speaker:
+        who = p.asserted_by or "?"
+        click.echo(f"\n• {who} — {p.subject} / {p.predicate}  [{p.kind}]")
+        click.echo(f"    - “{p.left.object}” (pol={p.left.polarity})  {_cite(p.left)}")
+        click.echo(f"    - “{p.right.object}” (pol={p.right.polarity})  {_cite(p.right)}")
+    if not result.within_speaker:
+        click.echo("  (none)")
+
+    click.echo(
+        f"\ncontested — cross-speaker disagreement (NOT a defect): "
+        f"{len(result.contested)}"
+    )
+    for p in result.contested:
+        click.echo(f"\n• {p.subject} / {p.predicate}  [{p.kind}]")
+        left_who = p.left.asserted_by or "?"
+        right_who = p.right.asserted_by or "?"
+        click.echo(f"    - {left_who}: “{p.left.object}” (pol={p.left.polarity})  {_cite(p.left)}")
+        click.echo(f"    - {right_who}: “{p.right.object}” (pol={p.right.polarity})  {_cite(p.right)}")
+    if not result.contested:
+        click.echo("  (none)")
+
+
+@main.command()
 @click.argument("doc_id")
 @click.option(
     "--content/--no-content", default=True, help="Include the full extracted text."

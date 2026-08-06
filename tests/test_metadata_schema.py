@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from goldberg_system.metadata import (
+    Claim,
     DisclosureStatus,
     DocumentMetadata,
     HandlingFlags,
@@ -84,6 +85,44 @@ def test_unreviewed_handling_requires_caution() -> None:
 def test_extra_fields_are_rejected() -> None:
     with pytest.raises(ValueError):
         DocumentMetadata(not_a_real_field="x")
+
+
+def test_claim_defaults_keep_legacy_claims_valid() -> None:
+    # A claim serialized before the claim-graph fields existed (only the triple +
+    # asserted_by) must still validate — additive, no migration.
+    legacy = {
+        "subject": "prosecuting_entity",
+        "predicate": "is",
+        "object": "Empower the People",
+        "asserted_by": "Goldberg",
+    }
+    claim = Claim.model_validate(legacy)
+    assert claim.polarity is True
+    assert claim.epistemic_status is None
+    assert claim.source_span is None
+    assert claim.claim_date is None
+    assert claim.confidence is None
+    assert claim.derived_from == []
+
+
+def test_claim_round_trips_the_claim_graph_fields() -> None:
+    claim = Claim(
+        subject="s.5 PfHA",
+        predicate="was",
+        object="in force",
+        asserted_by="Goldberg",
+        polarity=False,
+        epistemic_status="inferred",
+        source_span="The provision was not in force at the material time.",
+        claim_date="2026-03-01",
+        confidence=0.4,
+        derived_from=["gb_384bundle", "claim:xyz"],
+    )
+    restored = Claim.model_validate_json(claim.model_dump_json())
+    assert restored == claim
+    assert restored.polarity is False
+    assert restored.epistemic_status == "inferred"
+    assert restored.derived_from == ["gb_384bundle", "claim:xyz"]
 
 
 def test_round_trips_losslessly() -> None:

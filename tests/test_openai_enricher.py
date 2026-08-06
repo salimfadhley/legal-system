@@ -81,6 +81,52 @@ def test_enrich_parses_structured_json_and_drops_malformed_claims() -> None:
     assert "422500059892" in kwargs["messages"][1]["content"]
 
 
+def test_enrich_parses_claim_graph_fields() -> None:
+    payload = json.dumps(
+        {
+            "summary": "s",
+            "claims": [
+                {
+                    "subject": "s.5 PfHA",
+                    "predicate": "was",
+                    "object": "in force",
+                    "asserted_by": "Goldberg",
+                    "polarity": False,
+                    "source_span": "s.5 was not in force at the material time.",
+                    "epistemic_status": "inferred",
+                },
+                {
+                    # missing/invalid claim-graph fields → safe defaults, not a failure
+                    "subject": "prosecutor",
+                    "predicate": "is",
+                    "object": "EtP",
+                    "epistemic_status": "wobble",  # invalid → None
+                },
+            ],
+        }
+    )
+    result = OpenAIEnricher(_FakeClient(payload)).enrich(_request())
+    assert len(result.claims) == 2
+    negated = result.claims[0]
+    assert negated.polarity is False
+    assert negated.source_span.startswith("s.5 was not")
+    assert negated.epistemic_status == "inferred"
+    defaulted = result.claims[1]
+    assert defaulted.polarity is True  # defaults to asserted
+    assert defaulted.source_span is None
+    assert defaulted.epistemic_status is None  # invalid value dropped
+
+
+def test_enricher_instructions_request_the_claim_graph_fields() -> None:
+    # the extraction prompt must actually ask for the new per-claim fields
+    enricher = OpenAIEnricher(_FakeClient("{}"))
+    enricher.enrich(_request())
+    prompt = enricher._client.chat.completions.last_kwargs["messages"][1]["content"]  # type: ignore[attr-defined]
+    assert "polarity" in prompt
+    assert "source_span" in prompt
+    assert "epistemic_status" in prompt
+
+
 def test_empty_json_gives_empty_result() -> None:
     result = OpenAIEnricher(_FakeClient("{}")).enrich(_request())
     assert result.summary == ""

@@ -92,6 +92,13 @@ class Claim(BaseModel):
 
     Comparable across the corpus so contradictions (a party's account shifting
     over time) become queryable. Lives in the document frontmatter (ADR 0004).
+
+    The fields below the triple are the "claim graph" additions (contradiction
+    detection, thread ``20260806T073358Z_claim-graph-for-contradiction-detection``).
+    Every one is optional with a safe default, so claims serialized before these
+    fields existed still validate — additive, no migration, no reindex. They stay
+    **unpopulated** on existing documents until a re-enrich (``goldberg reingest``)
+    re-reads the source text.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -100,6 +107,24 @@ class Claim(BaseModel):
     predicate: str
     object: str
     asserted_by: str | None = None  # the speaker/author making the claim
+
+    # --- claim-graph additions (all optional & additive) ---
+    polarity: bool = True
+    # ``False`` = the claim is negated ("was NOT ..."). Opposite polarity on the
+    # same normalized (subject, predicate) is the deterministic contradiction signal.
+    epistemic_status: str | None = None
+    # "asserted" | "inferred" | "quoted" | "held" — how the assertion is held. An
+    # ``inferred`` claim restated as fact in our own work product is the integrity
+    # failure the detector exists to catch.
+    source_span: str | None = None
+    # the exact sentence/quote the claim was read from (grounding / auditability).
+    claim_date: str | None = None
+    # ISO date the assertion was *made* — distinct from the document's own date.
+    confidence: float | None = None
+    # the extractor's self-rated certainty (0..1), or None if not rated.
+    derived_from: list[str] = []
+    # doc_ids / claim refs this was inferred from — the retraction/propagation hook
+    # (TMS-lite): mark a source retracted, follow ``derived_from`` to what it taints.
 
 
 class DocumentMetadata(BaseModel):

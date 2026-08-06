@@ -53,10 +53,19 @@ Analyse the document below and return a JSON object with exactly these keys:
 - "author": who wrote or is speaking in this document, or null if unclear.
 - "document_type": a short classification (e.g. "email", "court order", \
 "witness statement", "legal research").
-- "claims": an array of the document's key factual assertions, each an object \
-{"subject", "predicate", "object", "asserted_by"} where "asserted_by" is the \
-person/party making the claim (or null). Focus on legally-relevant assertions; \
-attribute them to the speaker. Return [] if none.
+- "claims": an array of the document's factual assertions. Extract every distinct \
+assertion, and DECOMPOSE compound statements into ATOMIC claims — one \
+subject/predicate/object per claim; never bundle several facts into one. Prefer many \
+precise atomic claims over a few broad ones. Each is an object {"subject", \
+"predicate", "object", "asserted_by", "polarity", "source_span", "epistemic_status"} \
+where "asserted_by" is the person/party making the claim (or null); "polarity" is \
+true unless the sentence negates the claim (e.g. "was NOT", "denied", "never"), in \
+which case false; "source_span" is the exact sentence the claim was read from; and \
+"epistemic_status" is "asserted" if the document states it directly, "inferred" if \
+you inferred it rather than reading it stated, or "quoted" if the document is quoting \
+another source. Prioritise legally-relevant and potentially-contested assertions, but \
+do not omit a material fact for seeming minor; attribute each to its speaker. Return \
+[] if none.
 Do not include any keys other than those listed."""
 
 
@@ -211,4 +220,36 @@ def _claim(raw: Any) -> Claim | None:
         predicate=predicate,
         object=obj,
         asserted_by=str(asserted_by) if asserted_by else None,
+        polarity=_polarity(raw.get("polarity")),
+        source_span=_opt_str(raw.get("source_span")),
+        epistemic_status=_epistemic_status(raw.get("epistemic_status")),
     )
+
+
+# The model returns these best-effort; parse them defensively so a missing or
+# malformed value never fails extraction (polarity defaults to True — asserted).
+_VALID_EPISTEMIC = {"asserted", "inferred", "quoted", "held"}
+
+
+def _polarity(value: Any) -> bool:
+    """True unless the model explicitly says the claim is negated (defaults True)."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() not in {"false", "no", "negated", "0"}
+    return True
+
+
+def _opt_str(value: Any) -> str | None:
+    """A trimmed non-empty string, else None."""
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def _epistemic_status(value: Any) -> str | None:
+    """One of the known epistemic statuses, else None (invalid/absent are dropped)."""
+    if isinstance(value, str) and value.strip().lower() in _VALID_EPISTEMIC:
+        return value.strip().lower()
+    return None

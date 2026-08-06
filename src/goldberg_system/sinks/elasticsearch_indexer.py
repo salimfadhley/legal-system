@@ -73,6 +73,13 @@ INDEX_MAPPING: dict[str, Any] = {
                         "fields": {"kw": {"type": "keyword"}},
                     },
                     "asserted_by": {"type": "keyword"},
+                    # --- claim-graph additions (additive; merged via put_mapping) ---
+                    "polarity": {"type": "boolean"},
+                    "epistemic_status": {"type": "keyword"},
+                    "source_span": {"type": "text"},
+                    "claim_date": {"type": "keyword"},
+                    "confidence": {"type": "float"},
+                    "derived_from": {"type": "keyword"},
                 },
             },
         },

@@ -116,6 +116,147 @@ def test_claims_builds_nested_query() -> None:
     assert {"term": {"claims.asserted_by": "Goldberg"}} in must
 
 
+def _claim_doc(doc_id: str, raw_path: str, claim: dict[str, Any]) -> dict[str, Any]:
+    """A search hit carrying one nested claim via inner_hits (contradiction fixture)."""
+    return {
+        "_id": doc_id,
+        "_source": {"doc_id": doc_id, "raw_path": raw_path},
+        "inner_hits": {"claims": {"hits": {"hits": [{"_source": claim}]}}},
+    }
+
+
+def test_contradictions_splits_within_speaker_from_contested() -> None:
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_a",
+                    "evidence/a.pdf",
+                    {
+                        "subject": "s.5 PfHA",
+                        "predicate": "was",
+                        "object": "in force",
+                        "asserted_by": "Goldberg",
+                        "polarity": True,
+                        "claim_date": "2026-01-01",
+                    },
+                ),
+                _claim_doc(
+                    "gb_b",
+                    "evidence/b.pdf",
+                    {
+                        "subject": "s.5 PfHA",
+                        "predicate": "was",
+                        "object": "in force",
+                        "asserted_by": "Goldberg",
+                        "polarity": False,  # same speaker, opposite polarity
+                        "claim_date": "2026-03-01",
+                    },
+                ),
+                _claim_doc(
+                    "gb_c",
+                    "evidence/c.pdf",
+                    {
+                        "subject": "s.5 PfHA",
+                        "predicate": "was",
+                        "object": "in force",
+                        "asserted_by": "Defence",  # different speaker → contested
+                        "polarity": False,
+                        "claim_date": "2026-02-01",
+                    },
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+
+    # Goldberg's own account flipped polarity over time → an integrity signal.
+    assert len(result.within_speaker) == 1
+    within = result.within_speaker[0]
+    assert within.asserted_by == "Goldberg"
+    assert within.kind == "opposite_polarity"
+    assert {within.left.doc_id, within.right.doc_id} == {"gb_a", "gb_b"}
+    assert {within.left.claim_date, within.right.claim_date} == {
+        "2026-01-01",
+        "2026-03-01",
+    }
+
+    # Goldberg (asserted) vs Defence (negated) → contested, NOT a defect.
+    assert len(result.contested) == 1
+    contested = result.contested[0]
+    assert contested.asserted_by is None  # cross-speaker: no single owner
+    assert {contested.left.doc_id, contested.right.doc_id} == {"gb_a", "gb_c"}
+
+
+def test_contradictions_conflicting_object_within_speaker() -> None:
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_1",
+                    "own/1.md",
+                    {
+                        "subject": "bundle size",
+                        "predicate": "is",
+                        "object": "384 pages",
+                        "asserted_by": "us",
+                        "polarity": True,
+                    },
+                ),
+                _claim_doc(
+                    "gb_2",
+                    "own/2.md",
+                    {
+                        "subject": "Bundle Size",  # normalization: same subject
+                        "predicate": "is",
+                        "object": "76 pages",  # same polarity, different object
+                        "asserted_by": "us",
+                        "polarity": True,
+                    },
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert len(result.within_speaker) == 1
+    assert result.within_speaker[0].kind == "conflicting_object"
+    assert result.contested == []
+
+
+def test_contradictions_agreeing_claims_are_not_flagged() -> None:
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_1",
+                    "a.md",
+                    {
+                        "subject": "x",
+                        "predicate": "is",
+                        "object": "y",
+                        "asserted_by": "us",
+                        "polarity": True,
+                    },
+                ),
+                _claim_doc(
+                    "gb_2",
+                    "b.md",
+                    {
+                        "subject": "x",
+                        "predicate": "is",
+                        "object": "y",
+                        "asserted_by": "us",
+                        "polarity": True,
+                    },
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert result.within_speaker == []
+    assert result.contested == []
+
+
 def test_get_returns_source_or_none() -> None:
     q_found = CorpusQuery(
         _FakeES(get_resp={"_source": {"doc_id": "gb_1", "content": "hi"}}, exists=True),
