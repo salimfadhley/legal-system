@@ -643,11 +643,15 @@ def reindex_from_extracted(extracted_root, index_override, max_docs) -> None:  #
 )
 @click.option("--matter", "matters", multiple=True, help="Restrict to matter(s).")
 @click.option(
+    "--path", "paths", multiple=True,
+    help="Restrict to raw_path prefix(es); repeatable (a file path or a folder).",
+)
+@click.option(
     "--extracted-root", default=None,
     help="Also mirror re-enriched docs to this goldberg-extracted root.",
 )
 @click.option("--index", "index_override", default=None, help="Source/target ES index.")
-def re_enrich(model, max_docs, matters, extracted_root, index_override) -> None:  # type: ignore[no-untyped-def]
+def re_enrich(model, max_docs, matters, paths, extracted_root, index_override) -> None:  # type: ignore[no-untyped-def]
     """Re-run the LLM enricher over each document's stored content; update its claims.
 
     Populates the new claim fields (polarity, source_span, epistemic_status) and any
@@ -673,11 +677,17 @@ def re_enrich(model, max_docs, matters, extracted_root, index_override) -> None:
     if extracted_root:
         sinks.append(ExtractedRepoWriter(extracted_root))
 
-    q = (
-        {"query": {"terms": {"matters": list(matters)}}}
-        if matters
-        else {"query": {"match_all": {}}}
-    )
+    filters: list = []
+    if matters:
+        filters.append({"terms": {"matters": list(matters)}})
+    if paths:
+        filters.append({
+            "bool": {
+                "should": [{"prefix": {"raw_path": p}} for p in paths],
+                "minimum_should_match": 1,
+            }
+        })
+    q = {"query": {"bool": {"filter": filters}}} if filters else {"query": {"match_all": {}}}
     click.echo(f"Re-enriching {index} with {model} (no Docling; content from ES) …")
     done = failed = 0
     for i, hit in enumerate(
