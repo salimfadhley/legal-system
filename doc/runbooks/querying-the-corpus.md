@@ -1,4 +1,4 @@
-# Runbook — querying the Goldberg corpus
+# Runbook — querying the corpus
 
 **Audience:** an agent (Claude Code) or a person answering questions about the case
 from the indexed evidence. **Goal:** grounded, **attributed** answers with
@@ -41,18 +41,18 @@ goldberg claims [--by <speaker>] [--subject <text>] [--object <text>] \
 Output: one line per matched claim — `speaker asserts: subject — predicate —
 object` — plus the source `doc_id` and `raw_path` for citation.
 
-Example — *"What did the sender of the cease-and-desist assert about Salim?"*:
+Example — *"What did the sender of the cease-and-desist assert about the recipient?"*:
 
 ```
-goldberg claims --by "E Lowe"
-# → E Lowe asserts: Mr. Salim Fadhley — has unlawfully possessed and used —
+goldberg claims --by "A Sender"
+# → A Sender asserts: The Recipient — has unlawfully possessed and used —
 #   Confidential Data …  (source: gb_… / evidence/exhibits/letter-…pdf)
 ```
 
 Contradiction-hunting — the same subject/object across speakers or time:
 
 ```
-goldberg claims --subject "prosecuting entity"
+goldberg claims --subject "responsible party"
 ```
 
 ### `goldberg search` — full-text search (BM25)

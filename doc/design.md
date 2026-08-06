@@ -19,12 +19,12 @@ decisions taken in the 2026-07-20 design session.
 
 ## 1. Purpose (what the system is actually for)
 
-goldberg-system is a **defence research + drafting tool** for a live UK private
-prosecution in which the user is one of the defendants. It has two concrete jobs:
+goldberg-system is a **research + drafting tool** for evidence-heavy legal work. It
+has two concrete jobs:
 
-1. **Answer attributed questions across the evidence corpus** — e.g. *"When Simon
-   Goldberg described Goldberg v Fadhley & Others, who did he say was the
-   prosecuting entity?"* Answers must be **grounded and attributed**: cite the
+1. **Answer attributed questions across the evidence corpus** — e.g. *"When a given
+   author described a particular dispute, who did they say was responsible?"*
+   Answers must be **grounded and attributed**: cite the
    source document, its raw commit, the speaker, and the date.
 2. **Draft responses to the court and other parties**, grounded in the corpus and
    in the user's own prior research.
@@ -113,12 +113,8 @@ from raw even where the old collection had no metadata.
 ### Matters (multi-matter corpus)
 
 The corpus spans several related matters; `case_number` is replaced by a
-multi-valued `matters` list. Known matters:
-
-- `422500059892` — main prosecution, *R v Fadhley*
-- `422500059914` — *Goldberg v Mannino & Ors* (co-defendants)
-- `648MC011` — *Goldberg v Afshar* / ETP
-- `L00SS179` — *Deacon v Goldberg*
+multi-valued `matters` list, each identified by its matter/case number (see
+`config/projects.yaml` for the deployment's active list).
 
 ## 5. Two ingest paths
 
@@ -188,8 +184,8 @@ document:
 
 - summary, keywords, entities (people/orgs/refs);
 - `author` / `source_party` (who is speaking);
-- **attributed assertions** — claims in a comparable form (e.g. *"Goldberg asserts
-  prosecuting-entity = X"*), so both attributed Q&A **and** cross-document
+- **attributed assertions** — claims in a comparable form (e.g. *"author asserts
+  responsible-party = X"*), so both attributed Q&A **and** cross-document
   contradiction detection work without a later re-architecture.
 
 ## 8. Index scope and RAG

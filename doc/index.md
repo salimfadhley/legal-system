@@ -1,6 +1,6 @@
 # Documentation Index
 
-Documentation for **goldberg-system**, the pipeline and tooling for the Goldberg document
+Documentation for **goldberg-system**, the pipeline and tooling for a legal document
 analysis platform.
 
 ## Start here

@@ -27,8 +27,8 @@ the current file:
 
 | File | Result |
 |------|--------|
-| `evidence/simon_goldberg/fsa_mortgage_dossier/ocr_output/combined.tsv` | ✅ indexed 2026-07-23T14:18:55, real summary + keywords, sha match |
-| `evidence/simon_goldberg/santander_complaint_pack/ocr_output/combined.tsv` | ✅ indexed 2026-07-23T14:19:30, real summary |
+| `evidence/example_party/mortgage_dossier/ocr_output/combined.tsv` | ✅ indexed 2026-07-23T14:18:55, real summary + keywords, sha match |
+| `evidence/example_party/complaint_pack/ocr_output/combined.tsv` | ✅ indexed 2026-07-23T14:19:30, real summary |
 
 ## SC-001 / FR-001..FR-006 — end-to-end trigger flow
 

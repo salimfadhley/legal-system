@@ -12,7 +12,7 @@
 > [Wiring the ingest trigger](./wiring-the-ingest-trigger.md). The service-name /
 > health-check / doctor steps below are otherwise current.
 
-The five checks that confirm the Goldberg processing stack ([ADR 0012](../decisions/0012-deployment-topology.md))
+The five checks that confirm the processing stack ([ADR 0012](../decisions/0012-deployment-topology.md))
 is genuinely live: all three services healthy, each reachable, the doctor board green,
 the ingest service active, and a real document making it end-to-end from
 `goldberg-raw` to a provenance-carrying search hit.

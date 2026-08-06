@@ -251,8 +251,8 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   `silverbullet-goldberg` space + the Mind of Steele indexer/linter/author machinery
   (shared infra → documented in MoS).
 - **Payoff:** attributed `claims` → `comparison/` pages surfacing contradictions
-  across parties/time — argument-grade material for the defence.
-- **Phases:** (1) verify the goldberg SB indexer + fit `SCHEMA.md` to this case;
+  across parties/time — argument-grade material for the case.
+- **Phases:** (1) verify the goldberg SB indexer + fit `SCHEMA.md` to this deployment;
   (2) batch-author `entities/`+`concepts/` from the indexed corpus (DRY_RUN → review
   → apply), build `index.md`; (3) contradiction pass → `comparison/` pages;
   (4) event-driven auto-update hooked to the live pipeline (DRY_RUN then live, MoS

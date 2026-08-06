@@ -26,7 +26,7 @@ the environment only when the concrete adapters are wired (M3/M4). Until then it
 is intentionally **not** a hard dependency of `goldberg-system` (keeping M1 pure).
 
 - Preferred: add MoS as a git dependency (pinned) in the optional dependency group
-  that M3/M4 activate — e.g. `uv add "mind-of-steele @ git+file:///Users/salimfadhley/workspace/mind_of_steele@<sha>"`
+  that M3/M4 activate — e.g. `uv add "mind-of-steele @ git+file:///Users/<user>/workspace/mind_of_steele@<sha>"`
   (or the GitHub URL once MoS is pushed), imported behind the adapter.
 - Alternative: vendor the specific MoS modules if a pinned import proves awkward
   across the Mac/Halob boundary.

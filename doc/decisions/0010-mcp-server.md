@@ -47,5 +47,5 @@ The system must therefore be legible and queryable **by a fleet of LLM agents**
 
 Started locally over `streamable-http`; an MCP client completed the `initialize`
 handshake, listed all 7 tools, and called them live: `system_status` → health ok /
-191 docs; `find_claims(speaker="Simon John Goldberg")` → 14 attributed claims;
-`search_evidence("Empower the People")` → live hits. End-to-end confirmed.
+191 docs; `find_claims(speaker=<a named speaker>)` → 14 attributed claims;
+`search_evidence(<a named organisation>)` → live hits. End-to-end confirmed.

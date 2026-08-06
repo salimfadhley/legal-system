@@ -16,10 +16,10 @@ Two usage patterns:
   (`spec-kitty profile-invocation complete --invocation-id <id> --outcome <done|failed|abandoned>`).
 <!-- /spec-kitty:orientation -->
 
-## Skill: answering questions about the Goldberg corpus
+## Skill: answering questions about the corpus
 
-When the user asks about the **case / evidence / documents** (e.g. "who did
-Goldberg say was the prosecuting entity?"), **do not answer from memory** — run the
+When the user asks about the **case / evidence / documents** (e.g. "who did a
+given author say was responsible for X?"), **do not answer from memory** — run the
 `goldberg` query tools to retrieve grounded evidence, then answer **with citations**
 (`doc_id` + `raw_path` + speaker + date). Never invent; if nothing relevant is
 indexed, say so.

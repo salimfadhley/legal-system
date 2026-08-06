@@ -10,7 +10,7 @@ forever — wasteful, and against charter DIR-004 ("trigger, don't poll"). It al
 a bug: oversized OCR `.tsv` files exceeded the LLM's 128k-token context and hard-failed
 (`400 context_length_exceeded`), then retried endlessly — a DLQ storm. This mission
 replaces the reconciler with an event-driven flow and fixes the enrich bug.
-Storm files: `evidence/simon_goldberg/{fsa_mortgage_dossier,santander_complaint_pack}/ocr_output/combined.tsv`.
+Storm files: `evidence/example_party/{mortgage_dossier,complaint_pack}/ocr_output/combined.tsv`.
 
 ## What was built
 1. **Enrich token-safety** — `src/goldberg_system/enrichment/openai_enricher.py`:

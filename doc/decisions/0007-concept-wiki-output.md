@@ -12,7 +12,7 @@
 The corpus is queryable (BM25 + attributed claims over Elasticsearch), which answers
 *targeted* questions well. What it does **not** give is a **"by concept" index** —
 a browsable, human-curated map of the people, organisations, legal concepts, and
-contradictions across the whole case. That is the missing *output* the user wants:
+contradictions across the whole corpus. That is the missing *output* the user wants:
 a knowledge base you read and navigate, not just query.
 
 This is exactly the **"LLM wiki"** pattern (Karpathy; formalised in Nous Research's
@@ -20,8 +20,8 @@ This is exactly the **"LLM wiki"** pattern (Karpathy; formalised in Nous Researc
 stateless RAG. The human curates sources and directs; the agent summarises,
 cross-references, files, and lints.
 
-Crucially, **the machinery already exists** in Mind of Steele and a Goldberg space
-is already deployed:
+Crucially, **the machinery already exists** in Mind of Steele and a space for this
+project is already deployed:
 
 - **`silverbullet-goldberg`** — a live SilverBullet space for `the_goldberg_files`
   (http://192.168.86.31:3100/, data at `/Volumes/Home/silverbullet/the_goldberg_files/`),
@@ -63,7 +63,7 @@ is already deployed:
 
 3. **Attributed claims → `comparison` pages for contradictions.** The legal payoff.
    Where two documents assert conflicting objects for the same subject/predicate
-   (e.g. the identity of the prosecuting entity), author a `comparison` page citing
+   (e.g. the identity of a disputed party), author a `comparison` page citing
    both, `asserted_by` each source, with `contradictions:` frontmatter. This turns
    the claims layer into navigable argument material.
 
@@ -82,20 +82,19 @@ is already deployed:
    discipline). It is not fed back into `goldberg-raw`. It *is* indexed
    (`silverbullet-goldberg` ES index) so it is itself searchable.
 
-7. **Cross-link the `mind_of_steele` wiki.** Goldberg appears in both (litigation
-   party here; conspiracy figure there); link via external markdown/`cross_wiki`
-   frontmatter, per the existing `SCHEMA.md`.
+7. **Cross-link the `mind_of_steele` wiki.** Where the same entities appear in both
+   wikis, link via external markdown/`cross_wiki` frontmatter, per the existing
+   `SCHEMA.md`.
 
 ## Consequences / open questions for M11 to resolve
 
 - **Author component location.** The MoS `wiki_ingest` seeds from transcripts; we
-  need a Goldberg variant seeding from ES documents (entities/claims). Decide:
+  need a project-specific variant seeding from ES documents (entities/claims). Decide:
   extend `wiki_ingest` (shared, in MoS) vs a thin new author in goldberg-system that
   reuses its validation/apply core. Leaning: reuse the validation/apply core, new
   corpus-specific "orient + author" front.
 - **SCHEMA taxonomy fit.** The existing tag vocabulary is generic-litigation; extend
-  it for this case's matters (422500059892 / 422500059914 / 648MC011 / L00SS179) and
-  domain (PHA 1997 harassment, private prosecution, disclosure/CPIA).
+  it for this deployment's matters and legal domain.
 - **De-dup vs the corpus.** Entities already exist as ES `entities`; the wiki page is
   the *synthesised* view. Page-creation threshold (2+ sources) still applies.
 - **Update cadence & idempotency.** Re-authoring on every re-index must converge
@@ -117,18 +116,18 @@ is already deployed:
 Validated both directions against live infra before committing to M11:
 
 1. **Infra is live.** `silverbullet-goldberg` ES index exists with 107 indexed pages
-   (`index.md`, `concepts/`, `entities/…` — e.g. `entities/salim-fadhley` tagged
-   `defendant`); the SB indexer is running; `silverbullet-mindofsteele` (2,966 pages)
+   (`index.md`, `concepts/`, `entities/…` — e.g. `entities/example-party` tagged
+   `party`); the SB indexer is running; `silverbullet-mindofsteele` (2,966 pages)
    proves the pattern scales.
 2. **Dual-representation query — CONFIRMED complementary.** Added
    `CorpusQuery.wiki()` + `goldberg wiki` (searches `silverbullet-goldberg`, excludes
-   raw/archive layers). Same query "Empower the People": the **wiki** returns
-   synthesised entity/concept pages (Simon Goldberg = plaintiff + cross-wiki
-   conspiracy figure, `[[linked]]` to co-defendants); the **corpus** returns the
-   primary evidence (Exhibit 22 Telegram post, attributed). Different representations,
-   genuinely complementary — the query skill now checks both.
+   raw/archive layers). A sample query against a named organisation showed the
+   **wiki** returning synthesised entity/concept pages (an entity page cross-linked
+   to related parties); the **corpus** returning the primary evidence (an attributed
+   exhibit). Different representations, genuinely complementary — the query skill now
+   checks both.
 3. **Downstream author — CONFIRMED.** A pure renderer (`wiki/page.py`) built an
-   `entities/simon-goldberg.md` page *from the enriched corpus* (6 attributed claims
+   `entities/example-entity.md` page *from the enriched corpus* (6 attributed claims
    pulled via `CorpusQuery.claims`), with required frontmatter, ≥2 `[[wikilinks]]`,
    and `sources:` citing the corpus `raw_path` — written as a non-destructive DRY_RUN
    proposal. Confirms the wiki-as-downstream-`Sink` data flow (decision §2).

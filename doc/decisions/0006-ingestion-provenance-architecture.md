@@ -38,8 +38,8 @@ optional for a human-visible cross-link.
 **Decision: from the folder-level `metadata.yaml` chain**, using the light
 **folder-defaults merge** already built in M1 (`merge_folder_defaults`). The
 archive already sets `case_number`/`party_role`/`document_type` per folder,
-inherited down the tree (e.g. `evidence/` → `422500059892`,
-`r_v_fanthom_and_deacon/` → `T20240030`). Migration reads each document's folder
+inherited down the tree (e.g. `evidence/` → a matter number,
+a party-named subfolder → its own matter number). Migration reads each document's folder
 chain; `case_number(s)` become `matters`. No LLM guessing for the structural
 fields; the machine still fills summary/keywords/entities/author/claims.
 
@@ -54,7 +54,8 @@ human-browsable, provenance-stamped mirror.
 ### Q5 — Large-document enrichment
 
 **Decision: full-context enrichment** — remove the 12k-char truncation and pass
-the whole document (models are 128k-context; the 69k MG6C fits comfortably). MoS's
+the whole document (models are 128k-context; a 69k-token real-world document fits
+comfortably). MoS's
 chunker is transcript-specific (SRT-by-time) and is **not** reused. Chunking for
 retrieval granularity + embeddings is deferred to the vector-RAG stretch (M10).
 
@@ -108,7 +109,7 @@ Validated against the live archive + Papra before writing migration code:
    Papra custom-properties.
 2. **Matter resolution — CONFIRMED where metadata exists.** The folder
    `metadata.yaml` chain resolves `case_number → matters` correctly for `evidence/`
-   files (→ `422500059892`), and empty where no `case_number` is set upstream
+   files, and empty where no `case_number` is set upstream
    (e.g. `exhibits/`). The mechanism is sound; coverage tracks the metadata.
 3. **New finding — the archive is NOT a clean evidence tree; M8 needs a curation
    step first.** Of 5,018 files, only 27% resolve to a matter. The 72% without one

@@ -1,4 +1,4 @@
-# Architecture — the Goldberg document analysis platform
+# Architecture — the document analysis platform
 
 **This document is the canonical technical description of the system.** It is written
 so that someone with no access to the running deployment could rebuild an equivalent
@@ -42,10 +42,10 @@ running on Halob. Section [§14](#14-known-gaps-and-honest-limitations) lists wh
 
 ## 1. What the system is for
 
-The platform is a **defence research and drafting tool for a live UK private
-prosecution** in which the system's owner is one of the defendants. That purpose drives
-almost every technical decision below, so it is worth stating precisely. The system has
-two jobs:
+The platform is a **research and drafting tool for evidence-heavy legal work**, built
+for a context where every answer must be defensible and traceable back to its source.
+That purpose drives almost every technical decision below, so it is worth stating
+precisely. The system has two jobs:
 
 1. **Answer attributed questions across an evidence corpus.** Not "what does the corpus
    say about X" but "*who said* what about X, *when*, and *in which document*". Every
@@ -671,8 +671,8 @@ basis of contradiction detection: two documents asserting different `object`s fo
 same `subject`+`predicate`, with different `asserted_by`, is a contradiction that can be
 found by query rather than by reading.
 
-**Matters in this corpus:** `422500059892` (main prosecution), `422500059914`,
-`648MC011`, `L00SS179`.
+**Matters in this corpus:** the deployment tracks several distinct legal matters
+concurrently, identified by matter/case number (see `config/projects.yaml`).
 
 ### The Elasticsearch mapping
 
@@ -762,8 +762,8 @@ question ──▶ goldberg claims / search / wiki / get / facets ──▶ Elas
 
 They are complementary and both should be queried. A spike confirmed this concretely:
 the same query returned, from the wiki, a synthesised entity page linking a party to
-co-defendants; and from the corpus, the primary evidence document itself. Map and
-territory.
+related parties in the matter; and from the corpus, the primary evidence document
+itself. Map and territory.
 
 ### CLI surface (`goldberg`)
 
