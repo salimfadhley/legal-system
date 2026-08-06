@@ -63,3 +63,6 @@ agent-inbox.toml
 
 # Graphify output artifacts
 graphify-out/
+
+# Inter-agent mail — privileged; not for the public tooling repo (kept in private repos / the mailbox)
+doc/prompt/
