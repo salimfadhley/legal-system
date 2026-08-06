@@ -1,73 +1,72 @@
-# Deploying / updating the ingest service (and enabling the goldberg-extracted mirror)
+# Deploying / updating the ingest service (Portainer, no host builds)
 
 The event-driven ingest service (`goldberg ingest-serve`, ADR 0013) runs on Halob as a
-**Docker container** defined in [`deploy/docker-compose.yml`](../../deploy/docker-compose.yml).
-Its code is **baked into the image at build time** (`deploy/Dockerfile.ingest` COPYs
-`src/`), so shipping a code change means **rebuilding the image**, not just restarting.
+Docker container. **Halob is a low-spec 4-core Celeron — never build images on it, and
+never run `docker` on the host directly.** Deploys go **through Portainer** (endpoint
+`2`, `http://192.168.86.31:19900`, `X-API-Key` — token in the Mind-of-Steele Portainer
+doc): the image is built **elsewhere** and Halob only ever runs the pre-built artefact.
 
-> **Access required:** this needs Docker on Halob, i.e. root / a password'd `sudo` or the
-> docker group. It is **not** currently a Portainer-managed stack (no `goldberg` stack in
-> Portainer — it was brought up with a manual `docker compose up`), so the Portainer API
-> key cannot rebuild it. Either run the commands below on Halob, or register the stack in
-> Portainer first (see the last section).
+The image bakes the code in at build time (`deploy/Dockerfile.ingest` COPYs `src/`), so
+shipping a code change = build a new image + get it onto Halob + recreate the container.
 
-## Enable the goldberg-extracted mirror (ADR 0015)
+## Go-forward (preferred): GitHub Actions → ghcr → Portainer
 
-The compose is already wired: the `ingest` service mounts `goldberg-extracted` read-write
-at `/data/goldberg-extracted` and passes `--extracted-root /data/goldberg-extracted`, so
-every newly-ingested document is mirrored there as a frontmatter `.md` as it is indexed.
-To make it live, deploy the updated image.
+The durable mechanism (see `.github/workflows/`): a push to `main` builds `linux/amd64`
+in GitHub Actions and pushes to `ghcr.io/salimfadhley/goldberg-ingest` (using the
+built-in `GITHUB_TOKEN` — no credential to manage on the push side). Portainer then
+deploys the pre-built image (Halob pulls, never builds). One-time setup still needed:
+let Portainer/Halob **pull** the image — either make the ghcr package public, or register
+a fine-grained read-`packages` token in Portainer — and define the `goldberg` stack.
 
-### 1. Get the new code onto Halob
+## Interim (what deployed the extracted-mirror change, 2026-08-06)
 
-The repo working tree is at `/share/home/sal/work/project_goldberg/goldberg-system` (same
-tree as the Mac mount). Ensure it is current:
-
-```bash
-cd /share/home/sal/work/project_goldberg/goldberg-system && git pull
-```
-
-`goldberg-extracted` must exist beside it (it does — populated by the backfill):
-`/share/home/sal/work/project_goldberg/goldberg-extracted`. The compose default
-`GOLDBERG_EXTRACTED_PATH=../goldberg-extracted` resolves to it.
-
-### 2. Rebuild + restart (one command)
+Until the CI stack is wired, deploy by building on a capable host and loading the image
+onto Halob through Portainer's Docker API:
 
 ```bash
-cd /share/home/sal/work/project_goldberg/goldberg-system/deploy
-sudo docker compose up -d --build ingest
+# 1. Build linux/amd64 on a capable host (a Mac, CI — NOT Halob):
+docker buildx build --platform linux/amd64 -f deploy/Dockerfile.ingest \
+  -t goldberg-ingest:extracted --load .
+
+# 2. Package and load it onto Halob's Docker THROUGH Portainer (no host build, no registry):
+docker save goldberg-ingest:extracted | gzip > /tmp/img.tar.gz
+curl -s -X POST -H "X-API-Key: $PORTAINER_KEY" -H "Content-Type: application/x-tar" \
+  --data-binary @/tmp/img.tar.gz \
+  http://192.168.86.31:19900/api/endpoints/2/docker/images/load
+
+# 3. Cut over via the Portainer Docker API (all POSTs to .../api/endpoints/2/docker):
+#    - stop old:    /containers/goldberg-ingest/stop
+#    - rename aside:/containers/goldberg-ingest/rename?name=goldberg-ingest-old   (rollback)
+#    - create new:  /containers/create?name=goldberg-ingest   (body = replicate the old
+#      container's Env + host-network + binds, ADD the goldberg-extracted rw mount and
+#      the --extracted-root flag)
+#    - start:       /containers/<id>/start
 ```
 
-`--build` picks up the new `--extracted-root` code; `up -d` recreates just the `ingest`
-container. Verify:
+Replicate the running container's config exactly (`GET /containers/goldberg-ingest/json`)
+and add only:
+- bind `…/goldberg-extracted:/data/goldberg-extracted` (read-write), and
+- command args `--extracted-root /data/goldberg-extracted`.
 
-```bash
-sudo docker compose logs -f ingest        # expect "mirroring extracted docs → /data/goldberg-extracted"
-curl -s localhost:8098/health             # last activity + catch-up summary
-```
+Verify from the container logs (`GET /containers/<id>/logs`): expect
+`mirroring extracted docs → /data/goldberg-extracted` and `running startup catch-up`,
+`RestartCount 0`. The `/health` endpoint (port 8098) only opens **after** the startup
+catch-up (up to the 900s start-period) — read the logs, don't wait on `/health`.
 
-### 3. Persist the mirror to the remote (cadence)
+**Rollback:** the previous container is kept stopped as `goldberg-ingest-old` on the old
+image. To revert: stop/remove the new `goldberg-ingest`, rename `goldberg-ingest-old`
+back to `goldberg-ingest`, start it. Remove `goldberg-ingest-old` once the new deployment
+is confirmed stable.
 
-The sink writes files into the mounted working tree but does **not** commit. A periodic
-job keeps the remote current (run on the host, where the git identity/credentials live):
+## Persisting the mirror to the remote (cadence)
+
+The sink writes files into the mounted `goldberg-extracted` working tree but does not
+commit. A periodic host job keeps the GitHub remote current:
 
 ```bash
 cd /share/home/sal/work/project_goldberg/goldberg-extracted
 git add -A && git commit -q -m "mirror: ingest deltas $(date -u +%FT%TZ)" && git push
 ```
 
-Wire it as a cron/systemd-timer (e.g. hourly). Until then the working tree is current but
-the GitHub remote only reflects the last manual push.
-
-## Rolling back
-
-`git checkout <prev> -- deploy/ src/` then re-run step 2, or drop the `--extracted-root`
-line from the command in `docker-compose.yml` and redeploy — the sink is purely additive,
-so removing it stops mirroring without affecting ES ingestion.
-
-## Optional: make it Portainer-managed
-
-To manage future deploys via the Portainer API (like the `papra` / `silverbullet-goldberg`
-stacks): create a stack named `goldberg` from `deploy/docker-compose.yml` on endpoint 2,
-supplying the env. Thereafter rebuild/redeploy is an API call with the Portainer token
-(no host shell) — see the Mind-of-Steele Portainer doc.
+Wire it as a cron/systemd-timer. Until then the working tree is current but the remote
+only reflects the last manual push (the backfill).
