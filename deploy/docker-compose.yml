@@ -81,6 +81,11 @@ services:
       - ${GOLDBERG_MANIFEST_PATH:-./config}:/app/config
       # Container-tuned projects.yaml, read-only (ADR 0012).
       - ./projects.container.yaml:/etc/goldberg/projects.yaml:ro
+      # goldberg-extracted, READ-WRITE: the derived git store (ADR 0015). The ingest
+      # service mirrors each ingested doc here as a frontmatter .md (--extracted-root
+      # below). MUST be the git working-tree root; a periodic commit/push job persists
+      # the deltas to the remote (see doc/runbooks/deploying-the-ingest-service.md).
+      - ${GOLDBERG_EXTRACTED_PATH:-../goldberg-extracted}:/data/goldberg-extracted
     ports:
       # ingest-serve exposes GET /health on 8098 (last activity + catch-up summary).
       - "${INGEST_HEALTH_PORT:-8098}:8098"
@@ -98,6 +103,8 @@ services:
         "${INGEST_MAX_DELIVER:-5}",
         "--batch",
         "${INGEST_BATCH:-50}",
+        "--extracted-root",
+        "/data/goldberg-extracted",
         "--health-port",
         "8098",
       ]
