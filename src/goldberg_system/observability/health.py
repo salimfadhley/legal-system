@@ -1,8 +1,8 @@
 """Component-health probes — the ``goldberg doctor`` liveness board (ADR 0008).
 
 Answers "is the pipeline actually up?" by probing every major component
-(Elasticsearch, Docling OCR, the enricher, the MCP server, the live-index watcher,
-and wiki synthesis) and assembling a :class:`DoctorReport`. Each probe is:
+(Elasticsearch, Docling OCR, the enricher, the MCP server, and the live-index
+watcher) and assembling a :class:`DoctorReport`. Each probe is:
 
 * **individually time-bounded** — an internal request timeout of ≤5s, plus an outer
   board deadline (:data:`DEFAULT_BOARD_TIMEOUT`) enforced by :func:`run_doctor`, so a
@@ -42,9 +42,8 @@ DEFAULT_BOARD_TIMEOUT = 10.0
 DEFAULT_FRESHNESS_SECONDS = 15 * 60
 
 DOCUMENTS_INDEX = "goldberg_documents"
-WIKI_INDEX = "silverbullet-goldberg"
 EVENTS_INDEX = "goldberg_pipeline_events"
-REQUIRED_INDICES = (DOCUMENTS_INDEX, WIKI_INDEX, EVENTS_INDEX)
+REQUIRED_INDICES = (DOCUMENTS_INDEX, EVENTS_INDEX)
 
 # The reachable MCP address in this deployment; used when the configured bind host is
 # the wildcard ``0.0.0.0`` (which you cannot actually connect to).
@@ -57,7 +56,6 @@ PROBE_ORDER = (
     "enricher",
     "mcp_server",
     "live_index_watcher",
-    "wiki_synthesis",
 )
 
 
@@ -411,49 +409,6 @@ def probe_live_index_watcher(
     )
 
 
-def probe_wiki_synthesis(
-    client: Any | None = None,
-    *,
-    synthesis_wired: bool = False,
-    timeout: float = DEFAULT_PROBE_TIMEOUT,
-) -> ComponentHealth:
-    """Wiki-synthesis health (FR-007).
-
-    Index missing → DOWN; present but not refreshed from ingest → DEGRADED (the
-    honest default: no synthesis pipeline is wired yet); present and wired → UP. Be
-    accurate, not optimistic — this is the leg we know isn't wired.
-    """
-    name = "wiki_synthesis"
-    start = perf_counter()
-    if client is None:
-        client = _es_client()
-    pages = _index_count(client, WIKI_INDEX)
-    latency = _elapsed_ms(start)
-    if pages is None:
-        return ComponentHealth(
-            name=name,
-            status=ComponentStatus.DOWN,
-            detail=f"wiki index '{WIKI_INDEX}' missing",
-            latency_ms=latency,
-        )
-    if not synthesis_wired:
-        return ComponentHealth(
-            name=name,
-            status=ComponentStatus.DEGRADED,
-            detail=(
-                f"wiki index present ({pages} pages) but not refreshed from ingest "
-                "(no synthesis pipeline wired)"
-            ),
-            latency_ms=latency,
-        )
-    return ComponentHealth(
-        name=name,
-        status=ComponentStatus.UP,
-        detail=f"wiki index present ({pages} pages), synthesis wired",
-        latency_ms=latency,
-    )
-
-
 # ── orchestration ────────────────────────────────────────────────────────────
 
 
@@ -464,7 +419,6 @@ def run_doctor(
     probe_timeout: float = DEFAULT_PROBE_TIMEOUT,
     board_timeout: float = DEFAULT_BOARD_TIMEOUT,
     freshness_seconds: float = DEFAULT_FRESHNESS_SECONDS,
-    synthesis_wired: bool = False,
 ) -> DoctorReport:
     """Run every probe concurrently and assemble the :class:`DoctorReport`.
 
@@ -486,9 +440,6 @@ def run_doctor(
         "mcp_server": lambda: probe_mcp_server(timeout=probe_timeout),
         "live_index_watcher": lambda: probe_live_index_watcher(
             es_client, freshness_seconds=freshness_seconds, timeout=probe_timeout
-        ),
-        "wiki_synthesis": lambda: probe_wiki_synthesis(
-            es_client, synthesis_wired=synthesis_wired, timeout=probe_timeout
         ),
     }
 

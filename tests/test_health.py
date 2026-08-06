@@ -22,7 +22,6 @@ from goldberg_system.observability.health import (
     probe_enricher,
     probe_live_index_watcher,
     probe_mcp_server,
-    probe_wiki_synthesis,
     run_doctor,
     worst_status,
 )
@@ -99,7 +98,6 @@ def test_es_up_when_all_indices_present() -> None:
         cluster={"status": "green"},
         counts={
             "goldberg_documents": 5000,
-            "silverbullet-goldberg": 120,
             "goldberg_pipeline_events": 9000,
         },
     )
@@ -112,12 +110,12 @@ def test_es_up_when_all_indices_present() -> None:
 def test_es_degraded_when_index_missing() -> None:
     es = _FakeES(
         cluster={"status": "yellow"},
-        counts={"goldberg_documents": 5000, "goldberg_pipeline_events": 9000},
-        missing={"silverbullet-goldberg"},
+        counts={"goldberg_documents": 5000},
+        missing={"goldberg_pipeline_events"},
     )
     h = probe_elasticsearch(es)
     assert h.status is ComponentStatus.DEGRADED
-    assert "silverbullet-goldberg" in h.detail
+    assert "goldberg_pipeline_events" in h.detail
 
 
 def test_es_down_when_cluster_unreachable() -> None:
@@ -271,28 +269,6 @@ def test_watcher_down_and_inferred_on_error() -> None:
     assert h.inferred is True
 
 
-# ── wiki synthesis probe ────────────────────────────────────────────────────
-
-
-def test_wiki_down_when_index_missing() -> None:
-    es = _FakeES(missing={"silverbullet-goldberg"})
-    h = probe_wiki_synthesis(es)
-    assert h.status is ComponentStatus.DOWN
-
-
-def test_wiki_degraded_when_present_but_not_wired() -> None:
-    es = _FakeES(counts={"silverbullet-goldberg": 42, "goldberg_documents": 5000})
-    h = probe_wiki_synthesis(es, synthesis_wired=False)
-    assert h.status is ComponentStatus.DEGRADED
-    assert "42" in h.detail and "not refreshed" in h.detail
-
-
-def test_wiki_up_when_present_and_wired() -> None:
-    es = _FakeES(counts={"silverbullet-goldberg": 42, "goldberg_documents": 5000})
-    h = probe_wiki_synthesis(es, synthesis_wired=True)
-    assert h.status is ComponentStatus.UP
-
-
 # ── report / worst-status ────────────────────────────────────────────────────
 
 
@@ -337,7 +313,6 @@ def _patch_all_probes(monkeypatch, delay: float = 0.0) -> None:
         "probe_enricher",
         "probe_mcp_server",
         "probe_live_index_watcher",
-        "probe_wiki_synthesis",
     ):
         name = pname.removeprefix("probe_")
 
@@ -355,12 +330,12 @@ def _patch_all_probes(monkeypatch, delay: float = 0.0) -> None:
 
 
 def test_run_doctor_runs_probes_concurrently(monkeypatch) -> None:
-    # 6 probes each sleeping 0.2s: sequential would be ~1.2s, concurrent ~0.2s.
+    # 5 probes each sleeping 0.2s: sequential would be ~1.0s, concurrent ~0.2s.
     _patch_all_probes(monkeypatch, delay=0.2)
     start = time.perf_counter()
     report = run_doctor(es_client=object())
     elapsed = time.perf_counter() - start
-    assert len(report.components) == 6
+    assert len(report.components) == 5
     assert report.overall is ComponentStatus.UP
     assert elapsed < 0.8, f"probes not concurrent (took {elapsed:.2f}s)"
 
@@ -390,10 +365,10 @@ def test_run_doctor_overall_degraded(monkeypatch) -> None:
 
     def degraded(*a: Any, **k: Any) -> ComponentHealth:
         return ComponentHealth(
-            name="wiki_synthesis", status=ComponentStatus.DEGRADED, detail="stale"
+            name="enricher", status=ComponentStatus.DEGRADED, detail="stale"
         )
 
-    monkeypatch.setattr(health, "probe_wiki_synthesis", degraded)
+    monkeypatch.setattr(health, "probe_enricher", degraded)
     report = run_doctor(es_client=object())
     assert report.overall is ComponentStatus.DEGRADED
 

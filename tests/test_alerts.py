@@ -13,7 +13,6 @@ def _state(*, status: str = "ok", failed: int = 0, skipped: int = 0) -> SystemSt
         generated_at="t",
         health={"status": status, "checks": checks},
         corpus={"documents": 10, "by_matter": {}, "by_type": {}},
-        wiki={"pages": 0, "by_layer": {}},
         pipeline={
             "by_stage_status": {},
             "last_indexed_at": None,

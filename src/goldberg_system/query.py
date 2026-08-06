@@ -40,25 +40,6 @@ class ClaimHit(BaseModel):
     asserted_by: str | None = None
 
 
-class WikiHit(BaseModel):
-    """A hit in the SilverBullet concept wiki — a synthesised page, not raw evidence.
-
-    The wiki is a *second representation* of the corpus (ADR 0007): curated,
-    cross-linked concept/entity pages. Searching it alongside the document index
-    surfaces synthesised context the raw documents don't state in one place.
-    """
-
-    path: str  # e.g. "entities/simon-goldberg.md"
-    title: str | None = None
-    layer: str | None = None  # entity | concept | comparison | query | summary | …
-    type: str | None = None
-    tags: list[str] = []
-    sources: list[str] = []  # raw_path citations back into the corpus
-    outbound_links: list[str] = []
-    score: float | None = None
-    highlights: list[str] = []
-
-
 def _as_list(value: str | list[str] | None) -> list[str]:
     if value is None:
         return []
@@ -68,10 +49,9 @@ def _as_list(value: str | list[str] | None) -> list[str]:
 class CorpusQuery:
     """Query the goldberg Elasticsearch index."""
 
-    def __init__(self, client: Any, index: str, wiki_index: str | None = None) -> None:
+    def __init__(self, client: Any, index: str) -> None:
         self.client = client
         self.index = index
-        self.wiki_index = wiki_index or "silverbullet-goldberg"
 
     @classmethod
     def from_env(cls) -> CorpusQuery:
@@ -87,8 +67,7 @@ class CorpusQuery:
 
         url = os.environ.get("GOLDBERG_ES_URL", "http://192.168.86.31:9200")
         index = os.environ.get("GOLDBERG_ES_INDEX", "goldberg_documents")
-        wiki_index = os.environ.get("GOLDBERG_WIKI_INDEX", "silverbullet-goldberg")
-        return cls(Elasticsearch(url), index, wiki_index)
+        return cls(Elasticsearch(url), index)
 
     def search(
         self,
@@ -148,64 +127,6 @@ class CorpusQuery:
                     ingested_at=src.get("ingested_at"),
                     score=hit.get("_score"),
                     highlights=hit.get("highlight", {}).get("content", []),
-                )
-            )
-        return hits
-
-    def wiki(
-        self,
-        text: str | None = None,
-        *,
-        layer: str | None = None,
-        tags: str | list[str] | None = None,
-        size: int = 10,
-    ) -> list[WikiHit]:
-        """Full-text search the SilverBullet concept wiki (the synthesised view).
-
-        Searches ``silverbullet-goldberg`` over page title/body, optionally filtered
-        by ``layer`` (entity/concept/comparison/…) or ``tags``. Excludes archived
-        and raw-mirror pages so only synthesised knowledge is returned.
-        """
-        if text:
-            must: list[dict[str, Any]] = [
-                {
-                    "multi_match": {
-                        "query": text,
-                        "fields": ["title^3", "body", "tags^2"],
-                    }
-                }
-            ]
-        else:
-            must = [{"match_all": {}}]
-        filters: list[dict[str, Any]] = []
-        if layer:
-            filters.append({"term": {"layer": layer}})
-        if tags:
-            filters.append({"terms": {"tags": _as_list(tags)}})
-        must_not = [{"terms": {"layer": ["raw", "archive"]}}]
-
-        resp = self.client.search(
-            index=self.wiki_index,
-            query={"bool": {"must": must, "filter": filters, "must_not": must_not}},
-            size=size,
-            highlight={
-                "fields": {"body": {"fragment_size": 160, "number_of_fragments": 2}}
-            },
-        )
-        hits: list[WikiHit] = []
-        for hit in resp["hits"]["hits"]:
-            src = hit.get("_source", {})
-            hits.append(
-                WikiHit(
-                    path=src.get("path", hit.get("_id", "")),
-                    title=src.get("title"),
-                    layer=src.get("layer"),
-                    type=src.get("type"),
-                    tags=src.get("tags", []),
-                    sources=src.get("sources", []),
-                    outbound_links=src.get("outbound_links", []),
-                    score=hit.get("_score"),
-                    highlights=hit.get("highlight", {}).get("body", []),
                 )
             )
         return hits

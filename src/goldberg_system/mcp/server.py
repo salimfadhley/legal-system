@@ -46,8 +46,8 @@ def _q() -> CorpusQuery:
 @mcp.tool()
 def system_status() -> dict[str, Any]:
     """Current pipeline health and shape: health checks, corpus size, per-stage/
-    status counts, wiki page counts, and DLQ (failed/skipped) depth. Answers
-    'how's indexing going?' and 'are there bottlenecks?'."""
+    status counts, and DLQ (failed/skipped) depth. Answers 'how's indexing going?'
+    and 'are there bottlenecks?'."""
     return aggregate(_q().client).model_dump()
 
 
@@ -70,8 +70,8 @@ def trace_document(identifier: str) -> list[dict[str, Any]]:
 def component_health() -> dict[str, Any]:
     """The ``goldberg doctor`` liveness board as structured data — every pipeline
     component (Elasticsearch, Docling, the enricher, the MCP server, the live-index
-    watcher, wiki synthesis) probed read-only and time-bounded, plus the worst-status
-    overall verdict. Answers 'is every component actually up?'. Each entry carries a
+    watcher) probed read-only and time-bounded, plus the worst-status overall
+    verdict. Answers 'is every component actually up?'. Each entry carries a
     status (UP/DEGRADED/DOWN), a one-line reason and latency."""
     return run_doctor(es_client=_q().client).model_dump(mode="json")
 
@@ -123,18 +123,6 @@ def find_claims(
         size=limit,
     )
     return [h.model_dump() for h in hits]
-
-
-@mcp.tool()
-def search_concepts(
-    query: str, layer: str | None = None, limit: int = 10
-) -> list[dict[str, Any]]:
-    """Search the synthesised concept wiki (entities / concepts / contradictions) —
-    the 'map' of who's who and how the case connects. ``layer`` filters to
-    entity|concept|comparison. Follow a page's sources back into the documents to
-    quote the underlying evidence."""
-    pages = _q().wiki(query, layer=layer, size=limit)
-    return [p.model_dump() for p in pages]
 
 
 @mcp.tool()

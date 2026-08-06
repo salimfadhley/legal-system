@@ -1,8 +1,8 @@
 """System state — one canonical model, two renderers (ADR 0009).
 
-``aggregate()`` reads the observability sources (the document index, the pipeline
-event projection, and the wiki index) and assembles a :class:`SystemState`. That one
-object is rendered as a human table (``goldberg status``) and as YAML
+``aggregate()`` reads the observability sources (the document index and the pipeline
+event projection) and assembles a :class:`SystemState`. That one object is rendered
+as a human table (``goldberg status``) and as YAML
 (``goldberg status --yaml``) so an LLM can grok the whole system in a single read —
 the two modes render the *same* data, so they never drift.
 """
@@ -32,7 +32,6 @@ class SystemState(BaseModel):
     generated_at: str
     health: dict[str, Any]  # {status: ok|degraded|down, checks: [HealthCheck]}
     corpus: dict[str, Any]  # {documents, by_matter, by_type}
-    wiki: dict[str, Any]  # {pages, by_layer}
     pipeline: dict[str, Any]  # {by_stage_status, last_indexed_at, recent_failures}
     dlq: dict[str, Any]  # {failed, skipped, recent}
 
@@ -145,12 +144,10 @@ def aggregate(
     *,
     documents_index: str = "goldberg_documents",
     events_index: str = "goldberg_pipeline_events",
-    wiki_index: str = "silverbullet-goldberg",
     failure_window_hours: float = DEFAULT_FAILURE_WINDOW_HOURS,
 ) -> SystemState:
     """Assemble the canonical :class:`SystemState` from the observability indices."""
     docs = _count(client, documents_index)
-    wiki_pages = _count(client, wiki_index)
     stage_status = _stage_status_counts(client, events_index)
     failures = _recent(client, events_index, ["failed"])
     skips = _recent(client, events_index, ["skipped"])
@@ -187,10 +184,6 @@ def aggregate(
             "documents": docs,
             "by_matter": _terms(client, documents_index, "matters"),
             "by_type": _terms(client, documents_index, "document_type"),
-        },
-        wiki={
-            "pages": wiki_pages,
-            "by_layer": _terms(client, wiki_index, "layer"),
         },
         pipeline={
             "by_stage_status": stage_status,

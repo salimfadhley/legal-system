@@ -40,11 +40,10 @@ def render(state: SystemState) -> None:
     banner = {"ok": st.success, "degraded": st.warning}.get(status, st.error)
     banner(f"health: {status.upper()}")
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3 = st.columns(3)
     c1.metric("documents", state.corpus["documents"])
-    c2.metric("wiki pages", state.wiki["pages"])
-    c3.metric("failed", state.dlq["failed"])
-    c4.metric("skipped", state.dlq["skipped"])
+    c2.metric("failed", state.dlq["failed"])
+    c3.metric("skipped", state.dlq["skipped"])
 
     left, right = st.columns(2)
     with left:
@@ -55,8 +54,6 @@ def render(state: SystemState) -> None:
     with right:
         st.subheader("Pipeline stages")
         st.bar_chart(state.pipeline["by_stage_status"])
-        st.subheader("Wiki by layer")
-        st.bar_chart(state.wiki["by_layer"])
 
     st.subheader("Dead-letter / failures")
     recent = state.dlq["recent"]

@@ -1,10 +1,8 @@
 """Command-line entry point for goldberg-system.
 
-The ``search`` / ``claims`` / ``wiki`` / ``get`` / ``facets`` commands are the corpus
-query layer: an agent (Claude Code) runs them to gather grounded, citable evidence
-and then synthesises an attributed answer. ``search``/``claims`` query the evidence
-documents; ``wiki`` queries the synthesised concept wiki (ADR 0007) — a second
-representation. See ``AGENTS.md``.
+The ``search`` / ``claims`` / ``get`` / ``facets`` commands are the corpus query
+layer: an agent (Claude Code) runs them to gather grounded, citable evidence and then
+synthesises an attributed answer over the evidence documents. See ``AGENTS.md``.
 """
 
 from __future__ import annotations
@@ -77,39 +75,6 @@ def search(text, matters, author, document_type, size) -> None:  # type: ignore[
         if h.summary:
             click.echo(f"  summary: {h.summary}")
         for frag in h.highlights:
-            click.echo(f"  … {frag.strip()} …")
-
-
-@main.command()
-@click.argument("text")
-@click.option(
-    "--layer", default=None, help="Filter by layer (entity/concept/comparison/…)."
-)
-@click.option("--tag", "tags", multiple=True, help="Filter by tag (repeatable).")
-@click.option("--size", default=10, show_default=True, help="Max pages.")
-def wiki(text, layer, tags, size) -> None:  # type: ignore[no-untyped-def]
-    """Search the SilverBullet concept wiki — the synthesised, cross-linked view.
-
-    A second representation of the corpus (ADR 0007): curated concept/entity pages.
-    Search this alongside `search`/`claims` to find synthesised context the raw
-    documents don't state in one place.
-    """
-    pages = _query().wiki(text, layer=layer, tags=list(tags) or None, size=size)
-    if not pages:
-        click.echo("(no wiki pages)")
-        return
-    for p in pages:
-        click.echo(f"\n• {p.title or p.path}  [{p.layer or '?'}]  score={p.score:.2f}")
-        click.echo(f"  page: {p.path}")
-        if p.tags:
-            click.echo(f"  tags: {', '.join(p.tags)}")
-        if p.sources:
-            click.echo(f"  sources: {', '.join(p.sources[:4])}")
-        if p.outbound_links:
-            click.echo(
-                f"  links: {', '.join('[[' + link + ']]' for link in p.outbound_links[:6])}"
-            )
-        for frag in p.highlights:
             click.echo(f"  … {frag.strip()} …")
 
 
@@ -328,7 +293,7 @@ def alert(manifest_path, max_failures, alert_on_skipped, as_json) -> None:  # ty
     "--yaml", "as_yaml", is_flag=True, help="Emit the LLM-readable YAML mode."
 )
 def status(as_yaml) -> None:  # type: ignore[no-untyped-def]
-    """System state — health, corpus, wiki, pipeline, DLQ (M12/M13, ADR 0009).
+    """System state — health, corpus, pipeline, DLQ (M12/M13, ADR 0009).
 
     Human table by default; --yaml emits the same canonical SystemState as YAML so an
     LLM can grok the whole system in one read.
@@ -361,7 +326,6 @@ def status(as_yaml) -> None:  # type: ignore[no-untyped-def]
     click.echo(f"\ncorpus: {state.corpus['documents']} documents")
     for matter, n in list(state.corpus["by_matter"].items())[:8]:
         click.echo(f"    {n:5d}  {matter}")
-    click.echo(f"wiki: {state.wiki['pages']} pages  {state.wiki['by_layer']}")
     click.echo(f"\npipeline: last indexed {state.pipeline['last_indexed_at'] or '-'}")
     for k, n in sorted(state.pipeline["by_stage_status"].items()):
         click.echo(f"    {n:5d}  {k}")
@@ -402,9 +366,9 @@ def _render_doctor_board(report) -> None:  # type: ignore[no-untyped-def]
 def doctor(as_yaml, freshness_window) -> None:  # type: ignore[no-untyped-def]
     """Component-health board — is every pipeline component actually up? (ADR 0008).
 
-    Probes Elasticsearch, Docling, the enricher, the MCP server, the live-index
-    watcher and wiki synthesis concurrently (each read-only and time-bounded) and
-    prints UP/DEGRADED/DOWN with a one-line reason and latency. Exit code follows the
+    Probes Elasticsearch, Docling, the enricher, the MCP server and the live-index
+    watcher concurrently (each read-only and time-bounded) and prints
+    UP/DEGRADED/DOWN with a one-line reason and latency. Exit code follows the
     worst component: UP → 0, DEGRADED/DOWN → 1 (usable in scripts/CI).
     """
     from goldberg_system.observability.health import ComponentStatus, run_doctor

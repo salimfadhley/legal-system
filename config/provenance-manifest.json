@@ -153,6 +153,18 @@
     "sha256": "015651fab40591f58ff364914e70c60b5b6b68288983dbbdc4be3a801333a830",
     "size": 884247
   },
+  "01585a2bb890d44798e6ba40a80b5bd084f03ac43da6d5e27d4fcdc2ccff9895": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d9010a57b31728605ba37091cfab380f209d6dec",
+    "raw_path": "evidence/court_correspondence/2026_08_06_keitch_refusal_and_password_ack/README.md",
+    "sha256": "01585a2bb890d44798e6ba40a80b5bd084f03ac43da6d5e27d4fcdc2ccff9895",
+    "size": 3652
+  },
   "015eb75c9961cfdb3ba1b1a34cc0e3d08e5fdc76996c1fa23f1a19648aa17aa1": {
     "document_type": "evidence",
     "matters": [
@@ -338,6 +350,18 @@
     "raw_path": "evidence/scripts/mind_of_steele/_production_materials/ep151/transcripts/07_brandon_williams_banks_stealing_value.txt",
     "sha256": "0205bfafb38b7b225e15187922a09b5532fd470f0f84948b5964107479c12afb",
     "size": 1620
+  },
+  "02152fb5202aa64fe20cd944d5caf9ba6bd41b7223a480ec3ea4aca8a7361c71": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "5e31d4f7e572ac600b9f5fa94f6230732ec92182",
+    "raw_path": "evidence/simon_goldberg/2024_12_12_whiterabbittrust_unlawful_trusts_video/transcript_auto_captions.txt",
+    "sha256": "02152fb5202aa64fe20cd944d5caf9ba6bd41b7223a480ec3ea4aca8a7361c71",
+    "size": 21400
   },
   "02214d5d7f04cdfdcdb66c2f47e0b6e263125c3e2b3100677d2f46a3d2ba79a9": {
     "document_type": "evidence",
@@ -881,6 +905,18 @@
     "sha256": "07f24bf3c71288f182e988cf697b013a2d890e8ea92254541c7a8fe38c763c8c",
     "size": 4326
   },
+  "0807b21981be5673df7dbb32593ab992e63ab7cbc37799c80b8231d672aeba6d": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "5e31d4f7e572ac600b9f5fa94f6230732ec92182",
+    "raw_path": "evidence/simon_goldberg/2024_12_12_whiterabbittrust_unlawful_trusts_video/description.txt",
+    "sha256": "0807b21981be5673df7dbb32593ab992e63ab7cbc37799c80b8231d672aeba6d",
+    "size": 3561
+  },
   "0855da751bfc6fa784d0fa0ae5e23137b6555bd03ac2c7d635a4bfac3173b3d6": {
     "document_type": null,
     "matters": [],
@@ -1062,6 +1098,18 @@
     "raw_path": "evidence/deacon_v_goldberg/2026_04_20_n244_disclosure_dispute/ocr_goldberg/p-22.png",
     "sha256": "0a848cafd6c4d6ffb3eb4bac8016249a721cc3899cc5d6c810c0413e5778c36d",
     "size": 792050
+  },
+  "0a898662a31f6f0ba96bd02bd257e1b25c8c4dc9fc84f775d0703369f5b955e7": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d94b75a04add1529731ba96579a9d58257446b91",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_192_260pp.txt",
+    "sha256": "0a898662a31f6f0ba96bd02bd257e1b25c8c4dc9fc84f775d0703369f5b955e7",
+    "size": 149040
   },
   "0a9358c48f92ee25ff9de61d7d0fab92c7351d0dfdc4879748490efc2c1116d4": {
     "document_type": "research",
@@ -1503,6 +1551,18 @@
     "sha256": "0e558476d80725931a986fb0110ab92f93453711226fbbe1ccbc2b6275964c14",
     "size": 53331718
   },
+  "0e78600ad0e82dc4277bf43b7d4b8110d9abee6af8641a5966860c093e7cd071": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "53a43a3091fa6a8536937dc8ab51b77740794da0",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/case_summary.md",
+    "sha256": "0e78600ad0e82dc4277bf43b7d4b8110d9abee6af8641a5966860c093e7cd071",
+    "size": 9447
+  },
   "0ea20c4b99b29acd05ef4f39e746ed5db143dfbe446d85b42290e619d4f14ac8": {
     "document_type": "evidence",
     "matters": [
@@ -1551,6 +1611,18 @@
     "sha256": "0f2a626d67883e013207ef6688e4a7920563aafd5203986b044a5e4242c533da",
     "size": 404
   },
+  "0f317f08b73de830a33a4d885136d037cab4cd6e7298e0b3a064f0f1455cb98c": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/markdown/P Davidson Statement.md",
+    "sha256": "0f317f08b73de830a33a4d885136d037cab4cd6e7298e0b3a064f0f1455cb98c",
+    "size": 3992
+  },
   "0f4dd380e185f8d731901cda9872d2e046232f48f16ff5e452d21356a0abe06e": {
     "document_type": "research",
     "matters": [
@@ -1562,6 +1634,18 @@
     "raw_path": "reports/case_contacts_directory.md",
     "sha256": "0f4dd380e185f8d731901cda9872d2e046232f48f16ff5e452d21356a0abe06e",
     "size": 4717
+  },
+  "0f7110b5e3353056e56028f409073a407deb48f5d2d9ab3f4f8fc68ef9a8cf15": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e0f037b9439c9d6ce51d91e6e9df590f946e447c",
+    "raw_path": "evidence/simon_goldberg/youtube_channel_survey_2026-08-05/Open Conversations #1 ~ Nov 2024 [7IXENUhx4fc].info.json",
+    "sha256": "0f7110b5e3353056e56028f409073a407deb48f5d2d9ab3f4f8fc68ef9a8cf15",
+    "size": 504777
   },
   "0f73674a00c6010c2258f4e090b4a430af8e18adaa4b48767ef587157f9d8f85": {
     "document_type": null,
@@ -1749,6 +1833,18 @@
     "sha256": "10d7197031782ae2a3db5bbaf8a085c8ff138ff02f9dc4c02b2600d8b5d98f0a",
     "size": 144015
   },
+  "10d7d2f9eecc67df252a54cd0aeabe9d6cc19b13f3e9e663b0c772a8afc8f637": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "6d713a6da0d4df9d9ce55082c3bd63f1be505f65",
+    "raw_path": "reports/private_prosecution/prosecutor_own_conduct/2026-08-04_mutual_online_dispute_UNVERIFIED.md",
+    "sha256": "10d7d2f9eecc67df252a54cd0aeabe9d6cc19b13f3e9e663b0c772a8afc8f637",
+    "size": 11102
+  },
   "10ea6ae689afa01cc59bda0b8642be7259497c33a5010385c07ca4bfad7517b4": {
     "document_type": "evidence",
     "matters": [
@@ -1850,6 +1946,16 @@
     "raw_path": "goldberg_1099/screenshots/Asset-62b.png",
     "sha256": "118baf10264e51aaf571c2674f5159527c197336e496ccbfff11c916e129acf0",
     "size": 307372
+  },
+  "11aca077656c3f7fd33e518f87f6f3ac86686bfdaccf3d9e9e01e81ba1f69741": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "8ec3659d1e81155cd74345e0297a7c83a6530b14",
+    "raw_path": "telegram/INTEGRITY_ground3_posts.md",
+    "sha256": "11aca077656c3f7fd33e518f87f6f3ac86686bfdaccf3d9e9e01e81ba1f69741",
+    "size": 2133
   },
   "11dd39849515eddb87c769d35bab978b591a321b6510b8af0318666a24275902": {
     "document_type": "evidence",
@@ -2006,6 +2112,18 @@
     "raw_path": "evidence/deacon_v_goldberg/2026_04_20_n244_disclosure_dispute/ocr_goldberg/p-24.txt",
     "sha256": "134b51944340fea750552e2f9fb29e32ec0e0bb50d46054a52596d2f651ca096",
     "size": 1767
+  },
+  "138fb9ad18b79faabe0ca379c2bca31aa587d85c35a7f496a3616acdf633f7ec": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_192.pdf",
+    "sha256": "138fb9ad18b79faabe0ca379c2bca31aa587d85c35a7f496a3616acdf633f7ec",
+    "size": 84711
   },
   "13a71992f2d86bff00d29e8be1bb754519c4dfdb75262df18451c7b3a195c0c4": {
     "document_type": "evidence",
@@ -2535,6 +2653,18 @@
     "sha256": "19711d23b981216f8eb8ad871caa94a9b1d48b088803f2b7e15be093b6591e61",
     "size": 85318
   },
+  "19c8b7fd8b12ddc627d90c7c262b349a795ee4412a0205c00813cd643d80fdd9": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "2a3e0563146dd9fd43f543dc38cee63c4ae4f902",
+    "raw_path": "analysis/ex_parte_case_summary/2026-07-31_stolen_or_planted_characterisation_contradiction.md",
+    "sha256": "19c8b7fd8b12ddc627d90c7c262b349a795ee4412a0205c00813cd643d80fdd9",
+    "size": 6148
+  },
   "19ce7c05ebe42c38d29b332eabf4248a91f83aa988bf5a251bb8f79713ff0261": {
     "document_type": "evidence",
     "matters": [
@@ -2594,6 +2724,18 @@
     "raw_path": "reports/prompts/2026-07-25_pma_codex_original.md",
     "sha256": "1a07e0a82b1269c78baec2c88e2e4db6c9d8aff5c2a2e62c292ce7018a497d2a",
     "size": 8285
+  },
+  "1a168a73ca70456ddc2b6bad11cfd9263a4781d922feec211272e641f9f7b27a": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "18d34e69b3e32b727c30e3992a86f741f0f58f4f",
+    "raw_path": "reports/private_prosecution/backlog5_2026_08_05/2026-08-05_prompt59_split_preservation_and_CMA_UNVERIFIED.md",
+    "sha256": "1a168a73ca70456ddc2b6bad11cfd9263a4781d922feec211272e641f9f7b27a",
+    "size": 20892
   },
   "1a1d9af452890675ef0e351a15d873490068e5f33aa74e0f19a9dbf4db306f8f": {
     "document_type": "research",
@@ -2675,6 +2817,18 @@
     "sha256": "1ae14701ee39c03cee58eaac442fc16b3cf4ee0af34d15f02774262b86c7f1b7",
     "size": 35580
   },
+  "1b0e9062ff4191e9f976f7bf88ec3c0ed42fc7d00bd92f46737e7c1aeb0d8d8f": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "5e31d4f7e572ac600b9f5fa94f6230732ec92182",
+    "raw_path": "evidence/simon_goldberg/2024_12_12_whiterabbittrust_unlawful_trusts_video/metadata.json",
+    "sha256": "1b0e9062ff4191e9f976f7bf88ec3c0ed42fc7d00bd92f46737e7c1aeb0d8d8f",
+    "size": 4716
+  },
   "1b5d038872a1dc41cddd63a229b02f942672043a16facb736d6792cfdc9fb28c": {
     "document_type": "evidence",
     "matters": [
@@ -2710,6 +2864,18 @@
     "raw_path": "evidence/deacon_v_goldberg/2026_04_20_n244_disclosure_dispute/ocr_goldberg/p-29.txt",
     "sha256": "1ba4058382f3b90382771b2540bf78bd8bc7c18384f3c7ba537bcccb11c14e04",
     "size": 2014
+  },
+  "1bc20ec5b5193d21451753e83a8733bc79e074b77cac9d4cdfcd8bb00ca15497": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "53a43a3091fa6a8536937dc8ab51b77740794da0",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/ocr_2026-08-05/case_summary_OCR.pdf",
+    "sha256": "1bc20ec5b5193d21451753e83a8733bc79e074b77cac9d4cdfcd8bb00ca15497",
+    "size": 9109381
   },
   "1bcbc2ceb081ba784860d78d3a3fc79124728c90fa35b3370069405fa3547847": {
     "document_type": "evidence",
@@ -2865,6 +3031,18 @@
     "sha256": "1d36e2e91a13aa4bbf251a96c25714ad41f7a6aae351dbeb15c40387d9c82592",
     "size": 1735786
   },
+  "1d3f5a90a435ad0bbc000a85e6da726f50748fa7a7b1029db1b3032b98eda89f": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "3385be77f150e732f8bd86a44bab2c4c56f55558",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_173_Disclosure_Document_Essex_Police_Redacted_OCR.txt",
+    "sha256": "1d3f5a90a435ad0bbc000a85e6da726f50748fa7a7b1029db1b3032b98eda89f",
+    "size": 122481
+  },
   "1d75536d0593d62d056b446a21de9c87adb9af2dafc9b53748556513a441812a": {
     "document_type": "evidence",
     "matters": [
@@ -2924,6 +3102,18 @@
     "raw_path": "evidence/evidence_of_service/sent/Representations under s.6(2) POA 1985 - R v Fadhley & Ors - Case No. 422500059892.eml",
     "sha256": "1d82c8012819bf51798ef35978f3d1ddb2add48e884143c9d81e0eeca5a8eb26",
     "size": 22324397
+  },
+  "1daec58d15cdcae1c92306884b337bcd843e37f92f2d03356c5178d2ad7fd4be": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "2ddcbed2f0ad459bbd505f043d303ff307aa3ab2",
+    "raw_path": "evidence/court_correspondence/2026_06_29_glp_court_documents_request/thread.md",
+    "sha256": "1daec58d15cdcae1c92306884b337bcd843e37f92f2d03356c5178d2ad7fd4be",
+    "size": 3982
   },
   "1db964a9c26ea199c61777c0d5f582995831f31afd3d6a2fc36918b966f5a68c": {
     "document_type": "research",
@@ -3146,6 +3336,18 @@
     "raw_path": "evidence/cps/akram_letter_via_laura_nina/Fw_ Re_ Request for CPS to take conduct and Discontinue Private Prosecution \u2013 Case 422500059914 (Goldberg v Mannino & Ors)(1).eml",
     "sha256": "1f6d586b4ac8d4e0c395535bdf776ffd5c122e23de77d665615270eb271eb28a",
     "size": 10832
+  },
+  "1f8b7ba570c4ee50fa40678b3ac5e1ad798095806094aada502eb14eec522087": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "5e31d4f7e572ac600b9f5fa94f6230732ec92182",
+    "raw_path": "evidence/simon_goldberg/2024_12_12_whiterabbittrust_unlawful_trusts_video/README.md",
+    "sha256": "1f8b7ba570c4ee50fa40678b3ac5e1ad798095806094aada502eb14eec522087",
+    "size": 2374
   },
   "1f9d77e908f632f24addbbb4b730cc5b6684fbf9adf00fc7c3c48603b1893475": {
     "document_type": "evidence",
@@ -4176,6 +4378,18 @@
     "raw_path": "evidence/cps/akram_letter_via_laura_nina/markdown/20251201_092026-re-external-email-request-for-cps-to-take-conduct-and-discontinue-private-prosecution-case-422500059914-goldberg-v-mannino-ors.md",
     "sha256": "2a8635864b74727dbc77acdae94cb3517d5ee52c59a176afb1a1a7f6239374b6",
     "size": 2560
+  },
+  "2a8e530a5582afb6ca9ececf86551e244c80674e6a82319d713488c710dcb9b0": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/markdown/Graves Statement.md",
+    "sha256": "2a8e530a5582afb6ca9ececf86551e244c80674e6a82319d713488c710dcb9b0",
+    "size": 2408
   },
   "2aaf71f3b92b7eb7e6afde278a188bdcfd3fe140ca44e6000a01419c03aa1307": {
     "document_type": "evidence",
@@ -5251,6 +5465,18 @@
     "sha256": "35261ce70dadcb91aac5bd5ab13398ac01ccefcc3871b30113a002c4654b619a",
     "size": 2254838
   },
+  "3526cf1e750d8944570cbafb19b3ffc75f0c1e7077f67119aa23820ac6591da3": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e0f037b9439c9d6ce51d91e6e9df590f946e447c",
+    "raw_path": "evidence/simon_goldberg/youtube_channel_survey_2026-08-05/Open Conversations #1 ~ Nov 2024 [7IXENUhx4fc].en.srt",
+    "sha256": "3526cf1e750d8944570cbafb19b3ffc75f0c1e7077f67119aa23820ac6591da3",
+    "size": 259702
+  },
   "3538e5d269040c76a987ef63731902dd88a4a26b27b09732cb3ed1f88a8d7f94": {
     "document_type": "analysis",
     "matters": [
@@ -5773,6 +5999,18 @@
     "sha256": "39765633443a0c1f49e940ed652838cbc381bcb55e5ae12c360bdd497a200c46",
     "size": 13544
   },
+  "39e34feab49fb5bdf1a6c5e54671871eada30e9e56e054501a9a85e1f964c11b": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "eac409ad3654be2eb8485e153a84489a90eadb8b",
+    "raw_path": "evidence/court_correspondence/2026_07_22_case_management_directions/Fadhley_and_others_22nd_July_2026.docx",
+    "sha256": "39e34feab49fb5bdf1a6c5e54671871eada30e9e56e054501a9a85e1f964c11b",
+    "size": 17126
+  },
   "39f639c04ea04a3fdf3bea2589244ab870feb47ffb7d3520083278355ff32fd7": {
     "document_type": "evidence",
     "matters": [
@@ -6075,6 +6313,18 @@
     "sha256": "3cea351df289f6f02dadd282c7aa548950c41c1ef49063af15ac8e8287c61689",
     "size": 16957
   },
+  "3cfc0f2364fa36f8ed080a462da2ca1489386f7d001135bafc0cc2425b4b481a": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/S_Marshall_Statement_OCR.pdf",
+    "sha256": "3cfc0f2364fa36f8ed080a462da2ca1489386f7d001135bafc0cc2425b4b481a",
+    "size": 8954192
+  },
   "3d10ae84b7f369f22cc9619cb927f80afaa756e8b72ddff32ff29c02f00025ce": {
     "document_type": "evidence",
     "matters": [
@@ -6135,6 +6385,18 @@
     "sha256": "3d77a30a89e7b47bc868a5bb82e6b77a65efbd8634cb0c0d39f5192309510ef8",
     "size": 18933
   },
+  "3dd69bcc06f898782517bf7cdf18dd142e8e6624d14ce5d2a319edac482cc9b3": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/markdown/Mr Paul Statement.md",
+    "sha256": "3dd69bcc06f898782517bf7cdf18dd142e8e6624d14ce5d2a319edac482cc9b3",
+    "size": 7338
+  },
   "3de5c87cf391bbcdaa32317ce8c7ff28732f59a03f50e24cd3cb3cb0869722e1": {
     "document_type": null,
     "matters": [],
@@ -6156,6 +6418,18 @@
     "raw_path": "evidence/cps/asif_akram/External Email - 422500059892 - Goldberg v Fadhley & Others - Request for Confirmation of CPS Position Before 12 February Hearing.eml",
     "sha256": "3e257e564f04b5adf7214adb65a61fab6a4476de53b11e593d5588e0fc1b07c4",
     "size": 24632
+  },
+  "3e307ea860c2acc9a3fcebb6b5598e1e1a24ea71e8df5e7bdd2721c07b484f85": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "2bf80c5de7a5b2b14df96d6f48475f8a100e500f",
+    "raw_path": "reports/private_prosecution/backlog_2026_08_05/2026-08-05_batch3_six_prompts_UNVERIFIED.md",
+    "sha256": "3e307ea860c2acc9a3fcebb6b5598e1e1a24ea71e8df5e7bdd2721c07b484f85",
+    "size": 49630
   },
   "3e33b2cded2c0cfeac0708b6987c1d4a7a51be7c4dbc2a07a75183d64a5070d1": {
     "document_type": "evidence",
@@ -6192,6 +6466,18 @@
     "raw_path": "evidence/simon_goldberg/copyright_takedowns/2025-04-10_copyright_takedown_D_IOCmYbQ-Q.eml",
     "sha256": "3e3b0567dec1d9b4db7c990a4eeeaf359662fd583ac19afbb69d0a0d0900edfb",
     "size": 24893747
+  },
+  "3e4fc39e85bf8a0c02df700e0b8d12c64549451c7d85d92203379b1a42dfaa5d": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/Goldberg_Statement_OCR.pdf",
+    "sha256": "3e4fc39e85bf8a0c02df700e0b8d12c64549451c7d85d92203379b1a42dfaa5d",
+    "size": 34025967
   },
   "3e728cb5ce9cde9757a431d384f6169a1934e8b26d2939d969ba38132b7362f8": {
     "document_type": "analysis",
@@ -6308,6 +6594,18 @@
     "raw_path": "evidence/deacon_v_goldberg/2026_04_20_n244_disclosure_dispute/ocr_goldberg/p-20.png",
     "sha256": "3f5edc8135542a1f2ede6b0c77417ac36fef4cefef00f8d920136f81dbd97a61",
     "size": 542232
+  },
+  "3f8d0ba1d64d058be04caa56190b44fa26718b47a4523cddc7d6fbf7054ed039": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d94b75a04add1529731ba96579a9d58257446b91",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_192_260pp.pdf",
+    "sha256": "3f8d0ba1d64d058be04caa56190b44fa26718b47a4523cddc7d6fbf7054ed039",
+    "size": 65033477
   },
   "3faa099f70c9522201fcdaefbcfa83c1c1be5be6571cf61d14221ce5fdd59ee3": {
     "document_type": "evidence",
@@ -6591,6 +6889,18 @@
     "sha256": "429d012972089dad5aa6a797e2d5937c76f2e999441bdef74b6e6d18fb8e6f19",
     "size": 490827
   },
+  "42b97cf4382581ef61ed06ecd22761a2d8c8a6ebd9de4185cfe8af49412181b2": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "53a43a3091fa6a8536937dc8ab51b77740794da0",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/ocr_2026-08-05/case_summary_OCR.md",
+    "sha256": "42b97cf4382581ef61ed06ecd22761a2d8c8a6ebd9de4185cfe8af49412181b2",
+    "size": 38726
+  },
   "42c45424320ddb7c7f22637948dd8cde23e0a6052fc27a17adc4887ba9bbd92b": {
     "document_type": "evidence",
     "matters": [
@@ -6637,6 +6947,18 @@
     "sha256": "430df72fe1d3023e307f65d143b2a56a776bbedc6e3df3d09c5b35e4a270a254",
     "size": 4682
   },
+  "43197552ff4f7d3accf0727fc70ff0564e121292a3bd31faf3935d8762fcb5f9": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/Mr_Paul_Statement_OCR.md",
+    "sha256": "43197552ff4f7d3accf0727fc70ff0564e121292a3bd31faf3935d8762fcb5f9",
+    "size": 9127
+  },
   "431bd01da90e4e2cc5f4c3617feb8d2e7a9a93ad8b345d380aa383320a38669a": {
     "document_type": "evidence",
     "matters": [
@@ -6672,6 +6994,18 @@
     "raw_path": "evidence/simon_goldberg/2025_11_27_deacon_v_goldberg_hearing_bundle/markdown/L00SS179 Deacon v Goldberg v Fadhley DEFENDANT PT 20 CLMNT Skeleton Application Hearing 28 11 25.md",
     "sha256": "4332aa4f05c88f94d3feb778a74730e90b11d84899275276999e700b44eb772e",
     "size": 16539
+  },
+  "433d35b1f221a8f18ed1bae8f0f9469506f271ab9e595359ef3a037194fdfb0d": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "914dd94d57a067ff1b3577c2004a969fbed57ba1",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/from_glp_handover_2026-08-06/Witness_Statement_Paul_Keitch_Disclosure_Officer.pdf",
+    "sha256": "433d35b1f221a8f18ed1bae8f0f9469506f271ab9e595359ef3a037194fdfb0d",
+    "size": 732367
   },
   "433dd73425250ea4ff74f6d10ee4a14cac70e57a751d24db308d1d1d85fa3dab": {
     "document_type": null,
@@ -6878,6 +7212,18 @@
     "raw_path": "exhibits/mind_of_steele_113.md",
     "sha256": "4578a10dd3953e9dc2c7ac2c8ba55060bc10d9b46ff06ccca12bd073fa24563b",
     "size": 21461
+  },
+  "45b03da39dcc36e740cdfae34870cd86d3c7fde0b93634417c78848ed6ac1883": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "914dd94d57a067ff1b3577c2004a969fbed57ba1",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/from_glp_handover_2026-08-06/Prosecution_Bundle_Correspondence.pdf",
+    "sha256": "45b03da39dcc36e740cdfae34870cd86d3c7fde0b93634417c78848ed6ac1883",
+    "size": 41986977
   },
   "4608dbfb47fc3f7f05b5d79ec8bcb2bd0f4ea267f98014217ddc1b411e7eb872": {
     "document_type": null,
@@ -7405,6 +7751,18 @@
     "sha256": "4c0b5c625e638c8eb432c0bfbbd9c0dd3132bad09a9bcd2fe4f6b2067e8ebc25",
     "size": 124404
   },
+  "4c1cfe6b8bf61b4cc19a10bc8f334e1135488a320753c68ea6ccfaf4342a0d8a": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "c8d1f34dfb4c3b31ee32e3fe5e866c0efeefd3be",
+    "raw_path": "evidence/evidence_of_service/paul_keitch/2026-08-04_keitch_no_further_disclosure_at_this_stage.md",
+    "sha256": "4c1cfe6b8bf61b4cc19a10bc8f334e1135488a320753c68ea6ccfaf4342a0d8a",
+    "size": 3513
+  },
   "4c2edd67677ee53a2754e6998acd17ea6503b1bc2423ee4c2632c74aac5a58b8": {
     "document_type": null,
     "matters": [],
@@ -7575,6 +7933,18 @@
     "sha256": "4ee7f19fe0e248a11b7be313de232dd13020bf8a8e6c1a0c6f6f4e19fce90aea",
     "size": 5257268
   },
+  "4ef55d14e799d301db687698a0c084c54ef6ab1ea7bdf13c7f2c1ae31039fa1f": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "914dd94d57a067ff1b3577c2004a969fbed57ba1",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/from_glp_handover_2026-08-06/Witness_Statement_Paul_Keitch_Disclosure_Officer.txt",
+    "sha256": "4ef55d14e799d301db687698a0c084c54ef6ab1ea7bdf13c7f2c1ae31039fa1f",
+    "size": 5199
+  },
   "4ef841e9f0c1b231b9c53595049a2b0f916d5d0d6312d0e2f495667b95119a96": {
     "document_type": "research",
     "matters": [
@@ -7712,6 +8082,18 @@
     "raw_path": "goldberg_1099/screenshots/irs.png",
     "sha256": "5044e54ac66a1664ceeae3885f8c9c1bc15749233b388fb3b39cf63979f55e9c",
     "size": 103184
+  },
+  "505db5aa0c4c8eaca89242da68d5353f17e8dcffd4eaa40c13738e80daf67c7f": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "b492a925ffdc583aba8b8e746fd62489d6a7c824",
+    "raw_path": "evidence/court_correspondence/2026_08_06_keitch_exhibit_index/README.md",
+    "sha256": "505db5aa0c4c8eaca89242da68d5353f17e8dcffd4eaa40c13738e80daf67c7f",
+    "size": 3944
   },
   "506266a95b431e44d94885665d24753d329713c809d3ab6ee2f10258b6190b38": {
     "document_type": "research",
@@ -9141,6 +9523,18 @@
     "sha256": "5e850adff563eada2f171a7be1162b9a7bc149fc358963df072a3c5e345dae28",
     "size": 669447
   },
+  "5eb18042de54398cc550fdfced842f88ef475278b5efa778301cf159d2461383": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d9010a57b31728605ba37091cfab380f209d6dec",
+    "raw_path": "evidence/court_correspondence/2026_08_06_keitch_refusal_and_password_ack/keitch_2026-08-06_1209_exhibits_refusal.txt",
+    "sha256": "5eb18042de54398cc550fdfced842f88ef475278b5efa778301cf159d2461383",
+    "size": 445
+  },
   "5ec85c4a71ee3cbbdb65689177289c2c6d22f7f8e7a9f36081d908a621267349": {
     "document_type": "evidence",
     "matters": [
@@ -10237,6 +10631,18 @@
     "sha256": "68defab22e018bae48138326b497f70f592ce6010b2c963da4800c3cf0741153",
     "size": 515341
   },
+  "6911d6676f931b1c69ef20e08b7ccb8b4694cd90ba2215a457dcbb4a7a22cd29": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d94b75a04add1529731ba96579a9d58257446b91",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_1_ARCHIVE_mislabelled_as_pdf.zip",
+    "sha256": "6911d6676f931b1c69ef20e08b7ccb8b4694cd90ba2215a457dcbb4a7a22cd29",
+    "size": 2751225
+  },
   "691232747f9dff116b6618ed47b4e8008c8cd82e8810ba0b040cc2a75affbedf": {
     "document_type": "evidence",
     "matters": [
@@ -10296,6 +10702,18 @@
     "raw_path": "reports/private_prosecution/1099_oid/IR-15-018.pdf",
     "sha256": "69bb35f7b264fe302a90bbb320841e7680bc57461b368cc2476295c38aae33e1",
     "size": 35033
+  },
+  "69f3bf29cf35ecdfea257554236d33ed0c0264a4f45b1020939289b9500cc1e3": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/P_Davidson_Statement_OCR.md",
+    "sha256": "69f3bf29cf35ecdfea257554236d33ed0c0264a4f45b1020939289b9500cc1e3",
+    "size": 4807
   },
   "6a0fc553463fe8e9960bd5eac60f3d58d4a68b1a9c2d62553553ec34f17811a8": {
     "document_type": "evidence",
@@ -10997,6 +11415,18 @@
     "sha256": "7010beb0bf08b9f8a9bcae1f51967a5ddf1d9626a5e66b6b5d732b9a6f40de74",
     "size": 15257
   },
+  "703f2a60079d10809c2e61c4eafe281f81f45434ebbd8696506ea652b1e1bda4": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "914dd94d57a067ff1b3577c2004a969fbed57ba1",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/from_glp_handover_2026-08-06/ETP_Overview_Of_Third_Party_Tax_Specialist_Services.txt",
+    "sha256": "703f2a60079d10809c2e61c4eafe281f81f45434ebbd8696506ea652b1e1bda4",
+    "size": 9490
+  },
   "707c122201acebacb21a393896a95adc1d0583890fb0ba807e0d6f542ea93f8d": {
     "document_type": "evidence",
     "matters": [
@@ -11342,6 +11772,18 @@
     "raw_path": "telegram/data/The_Shill_Hunter/media/2025/06/20250625_121650_54.jpg",
     "sha256": "73166541f394a4107181a79c721f2a13007f4422488e480517558155bede9df7",
     "size": 20462
+  },
+  "732dbf3ec1d45c522eae3d72d3591e4631c0bc584a461573505d95620c1b212b": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_168_Brief_Update_re_the_Police.txt",
+    "sha256": "732dbf3ec1d45c522eae3d72d3591e4631c0bc584a461573505d95620c1b212b",
+    "size": 5876
   },
   "733256061021e17b1a6f5348826ab2fbca2fbc806fc0d3015d9ef41ffb8626b5": {
     "document_type": "research",
@@ -11826,6 +12268,18 @@
     "raw_path": "evidence/simon_goldberg/2025_11_20_goldberg_v_afshar_claim/648MC011 - Amended Particulars of Claim.pdf",
     "sha256": "77ef4bae931b04fdf7b39566d38a0d6b0a54db6371b84d67c4a28691636ffe94",
     "size": 296662
+  },
+  "781c69f784c7c7495bd151115cf56c310a27cb2079cdae537d4d9f1b2d798cd6": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_173_Disclosure_Document_Essex_Police_Redacted.pdf",
+    "sha256": "781c69f784c7c7495bd151115cf56c310a27cb2079cdae537d4d9f1b2d798cd6",
+    "size": 20200625
   },
   "784515aee4d3e1744074275ae23e1b1c901b3f76fab7a9e4dd174f0ad7cd8bef": {
     "document_type": "evidence",
@@ -12711,6 +13165,18 @@
     "sha256": "804c6d50b4da5f0ec0024e981f020d57ddc4614c8346e266b33ca47ecaeceaad",
     "size": 4905
   },
+  "80607b6150e92683d6c6d72031eeeaf9a984f7b8266fd1eb8affcc9845960eb9": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "762ca17c324d205c33da9515a5dd720e9ce3832c",
+    "raw_path": "reports/private_prosecution/backlog_2026_08_05/2026-08-05_batch1_ten_prompts_UNVERIFIED.md",
+    "sha256": "80607b6150e92683d6c6d72031eeeaf9a984f7b8266fd1eb8affcc9845960eb9",
+    "size": 73593
+  },
   "806a70c05b68ffbe7092672dcc7e7af69f8814d214b197c57662e0194e855659": {
     "document_type": "evidence",
     "matters": [
@@ -12894,6 +13360,18 @@
     "raw_path": "evidence/scripts/mind_of_steele/_production_materials/ep150/research/richard_werner.md",
     "sha256": "82120f47c05bd82c7c18e4150124b4d52fead3877b7f8532f14ca9b827fd046c",
     "size": 15374
+  },
+  "821b97b9a33db6d31643abcf8645459b501d90dffa4bad0237eea198e2cd7176": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "07f7bc0aa1b5a0363fdb94e27d2be8d79bbc0826",
+    "raw_path": "evidence/simon_goldberg/youtube_channel_survey_2026-08-05/TRANSCRIPT_openconv1_01-39-20_to_01-42-50_whisper.txt",
+    "sha256": "821b97b9a33db6d31643abcf8645459b501d90dffa4bad0237eea198e2cd7176",
+    "size": 3335
   },
   "821e4a130da71aea718785ac55fb484ff4af78d11684e8282bb31d7f3bc17b63": {
     "document_type": "evidence",
@@ -13295,6 +13773,16 @@
     "sha256": "85c2a24192c6cae5d82ef5d9b8fab2229cca16fa25ef4695f36d87f077a1e9ff",
     "size": 985
   },
+  "85f1a9c43280fe4131648bceefd04e9b0214aa2ee815aaa9a5d21e137720fe98": {
+    "document_type": null,
+    "matters": [],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "969c91debfaa713d4ade0e071337dec456bb3ccd",
+    "raw_path": "exhibits/doxx_fb_post_JOINED_TRANSCRIPT.md",
+    "sha256": "85f1a9c43280fe4131648bceefd04e9b0214aa2ee815aaa9a5d21e137720fe98",
+    "size": 10539
+  },
   "861b086be563d0cdedb964c4e9c7020531b33a29c5936a3a3d9458eac61bd324": {
     "document_type": "evidence",
     "matters": [
@@ -13503,6 +13991,18 @@
     "sha256": "870b5edab19b20b82569d8d2ca2720c328c7fa3e6a37d6ec1423f260dd4f9e92",
     "size": 22162
   },
+  "871876969ef3dd0fda5fa38d6dfd7dafad9d3b88032eb05b806b93309078c139": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/markdown/S Marshall Statement.md",
+    "sha256": "871876969ef3dd0fda5fa38d6dfd7dafad9d3b88032eb05b806b93309078c139",
+    "size": 29804
+  },
   "872993beeea99276b4583a3ada7a9e3acabeba1dcb20e65206a776f807d88af2": {
     "document_type": "evidence",
     "matters": [
@@ -13642,6 +14142,18 @@
     "raw_path": "evidence/scripts/mind_of_steele/ep113_mind_of_steele_113_.md",
     "sha256": "8891b51662366b36bb01d92883e9ad1341abc418994c7bd53315e5f7379b1ba5",
     "size": 5909
+  },
+  "88abdfa4be69f4347b523afa5f38c90ce0d21cce6a86fe007dda6fb9cd4646a2": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/Graves_Statement_OCR.pdf",
+    "sha256": "88abdfa4be69f4347b523afa5f38c90ce0d21cce6a86fe007dda6fb9cd4646a2",
+    "size": 366752
   },
   "88b188c8ad40346d6394028ec6d0541f6902d2459f6989aeaf9c003aa86c1f0b": {
     "document_type": "evidence",
@@ -14253,6 +14765,18 @@
     "sha256": "8df4572c092ea9aefa5f3581671b6f48fd62701fd8a642696bf86a2d491b2539",
     "size": 320
   },
+  "8e0a8dc6e6a6c881a5b1c99eaea3fef560360998f0a25805b78eeaf7c190b00c": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "927b92741d9a72f6b842a6a53edf180966976a43",
+    "raw_path": "reports/private_prosecution/backlog_2026_08_05/2026-08-05_batch4_six_prompts_UNVERIFIED.md",
+    "sha256": "8e0a8dc6e6a6c881a5b1c99eaea3fef560360998f0a25805b78eeaf7c190b00c",
+    "size": 35992
+  },
   "8e2cde3c9c462627b6943cffe0b9057120d77e6af21c6df6699eaf40fd2ba23f": {
     "document_type": "analysis",
     "matters": [
@@ -14497,6 +15021,18 @@
     "sha256": "912138bc72cbf2c65065f64747f3f11de672b32d69a1425b488023978a39001c",
     "size": 797817
   },
+  "913be3247ade1ed23a917587599ca6af8c25376150126c78e79717b46c7841ce": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "53a43a3091fa6a8536937dc8ab51b77740794da0",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/ocr_2026-08-05/case_summary_OCR_v2.md",
+    "sha256": "913be3247ade1ed23a917587599ca6af8c25376150126c78e79717b46c7841ce",
+    "size": 36679
+  },
   "9151b50cd5ee0800a31049b2e01062341d2948b894bfa99097e2e8b32e0a928f": {
     "document_type": "analysis",
     "matters": [
@@ -14578,6 +15114,18 @@
     "raw_path": "goldberg_1099/.idea/goldberg_1099.iml",
     "sha256": "9211840980c9ac4ec2c0b51f2fd6fc4eb3c973e29b1174a0f31d19dac1bc9adb",
     "size": 317
+  },
+  "92449b72c8c44096dffcf9028bd2d193a0fdb72adf8a13765a38a50e654cc874": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "1788a456ae6ab98e16d98e048f1d7d3519d59e43",
+    "raw_path": "reports/private_prosecution/candidate_grounds/2026-08-05_candidates_C2_C8_C10_codex.md",
+    "sha256": "92449b72c8c44096dffcf9028bd2d193a0fdb72adf8a13765a38a50e654cc874",
+    "size": 24439
   },
   "924cd58575030fff648b5a72ebeb0b669f49deade057347e71767ab6de58a921": {
     "document_type": "evidence",
@@ -15425,6 +15973,18 @@
     "sha256": "9a7c0816c87553971a05b9eed7fae711671302dc0c1ec1190aa6067505ee20a7",
     "size": 2723
   },
+  "9aa0f2119e6f7778dc6716dfa126f1e332c7f6788dc5c73b958b80e13ff8f317": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/Goldberg_Statement_OCR.md",
+    "sha256": "9aa0f2119e6f7778dc6716dfa126f1e332c7f6788dc5c73b958b80e13ff8f317",
+    "size": 138819
+  },
   "9aeefe264ea9813b77451152048e50f5e90b3a1802638a443ebabb7809586d39": {
     "document_type": "evidence",
     "matters": [
@@ -15895,6 +16455,18 @@
     "sha256": "9fb561da1087264f70dc18ac10c0148c6c9675331564d4db5f56ec522cad2d5d",
     "size": 20584
   },
+  "9fd53c555a8782cc3e7ac01e48afe4a4f2b842ef0624228a61978928c1e9d2e7": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/S_Marshall_Statement_OCR.md",
+    "sha256": "9fd53c555a8782cc3e7ac01e48afe4a4f2b842ef0624228a61978928c1e9d2e7",
+    "size": 42362
+  },
   "a01bbb82fa1e3a8b551ccae3c90754ab96d94e91f66ef43c839309c35f573bf1": {
     "document_type": "evidence",
     "matters": [
@@ -16201,6 +16773,18 @@
     "sha256": "a25f8d16fcade41fa95a05ae691ff3a18a6ef9ad2f3414055b6a2b96e845cfee",
     "size": 513331
   },
+  "a267071d1b2ce2a96feccedfa873fa4067254cd9fc49dd6db523ff5135d9edd4": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d94b75a04add1529731ba96579a9d58257446b91",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/_RECOVERED_2026-08-06.md",
+    "sha256": "a267071d1b2ce2a96feccedfa873fa4067254cd9fc49dd6db523ff5135d9edd4",
+    "size": 2529
+  },
   "a28241a9053fe15921638b1b1d9136da8cdb38f34920c5b4801834adb27c0ae7": {
     "document_type": null,
     "matters": [],
@@ -16382,6 +16966,18 @@
     "raw_path": "evidence/simon_goldberg/deacon_v_goldberg_judgements_and_opposition/judgements/original/New Scan From MOJ MFD_08102025103433.pdf",
     "sha256": "a378c9134f93c57b3abb8288ffd6856af9fab21e88c1e2b6228fd7b0d12027ae",
     "size": 39398
+  },
+  "a39044ff7f5ff8c33f98c424f36914b40bda1b59559bd68d129f166fc393dcaa": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "e7571e6d943025dd26704d2136076a9b00695607",
+    "raw_path": "reports/private_prosecution/backlog5_2026_08_05/2026-08-05_backlog5_eight_prompts_UNVERIFIED.md",
+    "sha256": "a39044ff7f5ff8c33f98c424f36914b40bda1b59559bd68d129f166fc393dcaa",
+    "size": 54092
   },
   "a3a301a51b511ea76019a3fbd2ac40d70693c3ab1ea9eceb4fc535682f257a5c": {
     "document_type": "evidence",
@@ -16695,6 +17291,18 @@
     "sha256": "a616ffad4f0a411b8da00465cf7088804f37681edff324abc46340834c59a8b4",
     "size": 7240
   },
+  "a63f2ac3650a6dfe0a60e2c4a7b558643e0971a2e6028bcf6e5c2b303d7335be": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "92e60c5756755380a421bcd2850dcde165505eae",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/README.md",
+    "sha256": "a63f2ac3650a6dfe0a60e2c4a7b558643e0971a2e6028bcf6e5c2b303d7335be",
+    "size": 9235
+  },
   "a64e870fb3253ea6369e72828724bdfe1b99e11938302d9303a3a3cafa41b639": {
     "document_type": "research",
     "matters": [
@@ -16779,6 +17387,18 @@
     "sha256": "a6f483c850a300f70756a80e1599c8c0d47c8dfee274fd815fbe883665a21035",
     "size": 29155
   },
+  "a6f5d5ee603bbfcf3b096955112cf6aebbdf331ece5fbd123b09e81b6aa07f2a": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "3385be77f150e732f8bd86a44bab2c4c56f55558",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_173_Disclosure_Document_Essex_Police_Redacted_OCR.pdf",
+    "sha256": "a6f5d5ee603bbfcf3b096955112cf6aebbdf331ece5fbd123b09e81b6aa07f2a",
+    "size": 7471785
+  },
   "a7309ad6e6a7f8e55c97aa3d67f10a7243ac292ab5600cfd1d128a051fef606e": {
     "document_type": "evidence",
     "matters": [
@@ -16849,6 +17469,18 @@
     "sha256": "a788b89f60bb3fa18b0a565c579b3b7e48ffab4ccc4274db2d95a68c2511e45d",
     "size": 11938
   },
+  "a78f1485b30bf2af7df0c8839796e4c151e18f02af6262cbf190dea37612c552": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "53a43a3091fa6a8536937dc8ab51b77740794da0",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/ocr_2026-08-05/README.md",
+    "sha256": "a78f1485b30bf2af7df0c8839796e4c151e18f02af6262cbf190dea37612c552",
+    "size": 4334
+  },
   "a7b311374182ce86fae73d00d0e6c8b6d7e0f1f0a59ef7735ec5eefdc92b1bce": {
     "document_type": "analysis",
     "matters": [
@@ -16908,6 +17540,18 @@
     "raw_path": "evidence/simon_goldberg/white_rabbit_dossiers/goldberg_authored/summary.md",
     "sha256": "a832db41ca31514bc13192e4f955318739dfc80ec6c448a70fbf4739668e7eb7",
     "size": 28373
+  },
+  "a85f340e99aa3b832527f2957ff88b3bf4cbc0789f2e23215187f5d88b0fbdee": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/Mr_Paul_Statement_OCR.pdf",
+    "sha256": "a85f340e99aa3b832527f2957ff88b3bf4cbc0789f2e23215187f5d88b0fbdee",
+    "size": 2103219
   },
   "a861e960b29aee02c6b7e3176cd9f1a0269b8237259722ad9fd9105e3845238b": {
     "document_type": "evidence",
@@ -17132,6 +17776,18 @@
     "raw_path": "evidence/scripts/mind_of_steele/ep112_mind_of_steele_112.md",
     "sha256": "a9f6162a1ebbece6cfa46efa321c39d399f9a51c0b4bf9464078cfde5ff39db6",
     "size": 36747
+  },
+  "aa052e7242b9dfd8ca32181d8852bddac7126caae93279268480070c1e916297": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_168_Brief_Update_re_the_Police.pdf",
+    "sha256": "aa052e7242b9dfd8ca32181d8852bddac7126caae93279268480070c1e916297",
+    "size": 825428
   },
   "aa3b4c31651f810899e8397f497b4d28fec6e7ab4ff3eb13563d2076fff74b53": {
     "document_type": "evidence",
@@ -17386,6 +18042,18 @@
     "raw_path": "telegram/data/The_Shill_Hunter/media/2025/07/20250718_114130_64.jpg",
     "sha256": "ac1a03821c544fbecde72a913e3d1fc285839c1339f8c5413343853551aa851d",
     "size": 21916
+  },
+  "ac2c23f8f260fb4285108338c25d2139f85ceb8ef5b8123b7ad0a85348a1a45d": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "914dd94d57a067ff1b3577c2004a969fbed57ba1",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/from_glp_handover_2026-08-06/ETP_Overview_Of_Third_Party_Tax_Specialist_Services.pdf",
+    "sha256": "ac2c23f8f260fb4285108338c25d2139f85ceb8ef5b8123b7ad0a85348a1a45d",
+    "size": 1198363
   },
   "ac8a6a3427a5f788d98ce94d929b466238b005ed99188787886d6cd9d4682362": {
     "document_type": "evidence",
@@ -18069,6 +18737,18 @@
     "sha256": "b23e359074b8bb75292cbec8481b4b518426b00133c03c05abf75d3cf99a31bb",
     "size": 655400
   },
+  "b281c4218f38fbb4b1b0bdd538ee4ce26ae235c867d2a4f00c9cb1d417bff7a6": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "07f7bc0aa1b5a0363fdb94e27d2be8d79bbc0826",
+    "raw_path": "evidence/simon_goldberg/youtube_channel_survey_2026-08-05/TRANSCRIPT_openconv1_02-43-20_to_02-46-50_whisper.txt",
+    "sha256": "b281c4218f38fbb4b1b0bdd538ee4ce26ae235c867d2a4f00c9cb1d417bff7a6",
+    "size": 3200
+  },
   "b28459d527a6ba6e43cb44f2018fad9db32e7629fb5427f6a609d1812571c738": {
     "document_type": null,
     "matters": [],
@@ -18263,6 +18943,18 @@
     "sha256": "b50d89b71bb70942e83354fc96f64ec2d662491680ae8af4cb959609bef590e7",
     "size": 932
   },
+  "b527190f3d28718671666fe469245d56887cbe51d6986521d191c800513eb307": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/markdown/Goldberg Statement.md",
+    "sha256": "b527190f3d28718671666fe469245d56887cbe51d6986521d191c800513eb307",
+    "size": 100367
+  },
   "b52cfb3d3a25c6d3fc15fa8487113f2c74fb56f6353b52b769660c9c731dfe50": {
     "document_type": "evidence",
     "matters": [
@@ -18334,6 +19026,18 @@
     "raw_path": "reports/private_prosecution/particularisation/2026-07-31_want_of_particulars_remedy_and_forum.md",
     "sha256": "b577f479d98c7cee6c2cb686492939436cec26bed5ccbc2cd9646689491d53c3",
     "size": 9170
+  },
+  "b5e41863051fa690089192a22fb2695ff7247b4edc4142b922a338a05d1f557f": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "b492a925ffdc583aba8b8e746fd62489d6a7c824",
+    "raw_path": "evidence/court_correspondence/2026_08_06_keitch_exhibit_index/keitch_exhibit_index_2026-08-06.txt",
+    "sha256": "b5e41863051fa690089192a22fb2695ff7247b4edc4142b922a338a05d1f557f",
+    "size": 2545
   },
   "b607fb606133d1825e5860e31138f1f0f9c71bbf0d1b30b72c18ad9e9d0e8820": {
     "document_type": "evidence",
@@ -18943,6 +19647,18 @@
     "sha256": "baa91b188b5cd8894685716c2540b56f3e5d268d354a8d8ac702a01c5bd7ac02",
     "size": 534533
   },
+  "bab8692354b21f2450519cc3c87fc946c0e8b0be85b45daef227d93caed033f7": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_188.txt",
+    "sha256": "bab8692354b21f2450519cc3c87fc946c0e8b0be85b45daef227d93caed033f7",
+    "size": 5318
+  },
   "babd715a91d450628f322df6fde276a27dd7379c3816e54a8337f0f4e4b99aa9": {
     "document_type": "evidence",
     "matters": [
@@ -19250,6 +19966,18 @@
     "raw_path": "evidence/transcripts/complained_of_items/_metadata/E3ETFJ0nj4g.info.json",
     "sha256": "bc6c6b9f27d39e4d05451704fc5443bf356a6f35d98642f4f931d564c4e0a1cf",
     "size": 515304
+  },
+  "bca6343fe59d25c63df5927668db32f072ab8264d9ac1fe857a9fc00b27175b5": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "b15bd09bc09c7219b164f8692e903fa153cef24d",
+    "raw_path": "reports/private_prosecution/prosecutor_own_conduct/2026-08-04_prosecutors_own_conduct_UNVERIFIED.md",
+    "sha256": "bca6343fe59d25c63df5927668db32f072ab8264d9ac1fe857a9fc00b27175b5",
+    "size": 18057
   },
   "bcc2ea7acfbf439f0f80056a1f8f1d1de5b1f88d50dc54a3838d73dfe92b7a5e": {
     "document_type": "evidence",
@@ -19987,6 +20715,18 @@
     "sha256": "c43ca91071ec5d6a4bc78539594f868d1e80ce26648666d67d6bc5f7267f39b1",
     "size": 117
   },
+  "c43fbca0bcacb96eb34cc1ce0cba31cb0a0fb7e87573dd1dccba06b712292eef": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "co-defendant",
+    "raw_commit": "8731586e0bf98519a16e90ac5c562900c03e1443",
+    "raw_path": "evidence/tracey_edwards/goldberg_facebook_posts/2024_12_18_helen_of_troy/JOINED_TRANSCRIPT.md",
+    "sha256": "c43fbca0bcacb96eb34cc1ce0cba31cb0a0fb7e87573dd1dccba06b712292eef",
+    "size": 10656
+  },
   "c460aa397bbdcb9c56fe4c9b3ae5f1a463dd1fa1b14e902070dec37df880f444": {
     "document_type": "evidence",
     "matters": [
@@ -20042,6 +20782,18 @@
     "raw_path": "evidence/transcripts/mind_of_steele/2025-04-21_Money_isn_t_real_So_give_it_to_me.md",
     "sha256": "c52123c6a170e954f490550f62cef47cc772feda1bc6660bdfd3cb56145d3cc4",
     "size": 24334
+  },
+  "c526fa36499f47936081fef05cea5f3b967683dec3e7594160cd5c102a6a5c38": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "53a43a3091fa6a8536937dc8ab51b77740794da0",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/ocr_2026-08-05/case_summary_OCR_v2.pdf",
+    "sha256": "c526fa36499f47936081fef05cea5f3b967683dec3e7594160cd5c102a6a5c38",
+    "size": 8962597
   },
   "c52d3ca6383a978d3ad2e2fffdc4ea89d0b7acb3984c158317f98d47de633c70": {
     "document_type": "research",
@@ -20322,6 +21074,18 @@
     "raw_path": "evidence/etp_v_stephen_afshar/emails/EtPEmails3.pdf",
     "sha256": "c7149b90c3f8956bee78016bef89900464e5d58eea3576cacff583eb896dda77",
     "size": 690419
+  },
+  "c71d72d4f88ee70a5635b8921545c0609faede51431bf37a103131f4c0acc3d9": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d94b75a04add1529731ba96579a9d58257446b91",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_163_Kent_Police_SAR_response_Redacted_ENCRYPTED.pdf",
+    "sha256": "c71d72d4f88ee70a5635b8921545c0609faede51431bf37a103131f4c0acc3d9",
+    "size": 27178269
   },
   "c7688153a1c622302df8b407ae1a7859c08781957c81306c517e5eba5bfc7941": {
     "document_type": "evidence",
@@ -20721,6 +21485,18 @@
     "sha256": "cc63015caf95fc2f56445ddd54866e753f2d737dd7c9fc626ebe5ea584e201e0",
     "size": 236987
   },
+  "cc64c32c1235e7df195627891bd4610480bb0b197b9bab58ca0eb6b017797faa": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e0f037b9439c9d6ce51d91e6e9df590f946e447c",
+    "raw_path": "evidence/simon_goldberg/youtube_channel_survey_2026-08-05/README.md",
+    "sha256": "cc64c32c1235e7df195627891bd4610480bb0b197b9bab58ca0eb6b017797faa",
+    "size": 1406
+  },
   "cc7b049d5a4e46d7b8c1fc4d5d856fd3ab7742544e8c30f68d927ca3b9db085c": {
     "document_type": "evidence",
     "matters": [
@@ -21035,6 +21811,18 @@
     "sha256": "ce4530cc1687538585b3fa54d2e8a9791d62da9eb87f5d1ce63448610a5391ec",
     "size": 22837
   },
+  "ce4dcaaae16ad74887d48caa4ea36e089b517275cc9a5c2ff0f6432e6443dd9b": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_192.txt",
+    "sha256": "ce4dcaaae16ad74887d48caa4ea36e089b517275cc9a5c2ff0f6432e6443dd9b",
+    "size": 3209
+  },
   "ce6efd61d235abf867945914c1f88fe8b25a1ce63007f3eb6bae9bdc25793f43": {
     "document_type": "evidence",
     "matters": [
@@ -21321,6 +22109,18 @@
     "sha256": "d05752fc2763475c0ce4dd9be78b06c3040612b85ab73a9b70ce171a0a358b62",
     "size": 135115
   },
+  "d06518246b9e03d924fdd5a85602da4db7ed164951b05f83917740a00295677e": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_188.pdf",
+    "sha256": "d06518246b9e03d924fdd5a85602da4db7ed164951b05f83917740a00295677e",
+    "size": 483295
+  },
   "d088784b7ecb87f1ea17e6f982fa968ffefcc07b79de6ecc548fc00242868da6": {
     "document_type": "evidence",
     "matters": [
@@ -21520,6 +22320,18 @@
     "raw_path": "evidence/deacon_v_goldberg/2026_04_20_n244_disclosure_dispute/ocr_goldberg/p-08.png",
     "sha256": "d285aa74bc23a86d2f63ad4c333ada11ef25c9c37e4fe4ca3236eef93dd59096",
     "size": 1171618
+  },
+  "d28c3187ad918557274c23e4711fbd72345ddfabfa218440c8ee62136ff5de88": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "07f7bc0aa1b5a0363fdb94e27d2be8d79bbc0826",
+    "raw_path": "evidence/simon_goldberg/youtube_channel_survey_2026-08-05/TRANSCRIPTION-NOTE.md",
+    "sha256": "d28c3187ad918557274c23e4711fbd72345ddfabfa218440c8ee62136ff5de88",
+    "size": 2422
   },
   "d29c5d64a662e0e42278735d449392ed1cb1db194e5a5739c9c0ac4ab5f1585b": {
     "document_type": "evidence",
@@ -21923,6 +22735,18 @@
     "sha256": "d59a72110a9f082b340b306a913390c7a6084fcf1919fc7f06819f736815811b",
     "size": 1114
   },
+  "d5fe0b51feb343078fe2789d0da66f5be4b4499838a38384ba046c4e9660ea73": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "85bb551e48d59086078d5d50f0cd21126e8740f1",
+    "raw_path": "reports/private_prosecution/g25_ancillary_orders/2026-08-05_orders_on_summary_conviction_RAW_UNVERIFIED.md",
+    "sha256": "d5fe0b51feb343078fe2789d0da66f5be4b4499838a38384ba046c4e9660ea73",
+    "size": 5498
+  },
   "d60a6698e3e6859e506fdad708d32f013bc684eebe8ffa62a85d31e0208eb529": {
     "document_type": "evidence",
     "matters": [
@@ -22042,6 +22866,18 @@
     "raw_path": "evidence/etp_v_stephen_afshar/emails/EtPEmails2_ocr/tsv/page-2.tsv",
     "sha256": "d66f23452d92bfaa13f2fe331662b6d8738985da56168f4a41a27be48fb27f71",
     "size": 15639
+  },
+  "d67c313581ef56fd914cebd9778cd28ee94ea9c66c6424088a35a8ffde42b638": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "53a43a3091fa6a8536937dc8ab51b77740794da0",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/ocr_2026-08-05/adobe_scan_original_layer.txt",
+    "sha256": "d67c313581ef56fd914cebd9778cd28ee94ea9c66c6424088a35a8ffde42b638",
+    "size": 37515
   },
   "d685daf47d2a409ec3a1f040a344ce27d71376719c0bf4f83e07350e09cf658a": {
     "document_type": "evidence",
@@ -22288,6 +23124,18 @@
     "raw_path": "exhibits/allegedly_confidential_documents/Simon Goldberg-EtP Payment Reclaims OID 1099 presentation transcript.txt",
     "sha256": "d82abd33868d0677771a58583dd49a75d7bb0a53c8f770ac803e6e86e5c20f87",
     "size": 190933
+  },
+  "d85224bcc9f3e8eb8af83f5a0c9f61fa9d4f7e3359eb129ea301dcab64e483b0": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "a86ca2f3b2ed528d1fa124b7ed90b98932a334c8",
+    "raw_path": "evidence/court_correspondence/2026_07_20_post_cps_case_management_and_disclosure/served_items/MG6C_Item_173_Disclosure_Document_Essex_Police_Redacted.txt",
+    "sha256": "d85224bcc9f3e8eb8af83f5a0c9f61fa9d4f7e3359eb129ea301dcab64e483b0",
+    "size": 63
   },
   "d872015ccba3719e9ea98a568d16f841f07de9ea3cb5af150ca70a8ea92c3db0": {
     "document_type": "evidence",
@@ -22865,6 +23713,18 @@
     "sha256": "df3eb4e58c85a032955c7de3b2c1a2afa0ebb2f9efa7eeb3d7bda6b7648675cf",
     "size": 827703
   },
+  "df68db350ac6ddc4d1ace9eecb7eb0c27affbadd86d20e2dc111f20201412aa9": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "914dd94d57a067ff1b3577c2004a969fbed57ba1",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/from_glp_handover_2026-08-06/README.md",
+    "sha256": "df68db350ac6ddc4d1ace9eecb7eb0c27affbadd86d20e2dc111f20201412aa9",
+    "size": 884
+  },
   "df6a17d4e73cc8c1e24e4dc89c60853556e3b41d5594c5aea257751d0a1536ed": {
     "document_type": null,
     "matters": [],
@@ -22886,6 +23746,18 @@
     "raw_path": "evidence/simon_goldberg/fsa_mortgage_dossier/ocr_output/images/page-04.png",
     "sha256": "df9f5d20ab8ac1e923007f607418a3fee75792d885c21fd5a1660697faae36bc",
     "size": 588202
+  },
+  "dfc4cb27f2ddb661d2cab38af9a6b923cf15f008f6d1f62ca28359dcc2d6369b": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "37a57a49442568d930bf6df2098102c509b961cb",
+    "raw_path": "reports/regulatory/2026-08-06_tax_preparation_licensing_and_aml_UNVERIFIED.md",
+    "sha256": "dfc4cb27f2ddb661d2cab38af9a6b923cf15f008f6d1f62ca28359dcc2d6369b",
+    "size": 11271
   },
   "dfc5541fd9cb893cd08c1c9f2ccc1b8620f542005fff4a24c1438231d11316e3": {
     "document_type": "research",
@@ -22910,6 +23782,18 @@
     "raw_path": "analysis/2025_12_04_witness_statement_analysis/main.tex",
     "sha256": "dfeea1e7402563fadbc3ac761084ff3e28ec3197476270419d152e2bb424a24e",
     "size": 2063
+  },
+  "e085b67175c7f9e4882c7e21e4e7844fa22c4f56f4bae3923f26c87ee6f5c1d3": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": null,
+    "raw_commit": "d9010a57b31728605ba37091cfab380f209d6dec",
+    "raw_path": "evidence/court_correspondence/2026_08_06_keitch_refusal_and_password_ack/keitch_2026-08-06_1210_password_acknowledgement.txt",
+    "sha256": "e085b67175c7f9e4882c7e21e4e7844fa22c4f56f4bae3923f26c87ee6f5c1d3",
+    "size": 381
   },
   "e096c37110393b71066f042ec0d2ad9097b131fc2c8fed804fc280586e304777": {
     "document_type": "evidence",
@@ -23092,6 +23976,18 @@
     "raw_path": "reports/prompts/2026-07-30_batch2_codex_originals/out_62_cps_takeover_reconsideration_after_refusal.md",
     "sha256": "e2b5309f369b0a53a5673d7ebb37e8d8bf1f4e065fc932795f16404acbf66db7",
     "size": 8375
+  },
+  "e2ba5813a59f77b9052cfaef108e2acb1812e53a9739a356c1d952f2b283c10e": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/P_Davidson_Statement_OCR.pdf",
+    "sha256": "e2ba5813a59f77b9052cfaef108e2acb1812e53a9739a356c1d952f2b283c10e",
+    "size": 937199
   },
   "e2c8da4eb0bfe85fb087ce60b9c795f0054d3d202ec5f32defc8601220b3f53a": {
     "document_type": "evidence",
@@ -23955,6 +24851,18 @@
     "sha256": "ea64eb50b305216bfc70add9b3085409b2e67ce943eae7078877be6b223cd7cb",
     "size": 491169
   },
+  "ea73099863ffe31ffca618ae94f1a92e4fd1a9e0f404d0d69d908ce4f3a06d9b": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "914dd94d57a067ff1b3577c2004a969fbed57ba1",
+    "raw_path": "evidence/simon_goldberg/2025_10_10_original_prosecution_bundle/from_glp_handover_2026-08-06/Prosecution_Bundle_Correspondence.txt",
+    "sha256": "ea73099863ffe31ffca618ae94f1a92e4fd1a9e0f404d0d69d908ce4f3a06d9b",
+    "size": 98074
+  },
   "eaa331ccbdbedb6dfc8329f79508101c978bdbd2d5b8b3fff762976de93683b6": {
     "document_type": null,
     "matters": [],
@@ -24355,6 +25263,18 @@
     "sha256": "eeeefa976b4e776694a1bc647b1bad2a57783838d0dee0eb461b99398acb6056",
     "size": 5633
   },
+  "ef4583e167b4e2a2318f6df7acf33c2dd886920fa2da107c6b793ba894f0439c": {
+    "document_type": "analysis",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "2a3e0563146dd9fd43f543dc38cee63c4ae4f902",
+    "raw_path": "analysis/ex_parte_case_summary/README.md",
+    "sha256": "ef4583e167b4e2a2318f6df7acf33c2dd886920fa2da107c6b793ba894f0439c",
+    "size": 3041
+  },
   "ef475839aa336c50e654e5b9d009b9ca05d5b40f70e9aca29cd6cd0bd697739f": {
     "document_type": "evidence",
     "matters": [
@@ -24492,6 +25412,18 @@
     "raw_path": "evidence/simon_goldberg/2026_06_30_court_electronic_bundle/extracted/CASE_SUMMARY_SOUTHEND_MAGS.md",
     "sha256": "f181ab2c69a163cb0a94addd4cafaa52446a7cb05a54bf56ec249206a45dbb61",
     "size": 32468
+  },
+  "f246a3b00f19a17e5d0ff0690add75ea1e0e06fe28f32fa726b64269a3cb7606": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/Graves_Statement_OCR.md",
+    "sha256": "f246a3b00f19a17e5d0ff0690add75ea1e0e06fe28f32fa726b64269a3cb7606",
+    "size": 1984
   },
   "f24e0fe5025816d4c60db0135241cf2b1b662771a0bf217a7eef81ba69195297": {
     "document_type": "research",
@@ -24967,6 +25899,18 @@
     "sha256": "f71ce698e6a59777ce5efb1bd1f477ad1760b238210bbf3a00621b612d0a42c0",
     "size": 516560
   },
+  "f7245e9c5435d7298511b722e5364ff25827ef49037f6aa7c6a81f7f0cb826bc": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "2bf80c5de7a5b2b14df96d6f48475f8a100e500f",
+    "raw_path": "reports/private_prosecution/backlog_2026_08_05/2026-08-05_batch2_six_prompts_UNVERIFIED.md",
+    "sha256": "f7245e9c5435d7298511b722e5364ff25827ef49037f6aa7c6a81f7f0cb826bc",
+    "size": 41597
+  },
   "f7535350dfd2af2d8a2ea3f331787433dab8fb748d568165b8afa2f9f49eda55": {
     "document_type": "evidence",
     "matters": [
@@ -24988,6 +25932,18 @@
     "raw_path": "telegram/data/The_Shill_Hunter/media/2025/06/20250627_155744_60.jpg",
     "sha256": "f77f2126721481127815db4fff25b38c5621167b81f72ecfa8a64935db4e5b53",
     "size": 51380
+  },
+  "f79648211945bc43f44f6c05a4c7c5769ce156caa79d939d46d41b41cc3bbce1": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e2e0be9821538fb318a7324ff92405ede0a7691b",
+    "raw_path": "evidence/simon_goldberg/2025_12_01_prosecution_witness_statements/ocr_2026-08-04/verify_ocr.py",
+    "sha256": "f79648211945bc43f44f6c05a4c7c5769ce156caa79d939d46d41b41cc3bbce1",
+    "size": 2998
   },
   "f7968f525ee70923926c6c7c7547734ee27d764e2abd69cac77b3a03ca1c91e3": {
     "document_type": null,
@@ -25425,6 +26381,18 @@
     "sha256": "fc6ee2b11423a3b1f287bffcf5148957185e58aef8f64e6b1ac9ce909952e588",
     "size": 94548
   },
+  "fc7260af91848bf9fb6558888f3d0421b6f580f02bae26c4b08843b2be1519a4": {
+    "document_type": "evidence",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "received",
+    "party_role": "prosecutor",
+    "raw_commit": "e0f037b9439c9d6ce51d91e6e9df590f946e447c",
+    "raw_path": "evidence/simon_goldberg/youtube_channel_survey_2026-08-05/Daniela -v- Darren Norman\uff1a Cry Hard ~ Darren Norman Exposed III [q9sgXffM-PE].en.srt",
+    "sha256": "fc7260af91848bf9fb6558888f3d0421b6f580f02bae26c4b08843b2be1519a4",
+    "size": 54313
+  },
   "fcc3aacae3636fe91a2385f63c4be83f723434a2869bb8f315389fa46104400c": {
     "document_type": "research",
     "matters": [
@@ -25672,6 +26640,18 @@
     "raw_path": "telegram/data/The_Shill_Hunter/media/2025/10/20251005_095022_93.jpg",
     "sha256": "ffd24055e6d0bb5b25217a07610a7e7b493b233409fcbe9c726cdf59aeb15bbe",
     "size": 108101
+  },
+  "ffda6ec9b27e4e508197def8ffeacf9b9c0f6df9d62fbf405646c236bfba029f": {
+    "document_type": "research",
+    "matters": [
+      "422500059892"
+    ],
+    "origin": "authored",
+    "party_role": null,
+    "raw_commit": "85bb551e48d59086078d5d50f0cd21126e8740f1",
+    "raw_path": "reports/private_prosecution/g25_ancillary_orders/2026-08-05_deletion_of_data_RAW_UNVERIFIED.md",
+    "sha256": "ffda6ec9b27e4e508197def8ffeacf9b9c0f6df9d62fbf405646c236bfba029f",
+    "size": 5032
   },
   "ffdb547b6186d51e3065426aae46982f8aa320ebf8b888183f183baeb1f6bb5d": {
     "document_type": "evidence",

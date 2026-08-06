@@ -19,14 +19,14 @@ from goldberg_system.provenance import now_iso
 
 # Pipeline stages, in order. A document should traverse these; where it *stops* is the
 # answer to "why did X not ingest".
-STAGES = ("received", "extracted", "enriched", "indexed", "wiki_authored")
+STAGES = ("received", "extracted", "enriched", "indexed")
 # Event outcome at a stage.
 STATUSES = ("started", "ok", "skipped", "failed")
 
 
 class PipelineEvent(BaseModel):
     ts: str
-    component: str  # live-service | backfill | wiki-sink | migrate
+    component: str  # live-service | backfill | migrate
     stage: str  # one of STAGES
     status: str  # one of STATUSES
     run_id: str | None = None

@@ -7,55 +7,6 @@ from typing import Any
 from goldberg_system.query import CorpusQuery
 
 
-def test_wiki_search_parses_pages_and_targets_wiki_index() -> None:
-    resp = {
-        "hits": {
-            "hits": [
-                {
-                    "_id": "entities/simon-goldberg.md",
-                    "_score": 3.2,
-                    "_source": {
-                        "path": "entities/simon-goldberg.md",
-                        "title": "Simon Goldberg",
-                        "layer": "entity",
-                        "type": "entity",
-                        "tags": ["plaintiff"],
-                        "sources": ["evidence/a.pdf"],
-                        "outbound_links": ["salim-fadhley", "tracey-edwards"],
-                    },
-                    "highlight": {"body": ["a <em>fragment</em>"]},
-                }
-            ]
-        }
-    }
-    es = _FakeES(resp)
-    q = CorpusQuery(es, "goldberg_documents", wiki_index="silverbullet-goldberg")
-    hits = q.wiki("goldberg", layer="entity", tags=["plaintiff"])
-    assert len(hits) == 1
-    h = hits[0]
-    assert h.path == "entities/simon-goldberg.md"
-    assert h.title == "Simon Goldberg" and h.layer == "entity"
-    assert h.tags == ["plaintiff"] and h.outbound_links == [
-        "salim-fadhley",
-        "tracey-edwards",
-    ]
-    assert h.highlights == ["a <em>fragment</em>"]
-    # queried the WIKI index, not the document index
-    assert es.last_search["index"] == "silverbullet-goldberg"
-    # excludes raw/archive layers so only synthesised pages return
-    must_not = es.last_search["query"]["bool"]["must_not"]
-    assert {"terms": {"layer": ["raw", "archive"]}} in must_not
-    # layer + tag filters applied
-    filters = es.last_search["query"]["bool"]["filter"]
-    assert {"term": {"layer": "entity"}} in filters
-    assert {"terms": {"tags": ["plaintiff"]}} in filters
-
-
-def test_wiki_default_index() -> None:
-    q = CorpusQuery(_FakeES(), "goldberg_documents")
-    assert q.wiki_index == "silverbullet-goldberg"
-
-
 class _FakeES:
     def __init__(
         self,

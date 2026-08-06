@@ -1,7 +1,7 @@
 """The sink interface.
 
 A *sink* is a destination for a fully enriched document: the goldberg-extracted
-writer, the Elasticsearch indexer, and the RAG/wiki sink (all built in M4) each
+writer and the Elasticsearch indexer (built in M4) each
 implement :class:`Sink`. Defining it here lets M4 writers and the M5 service be
 built against a stable contract.
 """

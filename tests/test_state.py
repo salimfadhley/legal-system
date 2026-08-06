@@ -15,7 +15,6 @@ class _StateES:
     def __init__(self) -> None:
         self.counts = {
             "goldberg_documents": 42,
-            "silverbullet-goldberg": 107,
             "goldberg_pipeline_events": 200,
         }
 
@@ -103,7 +102,6 @@ def test_aggregate_builds_system_state() -> None:
     state = aggregate(_StateES())
     assert isinstance(state, SystemState)
     assert state.corpus["documents"] == 42
-    assert state.wiki["pages"] == 107
     assert state.pipeline["by_stage_status"]["indexed/ok"] == 40
     assert state.pipeline["by_stage_status"]["indexed/failed"] == 1
     assert state.pipeline["last_indexed_at"] == "2026-07-21T12:00:00Z"
