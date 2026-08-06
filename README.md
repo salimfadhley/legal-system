@@ -26,11 +26,11 @@ Cross-project paths are recorded in [`config/projects.yaml`](config/projects.yam
 ## Quick start (uv)
 
 ```bash
-uv sync                       # create the environment
-uv run pytest                 # run the tests (TDD is mandatory here)
-uv run goldberg config        # print the resolved project/service locations
-uv run goldberg doctor        # is every component up?
-uv run goldberg status --yaml # system state, LLM-readable
+uv sync                          # create the environment
+uv run pytest                    # run the tests (TDD is mandatory here)
+uv run legal_system config       # print the resolved project/service locations
+uv run legal_system doctor       # is every component up?
+uv run legal_system status --yaml # system state, LLM-readable
 ```
 
 ## Where things run

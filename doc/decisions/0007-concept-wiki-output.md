@@ -120,7 +120,7 @@ Validated both directions against live infra before committing to M11:
    `party`); the SB indexer is running; `silverbullet-mindofsteele` (2,966 pages)
    proves the pattern scales.
 2. **Dual-representation query — CONFIRMED complementary.** Added
-   `CorpusQuery.wiki()` + `goldberg wiki` (searches `silverbullet-goldberg`, excludes
+   `CorpusQuery.wiki()` + `legal_system wiki` (searches `silverbullet-goldberg`, excludes
    raw/archive layers). A sample query against a named organisation showed the
    **wiki** returning synthesised entity/concept pages (an entity page cross-linked
    to related parties); the **corpus** returning the primary evidence (an attributed

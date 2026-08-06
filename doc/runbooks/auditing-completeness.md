@@ -1,4 +1,4 @@
-# Runbook — corpus completeness (`goldberg audit`)
+# Runbook — corpus completeness (`legal_system audit`)
 
 **Audience:** an operator (or an agent acting for one) who needs to answer three
 questions about corpus *integrity*, not liveness:
@@ -10,11 +10,11 @@ questions about corpus *integrity*, not liveness:
 3. **Was anything deleted from `goldberg-raw` but left behind?** — a stale record whose
    source file no longer exists.
 
-For "is the pipeline *up* right now?" use [`goldberg doctor`](./component-health.md); for
-"why did *one* document (not) ingest?" use `goldberg trace`. This runbook is about the
+For "is the pipeline *up* right now?" use [`legal_system doctor`](./component-health.md); for
+"why did *one* document (not) ingest?" use `legal_system trace`. This runbook is about the
 *completeness* of the whole corpus.
 
-`goldberg audit` is **read-only** and drives cleanly from cron/CI — it **exits non-zero**
+`legal_system audit` is **read-only** and drives cleanly from cron/CI — it **exits non-zero**
 whenever it finds a gap or an orphan.
 
 ## The three axes
@@ -57,14 +57,14 @@ It splits the result into two classes:
 
 ```bash
 # The corpus manifest is config/provenance-manifest.json (the "expected" set).
-uv run goldberg audit --manifest config/provenance-manifest.json
+uv run legal_system audit --manifest config/provenance-manifest.json
 
 # List the specific gaps:
-uv run goldberg audit --manifest config/provenance-manifest.json --missing
-uv run goldberg audit --manifest config/provenance-manifest.json --extra
+uv run legal_system audit --manifest config/provenance-manifest.json --missing
+uv run legal_system audit --manifest config/provenance-manifest.json --extra
 
 # Also check for documents deleted from goldberg-raw (the orphan axis):
-uv run goldberg audit --manifest config/provenance-manifest.json --orphans
+uv run legal_system audit --manifest config/provenance-manifest.json --orphans
 ```
 
 `--orphans` reads the raw tree from the resolved `raw` project path (a cheap `stat` per
@@ -98,8 +98,8 @@ Orphans (source deleted from goldberg-raw): ✗ ORPHANS FOUND
   media. A **non-zero** count means real stale records exist (each printed with its
   `ES _id`) and should be expunged.
 - **`MISSING`** is the completeness gap — documents that never ingested. Investigate each
-  with `goldberg trace <raw_path>` (it joins the event log / DLQ for the last-known stage
-  and reason), and re-drive via startup catch-up (`goldberg ingest catchup`) or a DLQ
+  with `legal_system trace <raw_path>` (it joins the event log / DLQ for the last-known stage
+  and reason), and re-drive via startup catch-up (`legal_system ingest catchup`) or a DLQ
   retry.
 
 ## Exit codes
@@ -110,16 +110,16 @@ Orphans (source deleted from goldberg-raw): ✗ ORPHANS FOUND
 | Any missing, **or** (with `--orphans`) any orphan | `1` |
 
 ```bash
-uv run goldberg audit --manifest config/provenance-manifest.json --orphans \
+uv run legal_system audit --manifest config/provenance-manifest.json --orphans \
   || echo "corpus has gaps or orphans — investigate"
 ```
 
-Wire this into the same scheduler that runs `goldberg alert` so silent drops and stale
+Wire this into the same scheduler that runs `legal_system alert` so silent drops and stale
 deletions surface proactively.
 
 ## Expunging an indexed orphan (manual — no supported command yet)
 
-There is **no** `goldberg expunge` command. If `--orphans` reports an *indexed* orphan
+There is **no** `legal_system expunge` command. If `--orphans` reports an *indexed* orphan
 that must be removed (e.g. privilege, or an order to destroy), remove it by hand:
 
 ```bash
@@ -131,16 +131,16 @@ curl -s -X DELETE "$GOLDBERG_ES_URL/goldberg_documents/_doc/<ES _id>"
 #    whose "raw_path" matches, then re-run the audit to confirm it is gone.
 ```
 
-Re-run `goldberg audit --manifest config/provenance-manifest.json --orphans` afterward to
+Re-run `legal_system audit --manifest config/provenance-manifest.json --orphans` afterward to
 confirm the orphan count dropped and nothing else regressed. Building a supported
-`goldberg expunge <doc_id>` (atomic ES delete + manifest prune + an audit event) is a
+`legal_system expunge <doc_id>` (atomic ES delete + manifest prune + an audit event) is a
 known follow-up.
 
 ## Related
 
-- [Component health](./component-health.md) — `goldberg doctor` (is the pipeline *up*?).
-- `goldberg trace <raw_path|sha256|doc_id>` — why one document did (not) ingest.
-- `goldberg alert` — the proactive scheduler-driven check that wraps completeness.
+- [Component health](./component-health.md) — `legal_system doctor` (is the pipeline *up*?).
+- `legal_system trace <raw_path|sha256|doc_id>` — why one document did (not) ingest.
+- `legal_system alert` — the proactive scheduler-driven check that wraps completeness.
 - [ADR 0008](../decisions/0008-observability-architecture.md) — the observability design
   (reconciliation + the 2026-07-25 orphan-axis amendment).
 - [architecture §12 / §14](../architecture.md) — reconciliation in context, and the

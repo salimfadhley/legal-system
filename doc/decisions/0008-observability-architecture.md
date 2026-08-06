@@ -3,7 +3,7 @@
 **Status:** **Accepted — core delivered** (phases 1–3; phase 4 reduced) · **Date:** 2026-07-21
 
 > **Built, with one deviation from the design below.** The event model, the ES projection
-> (`goldberg_pipeline_events`), reconciliation (`goldberg audit`), `trace`, `status`,
+> (`goldberg_pipeline_events`), reconciliation (`legal_system audit`), `trace`, `status`,
 > `dlq`, and the `doctor` component-health board are all built and in use. The deviation:
 > events are written **directly** to the Elasticsearch projection rather than through the
 > JetStream stream set described in §2; the dead-letter queue is realised on the ingest
@@ -96,7 +96,7 @@ to "is there something that did not ingest?".
 > disk. A document **deleted from goldberg-raw** survives in both the manifest and the
 > index (the pipeline has no delete path — a deletion commit is acked as a zero-file
 > no-op), so it still "matches" and the corpus reports COMPLETE. Established empirically
-> by the deletion probe of 2026-07-25. Closed by **`goldberg audit --orphans`**
+> by the deletion probe of 2026-07-25. Closed by **`legal_system audit --orphans`**
 > (`reconcile.find_orphans`), which checks each manifest `raw_path` against the actual raw
 > tree and flags every one whose file is gone, marking which still have an ES `doc_id` to
 > expunge (indexed orphan) vs. provenance-only entries for pruned media (manifest-only).
@@ -116,7 +116,7 @@ manifest key (ADR 0006), and the `sha256` on every `PipelineEvent`.
 `raw_sha256` is carried on `DocumentMetadata` → the ES document, the extracted
 frontmatter (serialised from the schema), and — for M11 — wiki pages. So one ID
 correlates **goldberg-raw → Papra → events → ES doc → extracted → wiki**, and
-`goldberg trace <sha256>` walks the whole journey. It also lets reconciliation join by
+`legal_system trace <sha256>` walks the whole journey. It also lets reconciliation join by
 hash (path-independent) rather than only by `raw_path`.
 
 *(A per-execution trace ID — an OTel-style UUID minted at ingestion and propagated in
@@ -134,23 +134,23 @@ failure is logged, not fatal).
 
 ### 6. CLI surface
 
-- `goldberg audit` — reconciliation summary (expected/actual/missing/extra/stale).
-- `goldberg audit --missing` — the list of un-ingested `raw_path`s + last reason.
-- `goldberg trace <raw_path|sha256|doc_id>` — one document's stage timeline + stop
+- `legal_system audit` — reconciliation summary (expected/actual/missing/extra/stale).
+- `legal_system audit --missing` — the list of un-ingested `raw_path`s + last reason.
+- `legal_system trace <raw_path|sha256|doc_id>` — one document's stage timeline + stop
   point (reads the event projection + DLQ).
-- `goldberg status` — health + per-stage counts + DLQ depth + freshness (also the
+- `legal_system status` — health + per-stage counts + DLQ depth + freshness (also the
   data source for M13; see ADR 0009).
-- `goldberg dlq list` / `goldberg dlq retry <doc_id|all>` — inspect + reprocess
+- `legal_system dlq list` / `legal_system dlq retry <doc_id|all>` — inspect + reprocess
   dead-lettered documents (idempotent via deterministic doc-id).
 
-### 6b. Component health (`goldberg doctor`)
+### 6b. Component health (`legal_system doctor`)
 
 Audit/trace/status answer *"did this document ingest?"* — a **data-plane** question.
 They do **not** answer *"is the pipeline itself up right now?"* — the **control-plane**
 question an operator asks when ingestion has silently stopped. A paused live-index
 watcher or an unreachable Docling used to be found only by hand-probing with `curl`.
-`goldberg doctor` closes that gap: a per-component liveness board over the six major
-components, assembled by `observability/health.py` and reused by `goldberg status`
+`legal_system doctor` closes that gap: a per-component liveness board over the six major
+components, assembled by `observability/health.py` and reused by `legal_system status`
 and the MCP layer (one implementation, no drift).
 
 **Status semantics** (a three-value enum, so DOWN is structurally distinct from a
@@ -205,7 +205,7 @@ backbone later; it is not a prerequisite.
 ## Consequences
 
 - The DLQ makes the **M8 full migration self-verifying**: failures are captured +
-  reprocessable, and a closing `goldberg audit` proves "N expected, N indexed, 0
+  reprocessable, and a closing `legal_system audit` proves "N expected, N indexed, 0
   missing". This is the argument for building M12 (core) before M8.
 - New: an `observability` module (event model + emit + stage wrapper), a JetStream
   stream set, an ES projection consumer (a small long-running service on Halob), and
@@ -217,8 +217,8 @@ backbone later; it is not a prerequisite.
 1. **Event backbone** — `PipelineEvent` model + `emit`/stage-wrapper; JetStream
    streams (events/dlq/errors); wire pipeline + live service + wiki sink; ES
    projection consumer.
-2. **Reconciliation** — `goldberg audit` (expected vs actual → gaps + reasons).
-3. **Trace + DLQ ops** — `goldberg trace`, `goldberg status`, `goldberg dlq
+2. **Reconciliation** — `legal_system audit` (expected vs actual → gaps + reasons).
+3. **Trace + DLQ ops** — `legal_system trace`, `legal_system status`, `legal_system dlq
    list/retry`.
 4. **Stretch** — OTel (prometheus-nats-exporter + header tracing) + alerting.
 

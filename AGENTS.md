@@ -28,12 +28,12 @@ Query the **document index** — the primary evidence — for everything. (The o
 SilverBullet *concept wiki* was retired in [ADR 0014](doc/decisions/0014-retire-silverbullet-wiki.md);
 there is one substrate now.)
 
-- `uv run goldberg claims [--by <speaker>] [--subject X] [--object X]` — who
+- `uv run legal_system claims [--by <speaker>] [--subject X] [--object X]` — who
   asserted what (attributed; use for "who said" + contradiction-hunting).
-- `uv run goldberg search "<keywords>" [--matter M] [--author A]` — full-text over
+- `uv run legal_system search "<keywords>" [--matter M] [--author A]` — full-text over
   the evidence documents.
-- `uv run goldberg get <doc_id>` — read a document's full text to quote it.
-- `uv run goldberg facets` — orient (counts by matter/author/type/party).
+- `uv run legal_system get <doc_id>` — read a document's full text to quote it.
+- `uv run legal_system facets` — orient (counts by matter/author/type/party).
 - Or `grep`/browse the **`goldberg-extracted`** git store — every doc as
   markdown+frontmatter (extracted text + attributed `claims`), versioned and citable.
 
@@ -44,11 +44,11 @@ there is one substrate now.)
 When asked "how's indexing going / any bottlenecks / has anything failed?", use the
 observability commands (M12, [ADR 0008](doc/decisions/0008-observability-architecture.md)):
 
-- `uv run goldberg status [--yaml]` — health, corpus size, per-stage/status counts,
+- `uv run legal_system status [--yaml]` — health, corpus size, per-stage/status counts,
   DLQ depth (`--yaml` is the compact LLM-readable form).
-- `uv run goldberg dlq` / `goldberg trace <raw_path|sha256|doc_id>` — what failed /
+- `uv run legal_system dlq` / `legal_system trace <raw_path|sha256|doc_id>` — what failed /
   why a specific document did (not) ingest.
-- `uv run goldberg audit --manifest <manifest.json>` — completeness: did anything
+- `uv run legal_system audit --manifest <manifest.json>` — completeness: did anything
   not ingest.
 
 ## MCP server (agent-agnostic, no shell needed)
@@ -57,7 +57,7 @@ The same observability + query capabilities are exposed as a **hosted MCP server
 ([ADR 0010](doc/decisions/0010-mcp-server.md)) for any MCP-capable agent (Claude,
 Codex, …): tools `system_status`, `recent_failures`, `trace_document`,
 `search_evidence`, `find_claims`, `get_document`. Run it with
-`uv run goldberg mcp-serve` (needs `uv sync --extra mcp`); connect at
+`uv run legal_system mcp-serve` (needs `uv sync --extra mcp`); connect at
 `http://<host>:8765/mcp`. Tools return structured, citable data — no shell, no
 hand-written Elasticsearch queries.
 

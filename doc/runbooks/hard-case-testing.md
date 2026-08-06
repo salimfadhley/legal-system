@@ -29,7 +29,7 @@ Each case declares an `expect`:
 
 ```bash
 # extraction suite — no live index, no OpenAI cost, exits non-zero on any failure
-uv run goldberg test-hard-cases [--only <case>]
+uv run legal_system test-hard-cases [--only <case>]
 ```
 
 Needs Docling reachable (`GOLDBERG_DOCLING_URL`, default `http://localhost:5001` — run
@@ -42,7 +42,7 @@ To test extract → enrich → **index** without touching the live corpus, point
 re-ingest at a throwaway index:
 
 ```bash
-uv run goldberg migrate reingest --index goldberg_documents_test --only <raw_path>
+uv run legal_system migrate reingest --index goldberg_documents_test --only <raw_path>
 ```
 
 Everything (indexer, `search`, `audit`, the MCP server) reads its index from

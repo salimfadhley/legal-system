@@ -1,8 +1,8 @@
 # Runbook — Verifying the system is up
 
 > **Updated (2026-07-23) — ingest is now event-driven ([ADR 0013](../decisions/0013-event-driven-ingestion.md)).**
-> The `reconciler` service (`goldberg watch`) has been replaced by an **`ingest`**
-> service (`goldberg ingest-serve`, `/health` on **8098**). Read every `reconciler`
+> The `reconciler` service (`legal_system watch`) has been replaced by an **`ingest`**
+> service (`legal_system ingest-serve`, `/health` on **8098**). Read every `reconciler`
 > below as the `ingest` service. Two behavioural changes matter for verification:
 > **(a)** there is no "reconcile interval" — a `goldberg-raw` commit publishes a
 > `goldberg.raw.commit` NATS trigger and ingest begins near-immediately (so the step-5
@@ -79,9 +79,9 @@ synthesis. Run it two ways; both must agree.
 **CLI** (from inside the reconciler or mcp container, which have `goldberg` + env):
 
 ```bash
-docker compose exec ingest goldberg doctor
+docker compose exec ingest legal_system doctor
 # machine-readable:
-docker compose exec ingest goldberg doctor --yaml
+docker compose exec ingest legal_system doctor --yaml
 ```
 
 **MCP tool** `component_health` — the same board for MCP-capable agents, no shell needed
@@ -141,7 +141,7 @@ printf '# Verify smoke test\n\nUnique marker: %s\n' "${MARKER}" > "${DROP}/${MAR
 sleep 330
 
 # 3. Confirm it is queryable WITH provenance (doc_id + raw_path shown by search).
-docker compose exec ingest goldberg search "${MARKER}"
+docker compose exec ingest legal_system search "${MARKER}"
 ```
 
 Expected: one hit whose `raw_path` points at `verify-smoketest/<marker>.md`. That the hit
@@ -152,7 +152,7 @@ full provenance record:
 
 ```bash
 # grab the doc_id from the search output, then:
-docker compose exec ingest goldberg get <doc_id>
+docker compose exec ingest legal_system get <doc_id>
 ```
 
 **Clean up** — remove the marker so it does not pollute the corpus:
@@ -167,7 +167,7 @@ rm -rf "${DROP}"
 ```
 
 If the marker never appears after a full interval, check the reconciler logs and the DLQ
-(`docker compose exec ingest goldberg dlq`) — the file may be outside an allowlisted
+(`docker compose exec ingest legal_system dlq`) — the file may be outside an allowlisted
 tree, or its extraction dead-lettered.
 
 ## Troubleshooting

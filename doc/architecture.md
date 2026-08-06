@@ -83,7 +83,7 @@ default to the most protective value**. The LLM must never invent them
    │   (git + LFS)   │  A human/agent commits a file here. That is the only manual step.
    └────────┬────────┘
             │  git post-commit / post-merge hook
-            │  → `goldberg publish-commit <sha>`
+            │  → `legal_system publish-commit <sha>`
             ▼
    ┌─────────────────────────────────────────┐
    │ NATS JetStream   stream GOLDBERG        │  durable, survives processor downtime
@@ -92,7 +92,7 @@ default to the most protective value**. The LLM must never invent them
             │  durable pull consumer "ingest-processor"
             ▼
    ┌──────────────────────────────────────────────────────────────────────┐
-   │ ingest service  (`goldberg ingest-serve`)                            │
+   │ ingest service  (`legal_system ingest-serve`)                            │
    │                                                                      │
    │  1. refresh provenance   → config/provenance-manifest.json           │
    │     (sha256 → raw_path, raw_commit, matters)   *** BEFORE indexing ***│
@@ -297,7 +297,7 @@ not convert, summarise, or index anything by hand.** They:
 - **`post-merge`** — fires for non-fast-forward pull-merges, which `post-commit` does
   *not* cover.
 
-Both run `goldberg publish-commit <sha> --source <hook>`, which publishes one JSON
+Both run `legal_system publish-commit <sha> --source <hook>`, which publishes one JSON
 message `{sha, ts, source}` to `goldberg.raw.commit`, with `Nats-Msg-Id` set to the
 commit sha so the stream's dedup window collapses duplicate publishes.
 
@@ -308,7 +308,7 @@ usual "fail loudly" instinct: the *evidence repository* must remain usable even 
 pipeline is entirely down.
 
 **A known gap, stated plainly:** a *fast-forward* `git pull` fires neither hook. Such
-changes are picked up by the startup catch-up or a manual `goldberg ingest catchup`.
+changes are picked up by the startup catch-up or a manual `legal_system ingest catchup`.
 
 ### 5.3 Transport: the durable consumer
 
@@ -359,7 +359,7 @@ boot. The distinction is the entire point of [§6](#6-why-trigger-not-poll).
 Because the pass is bounded, a backlog larger than one batch would otherwise be
 invisible. So the report also computes the **true unbounded pending count** and exposes
 `remaining_pending`; a non-zero value marks `/health` **degraded**, prompting another
-`goldberg ingest catchup`. Silence would have been the failure mode; visible degradation
+`legal_system ingest catchup`. Silence would have been the failure mode; visible degradation
 is the fix.
 
 ### 5.5 Per-document processing
@@ -456,7 +456,7 @@ only when a commit says there is work, and touches only that commit's changed fi
 
 **The trade accepted:** ingestion now depends on the hook being wired
 (`core.hooksPath`). A clone without it silently stops triggering. That risk is mitigated
-— not eliminated — by the startup catch-up and by `goldberg audit`, which both surface
+— not eliminated — by the startup catch-up and by `legal_system audit`, which both surface
 the resulting backlog.
 
 ---
@@ -747,7 +747,7 @@ the answer and cites it**. The tools never generate prose, and the agent never i
 facts.
 
 ```
-question ──▶ goldberg claims / search / wiki / get / facets ──▶ Elasticsearch
+question ──▶ legal_system claims / search / wiki / get / facets ──▶ Elasticsearch
                                                                      │
                                                     grounded hits with provenance
                                                                      ▼
@@ -788,7 +788,7 @@ itself. Map and territory.
 ### The MCP server
 
 The primary human is rarely at a dashboard; they ask an agent. So the same capabilities
-are exposed as a **hosted MCP server** (`goldberg mcp-serve`, `streamable-http` on
+are exposed as a **hosted MCP server** (`legal_system mcp-serve`, `streamable-http` on
 `:8765/mcp`, optional `mcp` install extra) with eight read-only tools:
 
 `system_status` · `recent_failures` · `trace_document` · `component_health` ·
@@ -838,7 +838,7 @@ design and this section for what exists.
 
 ### Reconciliation — the completeness check
 
-`goldberg audit` is a set join on the content hash:
+`legal_system audit` is a set join on the content hash:
 
 - **Expected** = the provenance manifest (the authoritative "should exist" set)
 - **Actual** = `goldberg_documents`
@@ -848,7 +848,7 @@ since indexing), and joining the event log to attach each missing document's las
 stage and reason. This is the direct answer to "is there something that did not ingest?"
 — and it is what makes a bulk migration self-verifying.
 
-A **third axis — `goldberg audit --orphans`** — closes a hole the manifest-vs-index join
+A **third axis — `legal_system audit --orphans`** — closes a hole the manifest-vs-index join
 cannot see. That join compares two sets (manifest, index) but is blind to a *third* source
 of truth: the raw tree on disk. A document **deleted from goldberg-raw** survives in both
 the manifest and the index (see §14 — the pipeline has no delete path), so the plain join
@@ -860,7 +860,7 @@ was removed) from the benign one (**manifest-only** — provenance for a pruned 
 that was never indexed anyway, per ADR 0002). Verified 2026-07-25: the live corpus has 36
 manifest-only orphans (all pruned `.mp4`) and **zero indexed orphans**.
 
-### Component health — `goldberg doctor`
+### Component health — `legal_system doctor`
 
 Audit and trace are **data-plane** questions ("did this document ingest?"). They do not
 answer the **control-plane** question ("is the pipeline itself up right now?"). The
@@ -895,7 +895,7 @@ recent window.)
 
 One canonical `SystemState` model, **two renderers**
 ([ADR 0009](./decisions/0009-operations-dashboard.md)): a Streamlit UI for humans and
-**YAML for LLMs** (`goldberg status --yaml`). The dual-mode requirement is the
+**YAML for LLMs** (`legal_system status --yaml`). The dual-mode requirement is the
 architecture, not a feature: both are renderers of the same object, so they cannot
 drift. YAML rather than JSON is deliberate — the least-punctuated structured format for
 a model to skim, matching how the corpus metadata is already represented.
@@ -913,8 +913,8 @@ else**:
 | Service | Image / build | Ports | Command |
 |---|---|---|---|
 | `docling` | `ghcr.io/docling-project/docling-serve-cpu:latest` | 5001 | (default) |
-| `ingest` | `deploy/Dockerfile.ingest` | 8098 (`/health`) | `goldberg ingest-serve` |
-| `mcp` | `Dockerfile.mcp` | 8765 | `goldberg mcp-serve` |
+| `ingest` | `deploy/Dockerfile.ingest` | 8098 (`/health`) | `legal_system ingest-serve` |
+| `mcp` | `Dockerfile.mcp` | 8765 | `legal_system mcp-serve` |
 
 ### The load-bearing decisions
 
@@ -1003,10 +1003,10 @@ Stated so that nothing above reads as more complete than it is.
   it means **there is no supported way to expunge a document** — a legitimate need (e.g.
   privilege or an order to destroy). Expunging today is manual: `DELETE` the ES doc by
   `_id` in `goldberg_documents` and remove the manifest entry. Detection *is* now
-  automated — **`goldberg audit --orphans`** flags every manifest `raw_path` whose source
+  automated — **`legal_system audit --orphans`** flags every manifest `raw_path` whose source
   file is gone and marks which still have an ES document to expunge (verified against the
   live corpus 2026-07-25: 36 manifest-only, 0 indexed). Empirically established by the
-  deletion probe of 2026-07-25; a supported `goldberg expunge <doc_id>` remains unbuilt.
+  deletion probe of 2026-07-25; a supported `legal_system expunge <doc_id>` remains unbuilt.
 - **Health before catch-up.** `/health` should open before the startup catch-up runs, so
   a long catch-up cannot trip a supervisor. Currently mitigated with a long start-period.
 - **Fast-forward `git pull` fires no hook.** Covered by startup catch-up and `audit`, not
@@ -1053,7 +1053,7 @@ flags. This is the human-authored tier; the machine fills everything else
 ([§9](#9-the-data-model)).
 
 **5. Build the provenance manifest** — walk the raw tree, computing for each allowlisted
-file its sha256, its introducing commit, and its inherited matters. `goldberg migrate
+file its sha256, its introducing commit, and its inherited matters. `legal_system migrate
 manifest`. This is your authoritative "should exist" set ([§8](#8-the-provenance-model)).
 
 **6. Stand up extraction.** Run `docling-serve`. Call it **directly**, via the **async**
@@ -1084,7 +1084,7 @@ it did not reach as a degraded health status ([§5.4](#54-startup-catch-up-one-b
 `trace`, `doctor`. The migration is then self-verifying: it can prove "N expected, N
 indexed, 0 missing" ([§12](#12-observability)).
 
-**13. Backfill.** `goldberg migrate reingest --resume`, then `goldberg audit` to prove
+**13. Backfill.** `legal_system migrate reingest --resume`, then `legal_system audit` to prove
 completeness.
 
 **14. Expose the read side.** The CLI first, then the MCP server. Intent-shaped,

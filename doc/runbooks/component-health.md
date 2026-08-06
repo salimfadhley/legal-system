@@ -1,11 +1,11 @@
-# Runbook — component health (`goldberg doctor`)
+# Runbook — component health (`legal_system doctor`)
 
 **Audience:** an operator (or an agent acting for one) who needs a fast answer to
 *"is the pipeline actually up?"* — not "did document X ingest?" (that's
-[`goldberg trace`/`audit`](../decisions/0008-observability-architecture.md)), but "is
+[`legal_system trace`/`audit`](../decisions/0008-observability-architecture.md)), but "is
 every major component reachable and doing its job right now?".
 
-`goldberg doctor` probes the six major components concurrently and prints a
+`legal_system doctor` probes the six major components concurrently and prints a
 per-component liveness board with an overall verdict. Every probe is **read-only**,
 individually **time-bounded** (≤5s), and never crashes the board — a hung or dead
 component shows as **DOWN** while the rest report normally. The whole board returns in
@@ -14,13 +14,13 @@ under ~10s even if everything is down.
 ## Usage
 
 ```bash
-uv run goldberg doctor                     # human board (colourised)
-uv run goldberg doctor --yaml              # structured YAML for agents/CI
-uv run goldberg doctor --freshness-window 300   # tighten the watcher freshness window (s)
+uv run legal_system doctor                     # human board (colourised)
+uv run legal_system doctor --yaml              # structured YAML for agents/CI
+uv run legal_system doctor --freshness-window 300   # tighten the watcher freshness window (s)
 ```
 
-A compact version of the same board is also folded into `goldberg status` (and
-`goldberg status --yaml`) under a `components:` section, so the single system-overview
+A compact version of the same board is also folded into `legal_system status` (and
+`legal_system status --yaml`) under a `components:` section, so the single system-overview
 command shows control-plane health alongside the corpus/pipeline/DLQ data plane.
 
 ## What each status means
@@ -43,7 +43,7 @@ The **overall** verdict is the worst component (DOWN > DEGRADED > UP).
 | **elasticsearch** | Cluster responds and all three required indices (`goldberg_documents`, `silverbullet-goldberg`, `goldberg_pipeline_events`) exist. | Cluster responds but a required index is **missing** (named in the detail). | Cluster unreachable / timed out. |
 | **docling** | `GET /health` returns `{"status":"ok"}`. | — | Health check failed, unreachable, or timed out. Start the SSH tunnel or check the Docling service. |
 | **enricher** (OpenAI) | `GET /v1/models` returned HTTP 200. Metadata call only — **no tokens billed.** | **No `OPENAI_API_KEY`** configured — the enricher can't run, but nothing is on fire. | API returned a non-200 (e.g. 401 bad key) or was unreachable. |
-| **mcp_server** | A streamable-http `initialize` handshake (`POST /mcp`) returned HTTP 200 with an `Mcp-Session-Id`. | — | Port closed / connection refused / timed out / non-200. Start it with `uv run goldberg mcp-serve`. |
+| **mcp_server** | A streamable-http `initialize` handshake (`POST /mcp`) returned HTTP 200 with an `Mcp-Session-Id`. | — | Port closed / connection refused / timed out / non-200. Start it with `uv run legal_system mcp-serve`. |
 | **live_index_watcher** *(inferred)* | The newest pipeline event is within the freshness window (default 15 min) — events are flowing. | — | No recent (or no) pipeline events — the watcher is likely paused/stopped. |
 | **wiki_synthesis** | Wiki index present **and** synthesis is wired to ingest. | Wiki index present but **not refreshed from ingest** (the current state — no synthesis pipeline is wired yet). | Wiki index missing entirely. |
 
@@ -60,7 +60,7 @@ The **overall** verdict is the worst component (DOWN > DEGRADED > UP).
 
 ## Exit codes
 
-`goldberg doctor` sets its exit code from the overall (worst) status, so it drops
+`legal_system doctor` sets its exit code from the overall (worst) status, so it drops
 straight into a script, cron job, or CI gate:
 
 | Overall | Exit code |
@@ -70,15 +70,15 @@ straight into a script, cron job, or CI gate:
 | DOWN | non-zero (`1`) |
 
 ```bash
-uv run goldberg doctor --yaml || echo "pipeline not fully healthy — investigate"
+uv run legal_system doctor --yaml || echo "pipeline not fully healthy — investigate"
 ```
 
 ## Related
 
-- `goldberg status` — full system overview (health checks + corpus + pipeline + DLQ),
+- `legal_system status` — full system overview (health checks + corpus + pipeline + DLQ),
   now with the compact `components:` board.
-- `goldberg trace <raw_path|sha256|doc_id>` — why one *document* did (not) ingest.
-- `goldberg audit --manifest <m.json>` — completeness (did anything not ingest, or get
+- `legal_system trace <raw_path|sha256|doc_id>` — why one *document* did (not) ingest.
+- `legal_system audit --manifest <m.json>` — completeness (did anything not ingest, or get
   deleted from raw and left behind). Full runbook:
   [Auditing completeness](./auditing-completeness.md).
 - [ADR 0008 §6b](../decisions/0008-observability-architecture.md) — the design and

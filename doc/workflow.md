@@ -29,7 +29,7 @@ The file must land in a tree named in [`config/evidence-allowlist.yaml`](../conf
 git commit in goldberg-raw
       │
       ▼
-[1] TRIGGER  ── post-commit / post-merge hook → `goldberg publish-commit <sha>`
+[1] TRIGGER  ── post-commit / post-merge hook → `legal_system publish-commit <sha>`
       │        → NATS JetStream, subject  goldberg.raw.commit  (payload: {sha, ts, source})
       │        The hook NEVER fails git: a broker outage costs a trigger, not a commit.
       ▼
@@ -60,7 +60,7 @@ git commit in goldberg-raw
 - **Provenance end-to-end** — every extracted doc and ES record links back to the exact raw path + commit sha + content hash, and provenance is recorded *before* indexing.
 - **Raw is sacred** — the pipeline never writes to `goldberg-raw`; extraction failures dead-letter and the original is always preserved.
 - **One-way** — `goldberg-extracted` is written *by* the pipeline and is **not** itself a trigger (no two-hop, no loops).
-- **Nothing is silently dropped** — a commit that cannot be resolved is retried, never acked as "nothing to do"; a backlog the startup catch-up could not reach is reported as degraded health; `goldberg audit` proves expected-vs-actual.
+- **Nothing is silently dropped** — a commit that cannot be resolved is retried, never acked as "nothing to do"; a backlog the startup catch-up could not reach is reported as degraded health; `legal_system audit` proves expected-vs-actual.
 - **Degrades, doesn't die** — if Docling is down, text files still ingest and OCR files retry; if the enricher is down, one document dead-letters, not the service.
 
 ## Metadata
@@ -81,16 +81,16 @@ running retrieval tools against the Elasticsearch index and synthesising an
 **attributed, cited** answer — the tools retrieve, the agent answers.
 
 ```
-question ──▶ goldberg claims / search / get / facets ──▶ Elasticsearch (goldberg_documents)
+question ──▶ legal_system claims / search / get / facets ──▶ Elasticsearch (goldberg_documents)
                                                               │
                                              grounded hits (with provenance)
                                                               ▼
                               agent synthesises an answer, citing doc_id + raw_path + speaker + date
 ```
 
-`goldberg claims` (the nested attributed-claims query) answers "who said what about
-whom" and surfaces contradictions; `goldberg search` is full-text; `goldberg get`
-reads a document; `goldberg facets` orients. Full runbook:
+`legal_system claims` (the nested attributed-claims query) answers "who said what about
+whom" and surfaces contradictions; `legal_system search` is full-text; `legal_system get`
+reads a document; `legal_system facets` orients. Full runbook:
 [runbooks/querying-the-corpus.md](runbooks/querying-the-corpus.md).
 
 ## Where to read further

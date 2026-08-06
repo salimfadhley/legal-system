@@ -31,9 +31,9 @@ Each ADR follows the same sections:
 | [0008](./0008-observability-architecture.md) | Observability architecture (events / DLQ / trace) | Accepted — **core delivered** (events go direct to ES, not via JetStream) |
 | [0009](./0009-operations-dashboard.md) | Operations dashboard | Accepted — **phases 1–2 built** (not deployed as a container) |
 | [0010](./0010-mcp-server.md) | Hosted MCP server | Accepted |
-| [0011](./0011-auto-ingestion-reconciler.md) | Auto-ingestion reconciler (`goldberg watch`) | Superseded by 0013 |
+| [0011](./0011-auto-ingestion-reconciler.md) | Auto-ingestion reconciler (`legal_system watch`) | Superseded by 0013 |
 | [0012](./0012-deployment-topology.md) | Deployment topology — portable processing stack vs. external ES | Accepted (ingest service per 0013) |
-| [0013](./0013-event-driven-ingestion.md) | Event-driven ingestion — git-hook → NATS → durable processor (`goldberg ingest-serve`) | Accepted |
+| [0013](./0013-event-driven-ingestion.md) | Event-driven ingestion — git-hook → NATS → durable processor (`legal_system ingest-serve`) | Accepted |
 
 The **current** state of the system — with each of these decisions folded into one
 coherent description — is [`doc/architecture.md`](../architecture.md). Where an ADR and

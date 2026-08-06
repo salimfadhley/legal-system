@@ -17,19 +17,19 @@ answerer.
 - Config is read from the gitignored `.env` (`GOLDBERG_ES_URL`,
   `GOLDBERG_ES_INDEX`, plus Papra/OpenAI keys). Defaults: ES
   `http://192.168.86.31:9200`, index `goldberg_documents`.
-- Run tools from the repo root: `uv run goldberg <command>` (or
+- Run tools from the repo root: `uv run legal_system <command>` (or
   `PYTHONPATH=src .venv/bin/python -m goldberg_system.cli <command>`).
 
 ## The tools
 
-### `goldberg claims` — who asserted what about whom
+### `legal_system claims` — who asserted what about whom
 
 The attributed-claims query (a nested ES query over each document's `claims`).
 This is the tool for *"who did X say was Y"* and for spotting contradictions
 across documents.
 
 ```
-goldberg claims [--by <speaker>] [--subject <text>] [--object <text>] \
+legal_system claims [--by <speaker>] [--subject <text>] [--object <text>] \
                 [--text <free text>] [--matter <id>] [--size N]
 ```
 
@@ -44,7 +44,7 @@ object` — plus the source `doc_id` and `raw_path` for citation.
 Example — *"What did the sender of the cease-and-desist assert about the recipient?"*:
 
 ```
-goldberg claims --by "A Sender"
+legal_system claims --by "A Sender"
 # → A Sender asserts: The Recipient — has unlawfully possessed and used —
 #   Confidential Data …  (source: gb_… / evidence/exhibits/letter-…pdf)
 ```
@@ -52,13 +52,13 @@ goldberg claims --by "A Sender"
 Contradiction-hunting — the same subject/object across speakers or time:
 
 ```
-goldberg claims --subject "responsible party"
+legal_system claims --subject "responsible party"
 ```
 
-### `goldberg search` — full-text search (BM25)
+### `legal_system search` — full-text search (BM25)
 
 ```
-goldberg search "<question or keywords>" [--matter <id>] [--author <name>] \
+legal_system search "<question or keywords>" [--matter <id>] [--author <name>] \
                 [--type <document_type>] [--size N]
 ```
 
@@ -66,34 +66,34 @@ Searches `content` + `summary` + `long_summary` + `keywords` + `entities`, with
 optional filters. Output per hit: `doc_id`, `document_type`, score, `raw_path`,
 `matters`, `author`, `summary`, and highlighted snippets.
 
-> **Note (ADR 0014):** the `goldberg wiki` command and the SilverBullet concept wiki
+> **Note (ADR 0014):** the `legal_system wiki` command and the SilverBullet concept wiki
 > are **retired** — nobody used them and the synthesised layer was never authored. There
 > is now one substrate: the document index (plus the `goldberg-extracted` git store for
 > greppable, versioned markdown+frontmatter). Ignore any older "query both
 > representations" instruction.
 
-### `goldberg get` — read a document
+### `legal_system get` — read a document
 
 ```
-goldberg get <doc_id> [--no-content]
+legal_system get <doc_id> [--no-content]
 ```
 
 Returns the document's full source (metadata + extracted `content`) as JSON — use
 it to read and quote the exact text once search/claims has found the right doc.
 
-### `goldberg facets` — orient
+### `legal_system facets` — orient
 
 ```
-goldberg facets
+legal_system facets
 ```
 
 Terms counts by `matters`, `author`, `document_type`, `parties` — a map of what's
 in the index.
 
-### `goldberg audit` — completeness check (did anything not ingest?)
+### `legal_system audit` — completeness check (did anything not ingest?)
 
 ```
-goldberg audit --manifest <provenance-manifest.json> [--missing] [--extra]
+legal_system audit --manifest <provenance-manifest.json> [--missing] [--extra]
 ```
 
 Reconciles the **expected** set (the goldberg-raw provenance manifest) against the
@@ -104,10 +104,10 @@ e.g. a doc indexed without provenance). Exits non-zero when gaps exist, so it ca
 a migration. `--missing` lists every un-ingested `raw_path`; run this after a bulk
 migration to prove completeness.
 
-### `goldberg status` — system health (human + LLM-readable)
+### `legal_system status` — system health (human + LLM-readable)
 
 ```
-goldberg status [--yaml]
+legal_system status [--yaml]
 ```
 
 The canonical system state (M12/M13, [ADR 0009](../decisions/0009-operations-dashboard.md)):
@@ -115,31 +115,31 @@ health checks, corpus counts by matter/type, per-stage/status
 pipeline counts, and DLQ depth. Default is a human table; **`--yaml`** emits the same
 `SystemState` as YAML so an LLM can read the whole system in one call.
 
-### `goldberg trace` / `goldberg dlq` — why did X (not) ingest
+### `legal_system trace` / `legal_system dlq` — why did X (not) ingest
 
 ```
-goldberg trace <raw_path|sha256|doc_id>   # one document's full stage timeline
-goldberg dlq [--status failed] [--status skipped]   # what failed/skipped, and why
+legal_system trace <raw_path|sha256|doc_id>   # one document's full stage timeline
+legal_system dlq [--status failed] [--status skipped]   # what failed/skipped, and why
 ```
 
 `trace` resolves any identifier to the document's `raw_sha256` correlation ID and
 shows every stage event in order — the stop point is the answer. `dlq` lists the
 failed/skipped documents from the event projection.
 
-### `goldberg alert` — proactive gap/failure check (scheduled)
+### `legal_system alert` — proactive gap/failure check (scheduled)
 
 ```
-goldberg alert [--manifest <provenance-manifest.json>] [--max-failures N] [--json]
+legal_system alert [--manifest <provenance-manifest.json>] [--max-failures N] [--json]
 ```
 
 The reduced M12 phase 4 (ADR 0008): evaluates health + pipeline failures + (with a
 manifest) completeness, prints the alerts, and **exits non-zero** — `2` critical,
 `1` warning, `0` clear. Drive it from a scheduler so silent drops surface without
-anyone running `goldberg audit`. Example cron on Halob (notify on non-zero):
+anyone running `legal_system audit`. Example cron on Halob (notify on non-zero):
 
 ```cron
 */30 * * * * cd /share/home/sal/.../goldberg-system && \
-  uv run goldberg alert --manifest config/provenance-manifest.json \
+  uv run legal_system alert --manifest config/provenance-manifest.json \
   || mail -s "goldberg: corpus gap/failure" sal@halob < /dev/null
 ```
 

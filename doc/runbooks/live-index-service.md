@@ -2,8 +2,8 @@
 
 > **RETIRED (M15).** This Papra-webhook live-index service is **superseded** by the
 > event-driven ingest service ([ADR 0013](../decisions/0013-event-driven-ingestion.md),
-> [runbook](./wiring-the-ingest-trigger.md), `goldberg ingest-serve`) — which itself
-> superseded the interim `goldberg watch` reconciler ([ADR 0011](../decisions/0011-auto-ingestion-reconciler.md)).
+> [runbook](./wiring-the-ingest-trigger.md), `legal_system ingest-serve`) — which itself
+> superseded the interim `legal_system watch` reconciler ([ADR 0011](../decisions/0011-auto-ingestion-reconciler.md)).
 > The ingest service is provenance-first (registers `goldberg-raw` provenance before
 > indexing) and extracts via direct Docling, closing the provenance gap this webhook
 > path had. This runbook is kept for historical reference only — do not deploy the
@@ -56,14 +56,14 @@ curl -s http://192.168.86.31:8099/health    # liveness
 ## Verify / troubleshoot
 
 - **Test end to end:** drop a *new* file into `/Volumes/Home/papra/ingest/<legal-org-id>/`;
-  within ~30–60s it should appear via `goldberg search`/`goldberg facets`.
+  within ~30–60s it should appear via `legal_system search`/`legal_system facets`.
 - **`skip (no content after polling)` in the logs:** Docling took longer than the
   poll budget, or the format has no extractable text (e.g. `.eml` — Papra doesn't
   extract those). Increase `CONTENT_POLL_ATTEMPTS`, or handle the format via our
   own extractor.
 - **Webhook "Last triggered: Never":** Papra couldn't reach the service — check
   the allowlist env and that the container is up/reachable from the papra container.
-- **Backstop:** `uv run goldberg reindex` re-processes everything in Papra
+- **Backstop:** `uv run legal_system reindex` re-processes everything in Papra
   (idempotent), covering any missed webhooks.
 
 ## Not yet

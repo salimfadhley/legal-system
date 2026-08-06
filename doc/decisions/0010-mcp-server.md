@@ -37,7 +37,7 @@ The system must therefore be legible and queryable **by a fleet of LLM agents**
 
 ## Consequences
 
-- New `goldberg_system.mcp` package + `goldberg mcp-serve`; deps behind `--extra mcp`.
+- New `goldberg_system.mcp` package + `legal_system mcp-serve`; deps behind `--extra mcp`.
 - Same guarantees as the CLI (citable provenance, no invention) but as structured
   tool I/O — better for LLMs (no text-parsing, schema-guided params, no shell).
 - Deployment (Pi/Halob container) is the remaining step; the transport is already

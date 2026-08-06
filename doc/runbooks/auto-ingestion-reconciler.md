@@ -1,23 +1,23 @@
-# Runbook — Auto-ingestion reconciler (`goldberg watch`)
+# Runbook — Auto-ingestion reconciler (`legal_system watch`)
 
 > **RETIRED (2026-07-23) — superseded by event-driven ingestion.** The polling
-> reconciler (`goldberg watch`) and its `goldberg_system.reconcile` daemon have been
+> reconciler (`legal_system watch`) and its `goldberg_system.reconcile` daemon have been
 > **removed**. The canonical automatic ingest path is now the event-driven ingest
-> service (`goldberg ingest-serve`): a `goldberg-raw` commit publishes a
+> service (`legal_system ingest-serve`): a `goldberg-raw` commit publishes a
 > `goldberg.raw.commit` event onto NATS, and a durable processor ingests that commit's
 > changed files provenance-first (with a one-shot startup catch-up). See
 > **[ADR 0013](../decisions/0013-event-driven-ingestion.md)** for the decision and
 > **[Wiring the ingest trigger](./wiring-the-ingest-trigger.md)** for the operational
-> recipe (git hooks → NATS → `goldberg ingest-serve`). This runbook is kept as the
+> recipe (git hooks → NATS → `legal_system ingest-serve`). This runbook is kept as the
 > historical record of the reconciler; the reconcile *model* (provenance-first,
 > manifest + direct Docling) is preserved unchanged in the new service, but the
-> `goldberg watch` commands below no longer exist.
+> `legal_system watch` commands below no longer exist.
 
 The reconciler was the **canonical automatic ingest path** ([ADR 0011](../decisions/0011-auto-ingestion-reconciler.md),
 supersedes the retired Papra webhook of [ADR 0005](../decisions/0005-live-service-webhook-driven.md)).
 Drop a file into `goldberg-raw`, and within one reconcile interval it is registered
 with provenance, extracted, enriched, indexed, and queryable — no manual
-`goldberg migrate reingest`.
+`legal_system migrate reingest`.
 
 ## What it does — the reconcile cycle
 
@@ -28,7 +28,7 @@ Each cycle (`Reconciler.run_cycle`):
    in `config/provenance-manifest.json`, it registers a manifest entry — `sha256`, git
    `raw_commit`, and `matters` / `document_type` / `origin` from the nearest tree
    `metadata.yaml` — and persists the manifest atomically. Reuses the same per-file
-   derivation as `goldberg migrate manifest`. **No document is indexed without a
+   derivation as `legal_system migrate manifest`. **No document is indexed without a
    manifest entry written first** (provenance-safe by construction).
 2. **Compute the resume set.** Reads the `raw_sha256` values already in Elasticsearch.
 3. **Ingest a bounded batch of the difference.** Extract (direct Docling) → enrich →
@@ -55,9 +55,9 @@ document dead-letters to the DLQ and the daemon carries on.
 ### One cycle (testing / cron)
 
 ```bash
-uv run goldberg watch --once --workers 2 --batch 50
+uv run legal_system watch --once --workers 2 --batch 50
 # isolated test index:
-uv run goldberg watch --once --index goldberg_documents_test --batch 5
+uv run legal_system watch --once --index goldberg_documents_test --batch 5
 ```
 
 Prints one summary line:
@@ -66,7 +66,7 @@ Prints one summary line:
 ### Forever (daemon)
 
 ```bash
-uv run goldberg watch --interval 300 --workers 2 --batch 50
+uv run legal_system watch --interval 300 --workers 2 --batch 50
 ```
 
 Also serves `GET /health` (default port 8080) returning the last cycle.
@@ -98,7 +98,7 @@ docker run -d --name goldberg-reconciler \
   -v /srv/goldberg-system/config:/app/config \
   -p 8080:8080 \
   goldberg-reconciler \
-  goldberg watch --interval 300 --workers 2 --batch 50
+  legal_system watch --interval 300 --workers 2 --batch 50
 ```
 
 Or as a compose service:
@@ -140,10 +140,10 @@ the `goldberg-raw` checkout (mount the working tree with its `.git`).
 
 1. **Drop a file** into an allowlisted tree under `goldberg-raw` (commit it so
    `raw_commit` resolves), then run one cycle:
-   `uv run goldberg watch --once`.
-2. **Search for it:** `uv run goldberg search "<some text from the file>"` — it
+   `uv run legal_system watch --once`.
+2. **Search for it:** `uv run legal_system search "<some text from the file>"` — it
    should appear, with `raw_path` / `matters`.
-3. **Watcher UP:** while the daemon runs, `goldberg doctor` reports the
+3. **Watcher UP:** while the daemon runs, `legal_system doctor` reports the
    `live_index_watcher` probe **UP** (it infers liveness from recent
    `goldberg_pipeline_events` — the heartbeat guarantees fresh events even on idle
    cycles).
@@ -151,10 +151,10 @@ the `goldberg-raw` checkout (mount the working tree with its `.git`).
 
 ## DLQ / troubleshooting
 
-- **A file didn't ingest.** `goldberg trace <raw_path|sha256|doc_id>` shows its
+- **A file didn't ingest.** `legal_system trace <raw_path|sha256|doc_id>` shows its
   pipeline timeline — where it stopped and why.
-- **What's failing right now.** `goldberg dlq` (add `--status skipped`) lists
-  failed/skipped documents. `goldberg status` shows per-stage/status counts and DLQ
+- **What's failing right now.** `legal_system dlq` (add `--status skipped`) lists
+  failed/skipped documents. `legal_system status` shows per-stage/status counts and DLQ
   depth.
 - **OCR files dead-lettering.** Docling is unreachable — check `GOLDBERG_DOCLING_URL`
   and that Docling is up (`curl $GOLDBERG_DOCLING_URL/health`). They retry each cycle

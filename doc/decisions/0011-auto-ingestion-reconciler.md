@@ -2,8 +2,8 @@
 
 **Status:** Superseded by [ADR 0013](./0013-event-driven-ingestion.md) (event-driven ingestion — git-hook → NATS → durable processor) · **Date:** 2026-07-22 · **Supersedes:** [ADR 0005](./0005-live-service-webhook-driven.md) (trigger) · **Builds on:** [ADR 0006](./0006-ingestion-provenance-architecture.md), [ADR 0008](./0008-observability-architecture.md)
 
-> **Superseded (2026-07-23).** The polling reconciler (`goldberg watch`) was retired in
-> favour of an event-driven ingest service (`goldberg ingest-serve`) — its constant
+> **Superseded (2026-07-23).** The polling reconciler (`legal_system watch`) was retired in
+> favour of an event-driven ingest service (`legal_system ingest-serve`) — its constant
 > re-hash-the-whole-tree polling was wasteful (DIR-004) and slow. The provenance-first
 > ingest *model* below is preserved unchanged; only the *trigger* moved from a timer to
 > a git-commit → NATS event with a one-shot startup catch-up. See
@@ -24,7 +24,7 @@ manual step.* That promise was not being kept.
   walking `goldberg-raw`, and a **direct-Docling** bulk ingest (`reingest_from_raw`)
   that bypasses Papra's broken extraction.
 - **But the trigger was never migrated.** After M8, nothing watches `goldberg-raw`.
-  A dropped file is silently ignored until a human runs `goldberg migrate reingest`.
+  A dropped file is silently ignored until a human runs `legal_system migrate reingest`.
 
 So the auto-pipeline (Papra) and the real ingest path (goldberg-raw + manifest +
 direct Docling) had diverged, and the automatic route was both un-wired and
@@ -48,7 +48,7 @@ provenance-unsafe.
 
 ## Decision
 
-Add a **reconciler daemon** — `goldberg watch` /
+Add a **reconciler daemon** — `legal_system watch` /
 `goldberg_system.reconcile.Reconciler` — as the single canonical automatic ingest
 path. One **reconcile cycle**:
 
@@ -56,7 +56,7 @@ path. One **reconcile cycle**:
    file whose content SHA-256 is not yet in the manifest, register a provenance entry
    (`sha256` + git `raw_commit` + `matters`/`document_type`/`origin` from the tree
    `metadata.yaml`) and persist `config/provenance-manifest.json` atomically. This
-   reuses the exact per-file derivation behind `goldberg migrate manifest`
+   reuses the exact per-file derivation behind `legal_system migrate manifest`
    (`manifest.build_entry`) — no forked provenance logic — and bounds git-commit
    lookups to genuinely new files.
 2. **Compute the resume set.** Query Elasticsearch for the `raw_sha256` values already

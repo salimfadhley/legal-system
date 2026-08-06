@@ -23,7 +23,7 @@ Both run the same one-liner:
 
 ```bash
 sha="$(git rev-parse HEAD)"
-goldberg publish-commit "$sha" --source <post-commit|post-merge> >/dev/null 2>&1 || \
+legal_system publish-commit "$sha" --source <post-commit|post-merge> >/dev/null 2>&1 || \
   logger -t goldberg-hook "publish-commit failed for $sha (will be caught up at startup)"
 exit 0
 ```
@@ -99,7 +99,7 @@ nats sub goldberg.raw.commit
 You can also publish directly (bypassing git) to confirm the CLI + broker independently:
 
 ```bash
-goldberg publish-commit "$(git -C <raw> rev-parse HEAD)" --source post-commit
+legal_system publish-commit "$(git -C <raw> rev-parse HEAD)" --source post-commit
 # → published commit <sha> to goldberg.raw.commit
 ```
 
@@ -114,18 +114,18 @@ commits — moves `HEAD` **without creating a merge commit**, so it fires **neit
 `post-commit` **nor** `post-merge`. Commits arriving that way publish no live trigger.
 
 This gap is **intentional and covered**: the ingest processor runs a **bounded startup
-catch-up** every time it starts (`goldberg ingest-serve`, unless `--no-catchup`), which
+catch-up** every time it starts (`legal_system ingest-serve`, unless `--no-catchup`), which
 reconciles the corpus against the raw tree and ingests anything the event stream missed.
 Fast-forwarded-in commits are picked up on the next processor start.
 
-## Manual escape hatch: `goldberg ingest catchup`
+## Manual escape hatch: `legal_system ingest catchup`
 
 To close the gap on demand (after a fast-forward pull, a broker outage, or any doubt
 about delivery) without restarting the service, run one bounded catch-up pass:
 
 ```bash
-goldberg ingest catchup             # one bounded pass over goldberg-raw, then exit
-goldberg ingest catchup --batch 200 # widen the bound if a large backlog accumulated
+legal_system ingest catchup             # one bounded pass over goldberg-raw, then exit
+legal_system ingest catchup --batch 200 # widen the bound if a large backlog accumulated
 ```
 
 It ingests only documents not already indexed, then exits (no loop). Safe to run
@@ -141,10 +141,10 @@ real commit produces a stream message *and* gets indexed:
 ```bash
 # 0. Preconditions: clone wired (core.hooksPath set), broker up, processor running:
 git -C <raw> config --get core.hooksPath        # → <system>/hooks
-goldberg ingest-serve &                          # startup catch-up, then consume
+legal_system ingest-serve &                          # startup catch-up, then consume
 
 # 1. Note the current indexed count, then make a real (non-empty) commit in <raw>:
-goldberg status --yaml | grep -i indexed         # baseline
+legal_system status --yaml | grep -i indexed         # baseline
 #   …add/modify a document leaf under <raw>, then:
 git -C <raw> add -A && git -C <raw> commit -m "test: end-to-end ingest trigger"
 
@@ -152,13 +152,13 @@ git -C <raw> add -A && git -C <raw> commit -m "test: end-to-end ingest trigger"
 nats stream view GOLDBERG --subject goldberg.raw.commit --last   # newest commit msg
 
 # 3. Confirm the processor ingested it (count rises / trace the new doc):
-goldberg status --yaml | grep -i indexed         # should have advanced
-goldberg trace <raw_path-of-the-new-doc>         # per-document trace
+legal_system status --yaml | grep -i indexed         # should have advanced
+legal_system trace <raw_path-of-the-new-doc>         # per-document trace
 
 # 4. Clean up the throwaway commit if it was only a test:
 git -C <raw> reset --hard HEAD~1
 ```
 
 If step 2 shows a message but step 3 does not advance, the trigger is wired correctly
-and the problem is downstream (processor/indexer) — check `goldberg dlq` and the
+and the problem is downstream (processor/indexer) — check `legal_system dlq` and the
 processor logs, not the hooks.

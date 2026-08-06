@@ -40,13 +40,13 @@ reachable behind the retired Papra-backfill's `--extracted-root` flag, so it nev
    regenerable — never hand-edited.
 
 2. **Populate it cheaply from Elasticsearch, not by re-enriching.** New command
-   `goldberg backfill-extracted --extracted-root <repo>` scrolls the ES index and writes
+   `legal_system backfill-extracted --extracted-root <repo>` scrolls the ES index and writes
    each already-enriched document out as a frontmatter `.md`. **No Docling
    re-extraction, no LLM call, and the live index is never modified.** Idempotent.
    (Full 1,640-doc backfill: seconds-to-minutes, $0.) A re-enrich is only for changing
    *what* is extracted (e.g. the claim-schema work), not for populating this store.
 
-3. **Keep it live via the ingest service.** `goldberg ingest-serve` gains
+3. **Keep it live via the ingest service.** `legal_system ingest-serve` gains
    `--extracted-root` (default `$GOLDBERG_EXTRACTED_ROOT`); when set, `ExtractedRepoWriter`
    joins the sink list alongside the ES indexer, so every newly-ingested document is
    mirrored to the derived store as it is indexed.
@@ -62,7 +62,7 @@ reachable behind the retired Papra-backfill's `--extracted-root` flag, so it nev
 - **ES becomes disposable/reproducible.** The index is now a projection of a durable
   git store. A future "rebuild ES from `goldberg-extracted`" path (parse frontmatter
   `.md` → index, no Docling/LLM) is the natural follow-up — deferred, not built here.
-- **The retired Papra-backfill (`goldberg reindex`, `backfill_from_papra`) is now dead
+- **The retired Papra-backfill (`legal_system reindex`, `backfill_from_papra`) is now dead
   code** to remove or clearly mark; it reads from Papra, which is going away.
 - **Duplicate derived markdown in `goldberg-raw`.** The `**/markdown/*.md` files inside
   `goldberg-raw` are now redundant with the derived store. Cleaning them out of raw

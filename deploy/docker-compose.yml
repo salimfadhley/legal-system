@@ -97,7 +97,7 @@ services:
     # petite-host-friendly defaults (NFR-003), overridable via .env.
     command:
       [
-        "goldberg",
+        "legal_system",
         "ingest-serve",
         "--durable",
         "${INGEST_DURABLE:-ingest-processor}",

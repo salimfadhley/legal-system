@@ -5,7 +5,7 @@
 ## Context
 
 [ADR 0011](./0011-auto-ingestion-reconciler.md) made a **polling reconciler**
-(`goldberg watch`) the canonical automatic ingest path: every `--interval` (300s) it
+(`legal_system watch`) the canonical automatic ingest path: every `--interval` (300s) it
 walked the allowlisted trees, **re-hashed every file** in `goldberg-raw` to detect new
 content, computed the difference against what ES already held, and ingested it. That
 kept the promise — *a file dropped in `goldberg-raw` is ingested with full provenance,
@@ -47,11 +47,11 @@ replaces the trigger.
 ## Decision
 
 Replace the polling reconciler with an **event-driven ingest service**,
-`goldberg ingest-serve`:
+`legal_system ingest-serve`:
 
 1. **Trigger — git hooks publish a commit event (WP04).** A `goldberg-raw` clone points
    `core.hooksPath` at this repo's versioned [`hooks/`](../../hooks/); `post-commit` and
-   `post-merge` run `goldberg publish-commit`, publishing one `goldberg.raw.commit`
+   `post-merge` run `legal_system publish-commit`, publishing one `goldberg.raw.commit`
    message (carrying the commit SHA + source) onto the `GOLDBERG` JetStream stream. The
    hook is fire-and-forget and **never fails `git`** (FR-002): a broker outage costs a
    trigger, not a commit — the startup catch-up recovers it.
@@ -80,10 +80,10 @@ Replace the polling reconciler with an **event-driven ingest service**,
    counts, and the startup catch-up summary (a startup backlog surfaces as
    `degraded`, FR-007).
 
-The `goldberg watch` command and the `goldberg_system.reconcile` daemon package are
+The `legal_system watch` command and the `goldberg_system.reconcile` daemon package are
 **removed** (their catch-up diff now lives in `goldberg_system.ingest.catchup`); the
 deployment `reconciler` service is replaced by an `ingest` service running
-`goldberg ingest-serve` (see [ADR 0012](./0012-deployment-topology.md)).
+`legal_system ingest-serve` (see [ADR 0012](./0012-deployment-topology.md)).
 
 ## Consequences
 
@@ -104,8 +104,8 @@ deployment `reconciler` service is replaced by an `ingest` service running
   having `core.hooksPath` set (WP04, [`doc/runbooks/wiring-the-ingest-trigger.md`](../runbooks/wiring-the-ingest-trigger.md)).
   A clone without the hook silently stops triggering — but the startup catch-up and the
   `audit` completeness check (ADR 0008) both surface the resulting backlog, and a
-  re-`ingest-serve` (or `goldberg ingest catchup`) recovers it.
-- **ADR 0011 superseded:** the reconciler daemon, its `goldberg watch` CLI, its
+  re-`ingest-serve` (or `legal_system ingest catchup`) recovers it.
+- **ADR 0011 superseded:** the reconciler daemon, its `legal_system watch` CLI, its
   `Dockerfile.reconciler`, and the `reconciler` compose service are retired.
 
 ## Downstream

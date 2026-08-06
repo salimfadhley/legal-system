@@ -48,7 +48,8 @@ mcp = [
 ]
 
 [project.scripts]
-goldberg = "goldberg_system.cli:main"
+legal_system = "goldberg_system.cli:main"
+goldberg = "goldberg_system.cli:main"  # backwards-compatible alias (running containers, git hook, existing usage)
 
 [build-system]
 requires = ["setuptools>=61.0"]

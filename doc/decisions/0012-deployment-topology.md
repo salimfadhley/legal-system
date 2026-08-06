@@ -3,8 +3,8 @@
 **Status:** Accepted · **Date:** 2026-07-22 · **Builds on:** [ADR 0006](./0006-ingestion-provenance-architecture.md), [ADR 0008](./0008-observability-architecture.md), [ADR 0010](./0010-mcp-server.md), [ADR 0011](./0011-auto-ingestion-reconciler.md) · **Retires:** Papra from the deploy ([ADR 0003](./0003-document-management-papra-integration.md))
 
 > **Revised (2026-07-23) by [ADR 0013](./0013-event-driven-ingestion.md).** The stack's
-> `reconciler` service (`goldberg watch`, `/health` on 8080) is replaced by an `ingest`
-> service (`goldberg ingest-serve`, `/health` on 8098), and the compose file now lives at
+> `reconciler` service (`legal_system watch`, `/health` on 8080) is replaced by an `ingest`
+> service (`legal_system ingest-serve`, `/health` on 8098), and the compose file now lives at
 > `deploy/docker-compose.yml`. The topology below (three stateless processing services
 > against external ES + NATS, source-of-truth = goldberg-raw + manifest) is unchanged;
 > only the ingest service's name, trigger, and health port moved — read "reconciler"
@@ -13,7 +13,7 @@
 ## Context
 
 By M15 the system had all the runnable pieces — a Docling OCR service, the
-`goldberg watch` reconciler ([ADR 0011](./0011-auto-ingestion-reconciler.md)), and the
+`legal_system watch` reconciler ([ADR 0011](./0011-auto-ingestion-reconciler.md)), and the
 hosted MCP server ([ADR 0010](./0010-mcp-server.md)) — but no single, portable way to
 **deploy them together**. They were documented as separate `docker run` recipes tied to
 Halob-specific paths and IPs. The operator needs one artifact they can paste into
@@ -58,11 +58,11 @@ Ship a **`deploy/docker-compose.yml`** defining three services and nothing else:
 - **docling** — `ghcr.io/docling-project/docling-serve-cpu:latest`, port 5001, a
   stdlib `GET /health` healthcheck, memory-capped so a large scan OOMs the container
   (dead-lettered + retried by the ingest service) rather than the petite host.
-- **ingest** — built from `deploy/Dockerfile.ingest`, runs `goldberg ingest-serve`
+- **ingest** — built from `deploy/Dockerfile.ingest`, runs `legal_system ingest-serve`
   (startup catch-up, then consumes `goldberg.raw.commit` from NATS — [ADR 0013](./0013-event-driven-ingestion.md))
   with conservative defaults (workers 2 / batch 50 / max-deliver 5), exposes `/health`
-  on 8098. (Was the `reconciler` service running `goldberg watch` on 8080.)
-- **mcp** — built from the existing `Dockerfile.mcp`, runs `goldberg mcp-serve` on 8765.
+  on 8098. (Was the `reconciler` service running `legal_system watch` on 8080.)
+- **mcp** — built from the existing `Dockerfile.mcp`, runs `legal_system mcp-serve` on 8765.
 
 **The shared infrastructure is not in the stack.** Elasticsearch is reached over TCP via
 `${GOLDBERG_ES_URL}` (e.g. `http://192.168.86.31:9200` on Halob today, elsewhere on a new
@@ -97,7 +97,7 @@ paths, ports, or secrets are hard-coded in the compose file.
 
 ### Doctor as an MCP tool
 
-The `goldberg doctor` component-health board ([ADR 0008](./0008-observability-architecture.md))
+The `legal_system doctor` component-health board ([ADR 0008](./0008-observability-architecture.md))
 is now also an **MCP tool**, `component_health`, so an MCP-capable agent can ask "is
 every component up?" without a shell. It reuses `observability/health.run_doctor`
 verbatim — no reimplemented probes (C-003) — and returns the `DoctorReport` as a dict,

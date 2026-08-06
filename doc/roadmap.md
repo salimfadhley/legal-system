@@ -252,7 +252,7 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   (shared infra → documented in MoS).
 - **Payoff:** attributed `claims` → `comparison/` pages surfacing contradictions
   across parties/time — argument-grade material for the case.
-- **Phases:** (1) verify the goldberg SB indexer + fit `SCHEMA.md` to this deployment;
+- **Phases:** (1) verify the legal_system SB indexer + fit `SCHEMA.md` to this deployment;
   (2) batch-author `entities/`+`concepts/` from the indexed corpus (DRY_RUN → review
   → apply), build `index.md`; (3) contradiction pass → `comparison/` pages;
   (4) event-driven auto-update hooked to the live pipeline (DRY_RUN then live, MoS
@@ -294,9 +294,9 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   4. **Reconciliation / gap detection.** Join the *expected* set (the goldberg-raw
      provenance manifest / Papra) against the *actual* set (ES `goldberg_documents`
      + the wiki) by SHA-256 / doc-id; report **missing**, **extra**, and **stale**.
-  5. **Per-document trace** — `goldberg trace <raw_path|sha256|doc_id>`: the document's
+  5. **Per-document trace** — `legal_system trace <raw_path|sha256|doc_id>`: the document's
      journey and its stop point (reads the audit log + DLQ).
-  6. **Status summary** — `goldberg status` / `goldberg audit`: per-stage counts,
+  6. **Status summary** — `legal_system status` / `legal_system audit`: per-stage counts,
      failures, DLQ depth, freshness.
   7. **(Stretch)** alerting when a run fails or reconciliation finds a gap.
 - **OpenTelemetry (researched 2026-07-21):** there is **no turnkey OTel gateway for
@@ -323,7 +323,7 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   CLI (expected vs actual → gaps); (3) per-doc trace + status summary; (4) **reduced**:
   alerting only.
 - **Status:** ✅ **core delivered + reduced phase 4** ([ADR 0008](./decisions/0008-observability-architecture.md)).
-  `goldberg audit` (reconciliation), `trace` (per-doc timeline via the `raw_sha256`
+  `legal_system audit` (reconciliation), `trace` (per-doc timeline via the `raw_sha256`
   correlation ID), `status [--yaml]` (health), `dlq` (failed/skipped view), and
   `alert` (schedulable gap/failure check, exit-code driven). Events emit to
   `goldberg_pipeline_events` from backfill. **Deliberately deferred** (low value for a
@@ -340,7 +340,7 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   it does not generate telemetry itself. M12 must land first (it produces the data).
 - **Dual-mode — one `SystemState`, two renderers (user, 2026-07-21):** the same data
   in a **human-readable mode** (the Streamlit UI) *and* an **LLM-readable mode** (the
-  identical state rendered as **YAML**, via `goldberg status --yaml`) so an LLM — this
+  identical state rendered as **YAML**, via `legal_system status --yaml`) so an LLM — this
   agent or the casework drafting LLM — can grok the whole system in one read. The
   dual-mode is the architecture: a single canonical `SystemState` model is rendered
   both ways, so they never drift. See [ADR 0009](./decisions/0009-operations-dashboard.md).
@@ -351,8 +351,8 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   Reads ES (`goldberg_documents`, `goldberg_pipeline_events`) + NATS (DLQ depth).
 - **Deployment:** a container on Halob alongside the other services (LAN-only).
 - **Status:** 🟡 **phases 1–2 built** ([ADR 0009](./decisions/0009-operations-dashboard.md)).
-  `SystemState` + `goldberg status --yaml` (LLM mode) and the Streamlit UI
-  (`src/goldberg_system/dashboard/app.py`, `goldberg dashboard`) both render the same
+  `SystemState` + `legal_system status --yaml` (LLM mode) and the Streamlit UI
+  (`src/goldberg_system/dashboard/app.py`, `legal_system dashboard`) both render the same
   aggregated state — verified live (health/corpus/pipeline/wiki/DLQ panels + a YAML
   expander). **Remaining:** phase 3 — the Halob container deploy (LAN-only) + DLQ
   reprocess actions (with the NATS DLQ increment).
@@ -368,6 +368,6 @@ automatic**: dropped a file → indexed in ~20s, zero manual steps. Runbook:
   params, structured citable returns) — no ES-DSL, no shell, no escape-hatch tools.
 - **Agent-agnostic:** `AGENTS.md` canonical, `CLAUDE.md` a symlink to it; CLI + MCP
   are Claude-neutral so Codex is first-class.
-- **Status:** ✅ **built + tested** (`goldberg mcp-serve`, `--extra mcp`; 7 tools
+- **Status:** ✅ **built + tested** (`legal_system mcp-serve`, `--extra mcp`; 7 tools
   validated live over HTTP). **Remaining:** deploy as a container on the Pi (external
   vantage) or Halob — whichever performs best.

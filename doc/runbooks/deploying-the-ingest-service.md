@@ -1,6 +1,6 @@
 # Deploying / updating the ingest service (Portainer, no host builds)
 
-The event-driven ingest service (`goldberg ingest-serve`, ADR 0013) runs on Halob as a
+The event-driven ingest service (`legal_system ingest-serve`, ADR 0013) runs on Halob as a
 Docker container. **Halob is a low-spec 4-core Celeron — never build images on it, and
 never run `docker` on the host directly.** Deploys go **through Portainer** (endpoint
 `2`, `http://192.168.86.31:19900`, `X-API-Key` — token in the Mind-of-Steele Portainer

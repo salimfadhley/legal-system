@@ -4,7 +4,7 @@
 **Supersedes:** [ADR 0007](0007-concept-wiki-output.md)
 > **Accepted 2026-08-06** by the client and the casework agent, both explicitly: "nobody
 > uses them, retire." Casework's evidence: **zero** findings/analyses/filings in
-> `goldberg-casework` cite a wiki page; every `goldberg wiki`/`search_concepts`/`:3100`
+> `goldberg-casework` cite a wiki page; every `legal_system wiki`/`search_concepts`/`:3100`
 > mention is boilerplate they wrote and never acted on; they have never called
 > `search_concepts`; and the synthesised layer produced **0** contradiction pages in four
 > months — it never did the thing it was for. Casework also flagged that `CLAUDE.md`,
@@ -46,7 +46,7 @@ M11 — were left as "remaining for M11 proper" and never completed.
   of ~115 ad-hoc queries. The `silverbullet-goldberg` ES index has 312 indexed pages
   (mostly that query log and raw scaffolding), not synthesised knowledge.
 - **No one reads it.** The client reports never having viewed or searched it. The
-  casework agent's repo references `goldberg wiki` / `search_concepts` 8 times, but
+  casework agent's repo references `legal_system wiki` / `search_concepts` 8 times, but
   those are inherited "query both representations" boilerplate, with no sign of
   reliance. *(Confirmation requested from casework, 2026-08-06 mailbox thread "Do you
   actually use the SilverBullet concept-wiki?"; this ADR will record the answer.)*
@@ -96,8 +96,8 @@ used?"**
 ## Consequences
 
 - **Dead code / dead surface to remove or leave inert:** `CorpusQuery.wiki()`, the
-  `goldberg wiki` CLI command, the MCP `search_concepts` tool, and the `wiki:` line in
-  `goldberg status`. Prefer removal (with a note) over silent inertia so the corpus-query
+  `legal_system wiki` CLI command, the MCP `search_concepts` tool, and the `wiki:` line in
+  `legal_system status`. Prefer removal (with a note) over silent inertia so the corpus-query
   story is honest.
 - **Docs to update:** `doc/runbooks/querying-the-corpus.md`, the "query both
   representations" instruction in the project `CLAUDE.md`/`AGENTS.md` query skill, and

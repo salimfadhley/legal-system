@@ -4,7 +4,7 @@ Independent, adversarial review. Find defects; do not bless. **Do not modify cod
 produce a written report only.
 
 ## Why this mission exists
-The pipeline used to auto-ingest via a POLLING reconciler (`goldberg watch`) that
+The pipeline used to auto-ingest via a POLLING reconciler (`legal_system watch`) that
 re-hashed the whole `goldberg-raw` corpus every 2 minutes and retried failures
 forever — wasteful, and against charter DIR-004 ("trigger, don't poll"). It also had
 a bug: oversized OCR `.tsv` files exceeded the LLM's 128k-token context and hard-failed
@@ -20,9 +20,9 @@ Storm files: `evidence/example_party/{mortgage_dossier,complaint_pack}/ocr_outpu
    `goldberg-raw` commit resolves changed files and runs the EXISTING
    `migrate/reingest.py::process_one` (ack/nak/term + DLQ); bounded ONE-SHOT startup
    catch-up; CLI `ingest-serve` / `publish-commit` / `ingest catchup`.
-4. **Trigger** — `hooks/`: git `post-commit`/`post-merge` → `goldberg publish-commit`;
+4. **Trigger** — `hooks/`: git `post-commit`/`post-merge` → `legal_system publish-commit`;
    must NEVER fail `git`.
-5. **Decommission** — remove `src/goldberg_system/reconcile/` + `goldberg watch`;
+5. **Decommission** — remove `src/goldberg_system/reconcile/` + `legal_system watch`;
    `deploy/docker-compose.yml` `reconciler`→`ingest`; ADR `doc/decisions/0013-*` supersedes `0011`.
 
 ## Read first

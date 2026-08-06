@@ -3,7 +3,7 @@
 **Status:** **Accepted — phases 1–2 built** · **Date:** 2026-07-21 · **Depends on:** ADR 0008 (M12)
 
 > **Built:** the canonical `SystemState` + `aggregate()` + the LLM-readable
-> `goldberg status --yaml` (phase 1), and the Streamlit UI (`goldberg dashboard`,
+> `legal_system status --yaml` (phase 1), and the Streamlit UI (`legal_system dashboard`,
 > phase 2, optional `--extra dashboard`). Phase 3 (deploying the UI as a Halob container)
 > is not done — the dashboard is not part of the compose stack
 > ([ADR 0012](./0012-deployment-topology.md)); the always-on LLM-facing surface is the MCP
@@ -30,7 +30,7 @@ one object. This guarantees the two modes never drift — they are the same data
 ```
         ES: goldberg_documents
         ES: goldberg_pipeline_events   ─┐
-        ES: silverbullet-goldberg       ├─▶  aggregate()  ─▶  SystemState  ─┬─▶ Streamlit UI   (human)
+        ES: silverbullet-legal_system       ├─▶  aggregate()  ─▶  SystemState  ─┬─▶ Streamlit UI   (human)
         NATS: goldberg.dlq.* depth      ─┘                                  └─▶ YAML export     (LLM)
         goldberg-raw manifest (expected)
 ```
@@ -57,7 +57,7 @@ should be in the corpus but aren't.
 
 A **Streamlit** app (container on Halob, LAN-only, alongside the other services):
 live pipeline activity, per-stage throughput, the **DLQ/errors panel** (what failed,
-why, with *reprocess* buttons calling `goldberg dlq retry`), the **reconciliation
+why, with *reprocess* buttons calling `legal_system dlq retry`), the **reconciliation
 drill-down** (the missing-documents list), and corpus/wiki growth over time.
 Auto-refreshes; read-mostly with the DLQ-retry action as the one write.
 
@@ -65,7 +65,7 @@ Auto-refreshes; read-mostly with the DLQ-retry action as the one write.
 
 The same `SystemState`, serialised to compact **YAML**, exposed two ways:
 
-- **`goldberg status --yaml`** — a CLI one-shot the agent runs to read system health
+- **`legal_system status --yaml`** — a CLI one-shot the agent runs to read system health
   in a single call (usable immediately, even before the Streamlit app exists).
 - The Streamlit app serves the same YAML (a download / `?format=yaml` view) so a
   human and an LLM are looking at identical state.
@@ -73,7 +73,7 @@ The same `SystemState`, serialised to compact **YAML**, exposed two ways:
 YAML (not JSON) is deliberate: it is the most token-efficient, least-punctuated
 structured format for an LLM to skim, matching how the corpus metadata is already
 represented (frontmatter, ADR 0004). The agent can answer "is the system healthy?
-what failed? what's missing?" from one `goldberg status --yaml`.
+what failed? what's missing?" from one `legal_system status --yaml`.
 
 ### 5. No new telemetry
 
@@ -83,16 +83,16 @@ disposable/regenerable and the data model owned by M12.
 
 ## Consequences
 
-- Build order: `SystemState` + `aggregate()` + `goldberg status --yaml` come first
+- Build order: `SystemState` + `aggregate()` + `legal_system status --yaml` come first
   (small, immediately useful to the agent), then the Streamlit UI on top.
-- `goldberg status --yaml` doubles as the LLM's system-health probe from the casework
+- `legal_system status --yaml` doubles as the LLM's system-health probe from the casework
   workspace — the drafting LLM can check corpus completeness before relying on it.
 - New: a `dashboard`/`state` module (aggregator + `SystemState` + YAML renderer) and a
   Streamlit app + its Halob container. Depends on the M12 ES projection + DLQ.
 
 ## Phases (M13)
 
-1. **`SystemState` + `aggregate()` + `goldberg status --yaml`** — the canonical model
+1. **`SystemState` + `aggregate()` + `legal_system status --yaml`** — the canonical model
    and the LLM-readable mode (usable the moment M12 core lands).
 2. **Streamlit UI** — the human mode over the same model, with DLQ reprocess actions.
 3. **Deploy** — Halob container, LAN-only, auto-refresh.

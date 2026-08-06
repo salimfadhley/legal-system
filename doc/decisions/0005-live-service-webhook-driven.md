@@ -9,9 +9,9 @@ auto-ingestion reconciler) · **Date:** 2026-07-21
 > exactly the provenance gap ADR 0006/0008 called out. M8 then moved real ingestion to
 > `goldberg-raw` + the provenance manifest + **direct Docling** (`reingest_from_raw`),
 > but nothing was left watching `goldberg-raw`. ADR 0011 closed that gap with a
-> provenance-first reconciler (`goldberg watch`), now itself superseded by the
+> provenance-first reconciler (`legal_system watch`), now itself superseded by the
 > event-driven ingest service of [ADR 0013](./0013-event-driven-ingestion.md)
-> (`goldberg ingest-serve`). The service code
+> (`legal_system ingest-serve`). The service code
 > (`goldberg_system.service`) is kept for reference but no longer deployed. The rest of
 > this ADR is preserved as the historical record.
 
@@ -20,7 +20,7 @@ auto-ingestion reconciler) · **Date:** 2026-07-21
 ## Context
 
 The pipeline needs to run automatically: a document lands → it is extracted,
-enriched, and indexed without a manual `goldberg reindex`. The roadmap framed this
+enriched, and indexed without a manual `legal_system reindex`. The roadmap framed this
 as a NATS-driven service (M5) fed by a Halob file-watcher or a Papra
 `document:created` webhook bridged to NATS (M6).
 
@@ -44,7 +44,7 @@ Rationale: fewest moving parts that deliver "drop a doc → it's indexed"; the P
 webhook *is* the trigger (M6), the background processing *is* the service (M5), and
 one container is the deploy (M7). Papra's own store/queue gives us durability up to
 the webhook; our processing is idempotent (deterministic doc-id), so a missed
-webhook is recovered by re-running `goldberg reindex`.
+webhook is recovered by re-running `legal_system reindex`.
 
 ## Consequences
 
@@ -52,7 +52,7 @@ webhook is recovered by re-running `goldberg reindex`.
   durable retries, or a `goldberg.indexed` event bus, add JetStream then. The
   config's NATS subjects remain reserved.
 - At-most-once webhook processing: a crash mid-process drops that one document;
-  `goldberg reindex` is the backstop (idempotent).
+  `legal_system reindex` is the backstop (idempotent).
 - HMAC signature verification is supported but optional (LAN-internal); enable by
   configuring the webhook signing secret.
 - The `.eml` gap remains: Papra doesn't extract email bodies, so those won't

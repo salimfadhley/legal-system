@@ -10,13 +10,13 @@ deployed live and verified end-to-end. This records the evidence.
 ## Deployment
 
 - Container **`legal-ingest`** (image `legal-ingest:local`, built from the mission
-  code) runs `goldberg ingest-serve` on **host network**, mounts: `goldberg-raw:ro`
+  code) runs `legal_system ingest-serve` on **host network**, mounts: `goldberg-raw:ro`
   (incl. `.git`), the live writable `config/` (manifest) → `/app/config`,
   `deploy/projects.container.yaml` → `/etc/goldberg/projects.yaml:ro`. Env: `GOLDBERG_ES_URL`,
   `GOLDBERG_ES_INDEX=goldberg_documents`, `GOLDBERG_DOCLING_URL`, `NATS_URL`, `OPENAI_API_KEY`,
   and `GIT_CONFIG_*` (safe.directory — see follow-ups). `/health` on 8098.
 - The old **`goldberg-reconciler`** container is **stopped** (Exited) and removed from the
-  deploy topology (WP05). `goldberg watch` no longer exists.
+  deploy topology (WP05). `legal_system watch` no longer exists.
 - On startup the service runs ONE bounded catch-up, then consumes `goldberg.raw.commit`.
 
 ## SC-004 / FR-012 — oversized-document backfill (the storm files)
