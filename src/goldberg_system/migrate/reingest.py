@@ -18,7 +18,7 @@ from typing import Any, Callable
 
 from goldberg_system.enrichment.adapter import EnrichmentAdapter
 from goldberg_system.extract.docling_client import DoclingClient, DoclingError
-from goldberg_system.migrate.manifest import Manifest
+from goldberg_system.migrate.manifest import Manifest, entry_is_no_index
 from goldberg_system.observability.events import PipelineEvent, safe_emit
 from goldberg_system.pipeline import build_enriched_from_raw, write_to_sinks
 from goldberg_system.sinks.base import Sink
@@ -34,6 +34,7 @@ class ReingestReport:
     skipped_empty: int = 0
     skipped_media: int = 0
     skipped_indexed: int = 0  # already in the target index (resume)
+    skipped_no_index: int = 0  # restricted subtree (no_index) — never index
     missing_file: int = 0
     failures: int = 0
 
@@ -47,6 +48,8 @@ class ReingestReport:
             self.skipped_media += 1
         elif status == "skipped-indexed":
             self.skipped_indexed += 1
+        elif status == "skipped-no-index":
+            self.skipped_no_index += 1
         elif status == "missing":
             self.missing_file += 1
         else:  # failed / sink-failed / error
@@ -98,6 +101,15 @@ def reingest_from_raw(
         raw_path = entry.get("raw_path", "")
         if sha in skip_shas:  # resume: already indexed, don't re-extract
             return raw_path, "skipped-indexed"
+        if entry_is_no_index(entry):  # restricted subtree — never extract/enrich/index
+            emit(
+                "received",
+                "skipped",
+                sha,
+                raw_path,
+                reason=f"no_index: {entry.get('no_index_reason') or '(no reason given)'}",
+            )
+            return raw_path, "skipped-no-index"
         if Path(raw_path).suffix.lower() in _SKIP_EXT:
             emit(
                 "extracted", "skipped", sha, raw_path, reason="media (no OCR-able text)"

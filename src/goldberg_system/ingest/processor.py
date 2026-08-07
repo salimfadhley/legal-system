@@ -58,7 +58,7 @@ log = logging.getLogger("goldberg.ingest")
 # A per-file status that means "done, do not retry". Everything else (missing,
 # sink-failed, extract-failed, error) is treated as transient → retry then dead-letter.
 _TERMINAL_OK = frozenset(
-    {"indexed", "skipped-indexed", "skipped-media", "skipped-empty"}
+    {"indexed", "skipped-indexed", "skipped-media", "skipped-empty", "skipped-no-index"}
 )
 
 

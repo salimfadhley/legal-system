@@ -20,16 +20,22 @@ class _FakeIndices:
         self._exists = exists
         self.created: list[dict[str, Any]] = []
         self.mapping_updates: list[dict[str, Any]] = []
+        self.settings_updates: list[dict[str, Any]] = []
 
     def exists(self, index: str) -> bool:
         return self._exists
 
-    def create(self, index: str, mappings: dict[str, Any]) -> None:
-        self.created.append({"index": index, "mappings": mappings})
+    def create(
+        self, index: str, mappings: dict[str, Any], settings: dict[str, Any] | None = None
+    ) -> None:
+        self.created.append({"index": index, "mappings": mappings, "settings": settings})
         self._exists = True
 
     def put_mapping(self, index: str, properties: dict[str, Any]) -> None:
         self.mapping_updates.append({"index": index, "properties": properties})
+
+    def put_settings(self, index: str, settings: dict[str, Any]) -> None:
+        self.settings_updates.append({"index": index, "settings": settings})
 
 
 class _FakeES:
@@ -111,8 +117,19 @@ def test_ensure_index_creates_when_absent() -> None:
     es = _FakeES(exists=False)
     assert ensure_index(es, "goldberg_documents") is True
     assert es.indices.created[0]["index"] == "goldberg_documents"
+    # the raised inner-hits window is set at create time (durable across rebuilds)
+    created_settings = es.indices.created[0]["settings"]
+    assert created_settings["index"]["max_inner_result_window"] == 1000
     # idempotent: second call sees it exists
     assert ensure_index(es, "goldberg_documents") is False
+
+
+def test_ensure_index_applies_window_setting_to_existing_index() -> None:
+    es = _FakeES(exists=True)
+    ensure_index(es, "goldberg_documents")
+    assert es.indices.settings_updates
+    applied = es.indices.settings_updates[0]["settings"]
+    assert applied["index"]["max_inner_result_window"] == 1000
 
 
 def test_ensure_index_updates_mapping_when_present() -> None:

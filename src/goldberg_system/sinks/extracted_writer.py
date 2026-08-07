@@ -41,6 +41,20 @@ class ExtractedRepoWriter:
         return candidate
 
     def write(self, document: EnrichedDocument) -> SinkResult:
+        # Defense in depth (the LOUD path): never write restricted (no_index) content to
+        # the derived store either. A no_index document reaching here means the quiet
+        # ingest skip was bypassed, so we refuse it as a FAILED result rather than
+        # persisting legally/contractually restricted material.
+        if document.metadata.no_index:
+            reason = document.metadata.no_index_reason or "(no reason given)"
+            return SinkResult(
+                sink=self.name,
+                ok=False,
+                detail=(
+                    f"refusing to write no_index document to extracted store: "
+                    f"{document.raw_path} ({reason})"
+                ),
+            )
         try:
             dest = self.target_path(document)
         except ValueError:

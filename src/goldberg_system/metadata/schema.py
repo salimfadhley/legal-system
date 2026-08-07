@@ -152,6 +152,15 @@ class DocumentMetadata(BaseModel):
     # via a folder metadata.yaml) it OVERRIDES each claim's LLM-inferred asserted_by.
     # Use only for single-source folders (our own analysis, one show's transcripts) —
     # never a mixed-party folder like an email thread.
+    no_index: bool = False
+    no_index_reason: str | None = None
+    # Mark a legally/contractually RESTRICTED subtree that must never be indexed or
+    # searchable (e.g. CPR 32.12 witness statements, or a party's own account that
+    # must not surface as if it were evidence). Set on a folder ``metadata.yaml`` it
+    # applies RECURSIVELY to everything below (a child may set ``no_index: false`` to
+    # re-include a subfolder). ``no_index_reason`` records why. These are enforced at
+    # BOTH ends: ingest discovery skips them quietly, and every sink refuses to write a
+    # ``no_index`` document (it dead-letters loudly rather than leaking into the index).
     matters: list[str] = []
     primary_matter: str | None = None
     origin: Origin | None = None

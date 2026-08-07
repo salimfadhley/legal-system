@@ -553,6 +553,84 @@ def trace(key) -> None:  # type: ignore[no-untyped-def]
             click.echo(f"       error: {e.error}")
 
 
+@main.command("deindex")
+@click.option(
+    "--path", "paths", multiple=True, required=True,
+    help="raw_path prefix to purge from the index; repeatable (a file or a folder).",
+)
+@click.option(
+    "--extracted-root", default=None,
+    help="Also remove matching files from this goldberg-extracted root "
+    "(git rm is out of scope — commit the removals yourself).",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False,
+    help="Only count what would be purged; delete nothing.",
+)
+@click.option(
+    "--reason", default=None,
+    help="Why this content is being purged (recorded in the printed summary, "
+    "e.g. 'CPR 32.12 — restricted witness statements').",
+)
+@click.option(
+    "--index", "index_override", default=None, help="Target ES index (override)."
+)
+@click.option(
+    "--force", is_flag=True, default=False,
+    help="Override the short-prefix (<3 chars) safety guard.",
+)
+def deindex_cmd(paths, extracted_root, dry_run, reason, index_override, force) -> None:  # type: ignore[no-untyped-def]
+    """PURGE already-indexed content by raw_path prefix (retroactive de-indexing).
+
+    Marking a folder ``no_index`` stops *future* ingestion; this command removes what
+    was indexed *before* the restriction. It (a) ``delete_by_query``-deletes every ES
+    document whose ``raw_path`` starts with a ``--path`` prefix, and (b) if
+    ``--extracted-root`` is given, removes the mirrored files from the derived store.
+    Use ``--dry-run`` to count first. A prefix under 3 chars is refused (``--force``
+    overrides) so a stray ``--path /`` cannot wipe the corpus.
+    """
+    from goldberg_system.deindex import DeindexError, deindex
+    from goldberg_system.sinks import ElasticsearchIndexer
+
+    indexer = ElasticsearchIndexer.from_env()
+    index = index_override or indexer.index
+
+    try:
+        result = deindex(
+            indexer.client,
+            index,
+            list(paths),
+            extracted_root=extracted_root,
+            dry_run=dry_run,
+            force=force,
+        )
+    except DeindexError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    mode = "DRY-RUN (nothing deleted)" if dry_run else "PURGE"
+    click.echo(f"deindex [{mode}] index={index}")
+    if reason:
+        click.echo(f"  reason: {reason}")
+    click.echo(f"  prefixes: {', '.join(result.prefixes)}")
+    if dry_run:
+        click.echo(f"  elasticsearch: {result.es_matched} document(s) WOULD be deleted")
+    else:
+        click.echo(
+            f"  elasticsearch: {result.es_deleted} document(s) deleted "
+            f"(matched {result.es_matched})"
+        )
+    if extracted_root is not None:
+        verb = "WOULD be removed" if dry_run else "removed"
+        click.echo(
+            f"  extracted store ({extracted_root}): "
+            f"{result.files_matched} file(s) {verb}"
+        )
+        for rp in result.removed_paths:
+            click.echo(f"    - {rp}")
+    if not dry_run:
+        click.echo("done. (extracted-store deletions are unstaged — commit them.)")
+
+
 @main.command("backfill-extracted")
 @click.option(
     "--extracted-root",

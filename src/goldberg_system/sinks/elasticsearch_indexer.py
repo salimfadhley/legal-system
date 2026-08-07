@@ -20,6 +20,13 @@ from goldberg_system.identity import compute_content_hash
 from goldberg_system.sinks.base import EnrichedDocument, SinkResult
 
 INDEX_MAPPING: dict[str, Any] = {
+    # A document can carry many atomic claims; the contradiction detector retrieves
+    # them via nested `inner_hits` with size up to _INNER_HITS_CLAIM_CAP (1000, in
+    # query.py). ES caps that at `index.max_inner_result_window` (default 100) and
+    # rejects a larger request with a 400 — so the detector silently fails on any
+    # doc with >100 claims unless this is raised to match. Durable here so a rebuilt
+    # index keeps it.
+    "settings": {"index": {"max_inner_result_window": 1000}},
     "mappings": {
         "dynamic": False,  # unmapped fields are stored in _source but not indexed
         "properties": {
@@ -130,11 +137,18 @@ def ensure_index(client: Any, index: str) -> bool:
     documents pick up the new mapping when they are next (re)indexed.
     """
     if not client.indices.exists(index=index):
-        client.indices.create(index=index, mappings=INDEX_MAPPING["mappings"])
+        client.indices.create(
+            index=index,
+            mappings=INDEX_MAPPING["mappings"],
+            settings=INDEX_MAPPING["settings"],
+        )
         return True
     client.indices.put_mapping(
         index=index, properties=INDEX_MAPPING["mappings"]["properties"]
     )
+    # Idempotently apply the dynamic settings (e.g. max_inner_result_window) to an
+    # existing index so a pre-existing index picks up the raised claim window too.
+    client.indices.put_settings(index=index, settings=INDEX_MAPPING["settings"])
     return False
 
 
@@ -153,6 +167,20 @@ class ElasticsearchIndexer:
         return ensure_index(self.client, self.index)
 
     def write(self, document: EnrichedDocument) -> SinkResult:
+        # Defense in depth (the LOUD path): a restricted (no_index) document must never
+        # be written to the search index. If one reaches here it means the quiet ingest
+        # skip was bypassed, so we refuse it as a FAILED result — it dead-letters loudly
+        # (same philosophy as dead-lettering an un-decryptable doc) rather than leaking.
+        if document.metadata.no_index:
+            reason = document.metadata.no_index_reason or "(no reason given)"
+            return SinkResult(
+                sink=self.name,
+                ok=False,
+                detail=(
+                    f"refusing to index no_index document: "
+                    f"{document.raw_path} ({reason})"
+                ),
+            )
         try:
             self.client.index(
                 index=self.index,

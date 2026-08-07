@@ -21,6 +21,7 @@ primitives — :func:`build_entry`, :class:`Manifest`, and the reingest ``_SKIP_
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from dataclasses import asdict, dataclass, field
@@ -30,11 +31,18 @@ from typing import Any, Callable
 from goldberg_system.enrichment.adapter import EnrichmentAdapter
 from goldberg_system.extract.docling_client import DoclingClient
 from goldberg_system.migrate.allowlist import Allowlist
-from goldberg_system.migrate.manifest import Manifest, ManifestEntry, build_entry
+from goldberg_system.migrate.manifest import (
+    Manifest,
+    ManifestEntry,
+    build_entry,
+    entry_is_no_index,
+)
 from goldberg_system.migrate.reingest import _SKIP_EXT, reingest_from_raw
 from goldberg_system.observability.events import EventSink
 from goldberg_system.provenance import now_iso
 from goldberg_system.sinks.base import Sink
+
+log = logging.getLogger("goldberg.ingest")
 
 
 @dataclass
@@ -59,6 +67,7 @@ class CatchupReport:
     dead_lettered: int  # entries that failed extract/enrich/index this pass
     elapsed: float  # seconds
     remaining_pending: int = 0  # TRUE pending NOT reached this bounded pass (backlog)
+    no_index_skipped: int = 0  # restricted (no_index) docs excluded from ingestion
 
     @property
     def degraded(self) -> bool:
@@ -79,6 +88,7 @@ class CatchupReport:
             f"pending={self.pending} indexed={self.indexed} "
             f"skipped={self.skipped} dead_lettered={self.dead_lettered} "
             f"remaining_pending={self.remaining_pending} "
+            f"no_index_skipped={self.no_index_skipped} "
             f"degraded={self.degraded} elapsed={self.elapsed:.1f}s"
         )
 
@@ -165,6 +175,8 @@ def select_pending(
     for sha, entry in manifest.items():
         if sha in skip or sha in non_indexable:
             continue
+        if entry_is_no_index(entry):  # restricted subtree — never index (recursive)
+            continue
         if Path(entry.get("raw_path", "")).suffix.lower() in _SKIP_EXT:
             continue
         pending.append((sha, entry))
@@ -189,10 +201,34 @@ def count_pending(
     for sha, entry in manifest.items():
         if sha in skip or sha in non_indexable:
             continue
+        if entry_is_no_index(entry):  # restricted subtree — excluded from ingestion
+            continue
         if Path(entry.get("raw_path", "")).suffix.lower() in _SKIP_EXT:
             continue
         total += 1
     return total
+
+
+def log_no_index_skips(manifest: Manifest) -> int:
+    """Log every ``no_index`` manifest entry at INFO and return the count.
+
+    The restricted-subtree skip is an *expected* outcome, not a failure — but it must
+    never be silent (same philosophy as dead-lettering an un-decryptable doc, only
+    quieter). We emit one ``skipped <path> — no_index: <reason>`` line per restricted
+    document so the exclusion is visible and auditable, and surface the total on the
+    :class:`CatchupReport`.
+    """
+    count = 0
+    for _sha, entry in manifest.items():
+        if not entry_is_no_index(entry):
+            continue
+        count += 1
+        log.info(
+            "skipped %s — no_index: %s",
+            entry.get("raw_path", "?"),
+            entry.get("no_index_reason") or "(no reason given)",
+        )
+    return count
 
 
 def run_catchup(
@@ -226,6 +262,10 @@ def run_catchup(
         raw_root, allowlist, manifest_path, with_commit=with_commit
     )
     manifest = refresh.manifest
+
+    # 1b. restricted subtrees (no_index) are excluded from ingestion — logged, counted,
+    #     never silently dropped (still provenance-tracked in the manifest).
+    no_index_skipped = log_no_index_skips(manifest)
 
     # 2. resume set — what is already indexed
     skip = set(already_indexed())
@@ -270,4 +310,5 @@ def run_catchup(
         dead_lettered=dead,
         elapsed=time.monotonic() - t0,
         remaining_pending=remaining_pending,
+        no_index_skipped=no_index_skipped,
     )

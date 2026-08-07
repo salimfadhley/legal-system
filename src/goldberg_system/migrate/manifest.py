@@ -36,6 +36,19 @@ class ManifestEntry:
     party_role: str | None = None
     document_type: str | None = None
     claim_source: str | None = None
+    no_index: bool = False  # legally/contractually restricted — never index (recursive)
+    no_index_reason: str | None = None
+
+
+def entry_is_no_index(entry: dict) -> bool:
+    """True when a manifest ``entry`` belongs to a ``no_index`` (restricted) subtree.
+
+    The single predicate the ingest-selection paths consult so a restricted document is
+    excluded from ingestion consistently (catch-up selection, bulk/​event reingest).
+    The manifest still *carries* the entry (provenance survives) — it is only kept out
+    of the work that would index it.
+    """
+    return bool(entry.get("no_index"))
 
 
 def _sha256(path: Path) -> str:
@@ -69,7 +82,14 @@ def _resolve_chain(rel: Path, root: Path) -> dict:
 # Archive-vocab keys (folder metadata.yaml) that map straight onto the
 # same-named DocumentMetadata field — human-set folder metadata is authoritative
 # over per-file inference.
-_PASSTHROUGH_FIELDS = ("party_role", "document_type", "author", "claim_source")
+_PASSTHROUGH_FIELDS = (
+    "party_role",
+    "document_type",
+    "author",
+    "claim_source",
+    "no_index",
+    "no_index_reason",
+)
 
 
 def folder_base_fields(chain: dict) -> dict[str, object]:
@@ -150,6 +170,8 @@ def build_entry(
         party_role=chain.get("party_role"),
         document_type=chain.get("document_type"),
         claim_source=chain.get("claim_source"),
+        no_index=bool(chain.get("no_index", False)),
+        no_index_reason=chain.get("no_index_reason"),
     )
 
 
@@ -213,6 +235,8 @@ class Manifest:
             document_type=entry.get("document_type"),
             party_role=entry.get("party_role"),
             claim_source=entry.get("claim_source"),
+            no_index=bool(entry.get("no_index", False)),
+            no_index_reason=entry.get("no_index_reason"),
         )
 
     def base_for(self, papra_doc: "PapraDocumentLike") -> "DocumentMetadata | None":
