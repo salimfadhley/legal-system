@@ -143,15 +143,37 @@ def contradictions(subject, matters, size, paths, exclude_analysis) -> None:  # 
         span = f'\n       "{ref.source_span}"' if ref.source_span else ""
         return f"{ref.doc_id} ({ref.raw_path or '?'}{when}){span}"
 
-    click.echo(
-        f"within-speaker contradictions (integrity signal): {len(result.within_speaker)}"
-    )
-    for p in result.within_speaker:
-        who = p.asserted_by or "?"
-        click.echo(f"\n• {who} — {p.subject} / {p.predicate}  [{p.kind}]")
+    # Two tiers, deliberately separated (see contradiction detector review):
+    #  - opposite_polarity: one speaker asserted X then negated X — a deterministic
+    #    contradiction, high confidence, surfaced as a FINDING.
+    #  - conflicting_object: same subject+predicate but a different value. Sometimes a
+    #    real conflict ("384 pages" vs "76 pages"), often not ("attended hearing 1" vs
+    #    "hearing 2" — both true). Surfaced as a LEAD to verify, never as a finding.
+    solid = [p for p in result.within_speaker if p.kind == "opposite_polarity"]
+    leads = [p for p in result.within_speaker if p.kind != "opposite_polarity"]
+
+    def _pair(p, who_prefix: bool = False) -> None:  # type: ignore[no-untyped-def]
+        head = f"{p.asserted_by or '?'} — " if who_prefix else ""
+        click.echo(f"\n• {head}{p.subject} / {p.predicate}  [{p.kind}]")
         click.echo(f"    - “{p.left.object}” (pol={p.left.polarity})  {_cite(p.left)}")
         click.echo(f"    - “{p.right.object}” (pol={p.right.polarity})  {_cite(p.right)}")
-    if not result.within_speaker:
+
+    click.echo(
+        f"within-speaker CONTRADICTIONS — opposite polarity (integrity signal): "
+        f"{len(solid)}"
+    )
+    for p in solid:
+        _pair(p, who_prefix=True)
+    if not solid:
+        click.echo("  (none)")
+
+    click.echo(
+        f"\nwithin-speaker LEADS — same speaker, differing value (VERIFY against "
+        f"source, not a finding): {len(leads)}"
+    )
+    for p in leads:
+        _pair(p, who_prefix=True)
+    if not leads:
         click.echo("  (none)")
 
     click.echo(
