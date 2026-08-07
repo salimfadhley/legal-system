@@ -684,20 +684,35 @@ def reindex_from_extracted(extracted_root, index_override, max_docs) -> None:  #
     help="Also mirror re-enriched docs to this goldberg-extracted root.",
 )
 @click.option("--index", "index_override", default=None, help="Source/target ES index.")
-def re_enrich(model, max_docs, matters, paths, extracted_root, index_override) -> None:  # type: ignore[no-untyped-def]
+@click.option(
+    "--raw-root", "raw_root_opt", default=None,
+    help="goldberg-raw root to re-resolve folder metadata.yaml from (claim_source, "
+    "corrected author/matters) and re-apply before enriching. Defaults to the "
+    "configured raw project (or $GOLDBERG_RAW_ROOT); folder metadata overrides the "
+    "ES-stored inferred values.",
+)
+def re_enrich(model, max_docs, matters, paths, extracted_root, index_override, raw_root_opt) -> None:  # type: ignore[no-untyped-def]
     """Re-run the LLM enricher over each document's stored content; update its claims.
 
     Populates the new claim fields (polarity, source_span, epistemic_status) and any
     higher-resolution extraction, WITHOUT re-running Docling — it reads the already-
     extracted ``content`` from Elasticsearch. One LLM call per document; idempotent
     (ES ``_id`` == ``doc_id``, so it updates in place). Preserves provenance/handling.
+
+    When a raw-root is available, each document's folder ``metadata.yaml`` chain is
+    re-resolved and its authoritative fields (``claim_source``, corrected author/
+    matters) are re-applied BEFORE enriching — so a casework metadata.yaml edit takes
+    effect without a full Docling re-ingest.
     """
     from elasticsearch import helpers
 
+    from goldberg_system.config import resolve_raw_root
     from goldberg_system.enrichment import OpenAIEnricher
     from goldberg_system.extracted import enriched_from_es_source
-    from goldberg_system.pipeline import build_enriched_from_raw, write_to_sinks
+    from goldberg_system.pipeline import re_enrich_document, write_to_sinks
     from goldberg_system.sinks import ElasticsearchIndexer, ExtractedRepoWriter
+
+    raw_root = resolve_raw_root(raw_root_opt)
 
     indexer = ElasticsearchIndexer.from_env()
     client = indexer.client
@@ -721,7 +736,10 @@ def re_enrich(model, max_docs, matters, paths, extracted_root, index_override) -
             }
         })
     q = {"query": {"bool": {"filter": filters}}} if filters else {"query": {"match_all": {}}}
-    click.echo(f"Re-enriching {index} with {model} (no Docling; content from ES) …")
+    click.echo(
+        f"Re-enriching {index} with {model} (no Docling; content from ES)"
+        f"{f'; folder metadata from {raw_root}' if raw_root else ''} …"
+    )
     # Materialize the matching documents FIRST (one fast paginated pass), then run the
     # slow per-doc LLM enrichment over the in-memory list. Holding a scroll open ACROSS
     # the LLM calls expired mid-run ("No search context found" at 545/574): the per-doc
@@ -738,10 +756,7 @@ def re_enrich(model, max_docs, matters, paths, extracted_root, index_override) -
             base = enriched_from_es_source(src, doc_id_fallback=hit["_id"])
             if not base.markdown.strip():
                 continue
-            new_doc = build_enriched_from_raw(
-                base.raw_path, base.markdown, enricher,
-                base=base.metadata, ingested_at=base.metadata.ingested_at,
-            )
+            new_doc = re_enrich_document(base, enricher, raw_root=raw_root)
             results = write_to_sinks(new_doc, sinks)
             if all(r.ok for r in results):
                 done += 1

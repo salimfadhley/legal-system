@@ -35,6 +35,7 @@ def _make_archive(root: Path) -> None:
     (root / "evidence").mkdir(parents=True)
     (root / "evidence" / "metadata.yaml").write_text(
         "case_number: '422500059892'\ndocument_type: evidence\n"
+        "claim_source: deep research\n"
     )
     (root / "evidence" / "letter.md").write_text("a received letter")
     (root / "evidence" / "deacon").mkdir()
@@ -111,6 +112,8 @@ def test_manifest_sha256_and_matters(tmp_path: Path) -> None:
     # matters resolved from the folder metadata.yaml chain
     assert letter.matters == ["422500059892"]
     assert letter.origin == "received"
+    # claim_source carried from the folder metadata.yaml into the manifest entry
+    assert letter.claim_source == "deep research"
     # nested folder overrides the matter
     assert by_path["evidence/deacon/claim.pdf"].matters == ["L00SS179"]
     # reports: authored origin, no matter
@@ -200,6 +203,9 @@ def test_manifest_base_for_joins_by_sha256(tmp_path: Path) -> None:
     assert base.matters == ["422500059892"]
     assert base.primary_matter == "422500059892"
     assert base.origin.value == "received"
+    # a folder metadata.yaml claim_source survives the archive-vocab → schema
+    # translation (metadata.yaml chain → manifest entry → DocumentMetadata)
+    assert base.claim_source == "deep research"
     # the raw sha256 is preserved as the pipeline correlation ID (ADR 0008)
     assert base.raw_sha256 == letter_sha
 

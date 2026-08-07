@@ -147,6 +147,11 @@ class DocumentMetadata(BaseModel):
 
     # --- additions (doc/design.md) ---
     author: str | None = None  # a.k.a. source_party — who is *speaking*
+    claim_source: str | None = None
+    # Authoritative speaker/source for ALL claims in this document; when set (typically
+    # via a folder metadata.yaml) it OVERRIDES each claim's LLM-inferred asserted_by.
+    # Use only for single-source folders (our own analysis, one show's transcripts) —
+    # never a mixed-party folder like an email thread.
     matters: list[str] = []
     primary_matter: str | None = None
     origin: Origin | None = None

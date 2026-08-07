@@ -57,6 +57,22 @@ def load_projects(path: Path | str | None = None) -> dict[str, Any]:
     return data
 
 
+def resolve_raw_root(explicit: str | Path | None = None) -> Path | None:
+    """Resolve the goldberg-raw root for folder-metadata re-resolution, or ``None``.
+
+    Order: an ``explicit`` path (the ``--raw-root`` flag) wins; else the configured
+    ``project_path("raw")``; else the ``GOLDBERG_RAW_ROOT`` env var; else ``None``
+    (callers then behave exactly as before, with no folder re-resolution).
+    """
+    if explicit:
+        return Path(explicit)
+    try:
+        return project_path("raw")
+    except (FileNotFoundError, KeyError, ValueError):
+        env = os.environ.get("GOLDBERG_RAW_ROOT")
+        return Path(env) if env else None
+
+
 def project_path(name: str, path: Path | str | None = None) -> Path:
     """Return the filesystem Path for a named sibling project.
 

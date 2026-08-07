@@ -90,3 +90,41 @@ def test_enrichment_does_not_override_human_set_author() -> None:
     result = EnrichmentResult(summary="s", author="LLM Guess")
     meta, _ = parse_frontmatter_document(assemble_enriched_document(base, result, "b"))
     assert meta.author == "Human Set"
+
+
+def test_claim_source_overrides_every_inferred_asserted_by() -> None:
+    # A folder metadata.yaml claim_source is authoritative over LLM-inferred
+    # per-claim attribution: every claim's asserted_by is replaced with it.
+    base = DocumentMetadata(claim_source="deep research")
+    result = EnrichmentResult(
+        summary="s",
+        claims=[
+            Claim(subject="a", predicate="is", object="b", asserted_by="LLM Guess"),
+            Claim(subject="c", predicate="is", object="d", asserted_by=None),
+        ],
+    )
+    meta, _ = parse_frontmatter_document(assemble_enriched_document(base, result, "b"))
+    assert meta.claim_source == "deep research"  # preserved on the merged metadata
+    assert [c.asserted_by for c in meta.claims] == ["deep research", "deep research"]
+    # non-attribution claim fields survive the override
+    assert meta.claims[0].object == "b"
+
+
+def test_no_claim_source_leaves_inferred_asserted_by_untouched() -> None:
+    base = DocumentMetadata()  # no claim_source
+    result = EnrichmentResult(
+        summary="s",
+        claims=[Claim(subject="a", predicate="is", object="b", asserted_by="LLM")],
+    )
+    meta, _ = parse_frontmatter_document(assemble_enriched_document(base, result, "b"))
+    assert meta.claims[0].asserted_by == "LLM"  # inference preserved
+
+
+def test_blank_claim_source_does_not_override() -> None:
+    base = DocumentMetadata(claim_source="   ")  # whitespace-only = not a real source
+    result = EnrichmentResult(
+        summary="s",
+        claims=[Claim(subject="a", predicate="is", object="b", asserted_by="LLM")],
+    )
+    meta, _ = parse_frontmatter_document(assemble_enriched_document(base, result, "b"))
+    assert meta.claims[0].asserted_by == "LLM"

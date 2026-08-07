@@ -36,11 +36,21 @@ def merge_enrichment(
     Every document is stamped with an ingestion timestamp: an existing
     ``base.ingested_at`` wins, else ``ingested_at``, else the current UTC time.
     """
+    claims = result.claims
+    # Folder metadata.yaml is authoritative over LLM-inferred per-claim attribution:
+    # when a single-source folder sets ``claim_source``, it OVERRIDES every claim's
+    # inferred ``asserted_by`` (the LLM sees one file in isolation; the folder knows
+    # the speaker). ``claim_source`` itself is preserved on the merged metadata below.
+    if isinstance(base.claim_source, str) and base.claim_source.strip():
+        claims = [
+            claim.model_copy(update={"asserted_by": base.claim_source})
+            for claim in claims
+        ]
     updates: dict[str, object] = {
         "summary": result.summary,
         "keywords": _union(base.keywords, result.keywords),
         "entities": _union(base.entities, result.entities),
-        "claims": result.claims,
+        "claims": claims,
         "ingested_at": base.ingested_at or ingested_at or now_iso(),
     }
     if result.long_summary is not None:

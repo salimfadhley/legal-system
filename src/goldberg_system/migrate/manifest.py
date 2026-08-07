@@ -35,6 +35,7 @@ class ManifestEntry:
     origin: str = "received"
     party_role: str | None = None
     document_type: str | None = None
+    claim_source: str | None = None
 
 
 def _sha256(path: Path) -> str:
@@ -63,6 +64,35 @@ def _resolve_chain(rel: Path, root: Path) -> dict:
                 data = {}
             merged.update({k: v for k, v in data.items() if v not in (None, "")})
     return merged
+
+
+# Archive-vocab keys (folder metadata.yaml) that map straight onto the
+# same-named DocumentMetadata field — human-set folder metadata is authoritative
+# over per-file inference.
+_PASSTHROUGH_FIELDS = ("party_role", "document_type", "author", "claim_source")
+
+
+def folder_base_fields(chain: dict) -> dict[str, object]:
+    """Translate a resolved folder ``metadata.yaml`` chain into DocumentMetadata
+    field values (``model_copy(update=...)`` kwargs).
+
+    The archive-vocab → schema mapping used to overlay authoritative folder metadata
+    onto a document: ``case_number`` → ``matters``/``primary_matter`` (mirroring
+    :func:`build_entry`'s ingest mapping) plus the same-named human-set pass-through
+    fields. Only keys actually present are returned, so callers overlay just what the
+    folder asserts and leave every other value untouched. Reused by ``re-enrich`` so a
+    casework ``metadata.yaml`` edit re-applies without a full Docling re-ingest.
+    """
+    fields: dict[str, object] = {}
+    case_number = chain.get("case_number")
+    if case_number:
+        fields["matters"] = [str(case_number)]
+        fields["primary_matter"] = str(case_number)
+    for key in _PASSTHROUGH_FIELDS:
+        val = chain.get(key)
+        if val is not None:
+            fields[key] = val
+    return fields
 
 
 def _last_commit(root: Path, rel: Path) -> str:
@@ -119,6 +149,7 @@ def build_entry(
         origin=tree.origin,
         party_role=chain.get("party_role"),
         document_type=chain.get("document_type"),
+        claim_source=chain.get("claim_source"),
     )
 
 
@@ -181,6 +212,7 @@ class Manifest:
             origin=Origin(origin) if origin in ("received", "authored") else None,
             document_type=entry.get("document_type"),
             party_role=entry.get("party_role"),
+            claim_source=entry.get("claim_source"),
         )
 
     def base_for(self, papra_doc: "PapraDocumentLike") -> "DocumentMetadata | None":
