@@ -1,0 +1,19 @@
+# hard-cases.example.yaml — template for the extraction/ingestion regression suite.
+#
+# The live registry (config/hard-cases.yaml) is kept out of this repo because it
+# references real corpus paths. Copy this file to config/hard-cases.yaml and add
+# your own cases. Run with `legal_system test-hard-cases` (isolated test index).
+#
+# expect keys: min_chars (default 1) | allow_empty | allow_error | contains
+real:
+  - raw_path: some/dir/large-scanned.pdf
+    why: "large scanned PDF — exercised the async Docling convert path"
+    expect: { min_chars: 500, contains: "expected token" }
+  - raw_path: some/dir/legacy.doc
+    why: "legacy binary .doc — known Docling gap; must not crash"
+    expect: { allow_empty: true }
+synthetic:
+  - name: near-empty
+    kind: near_empty
+    why: "probe: a near-empty document must not error"
+    expect: { min_chars: 3 }

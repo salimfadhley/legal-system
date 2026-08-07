@@ -70,3 +70,7 @@ doc/prompt/
 # Speaker-alias map — contains real party names; runtime-loaded, must NOT be committed
 # to this PUBLIC repo (query layer defaults to an empty map when the file is absent).
 config/speaker-aliases.yaml
+
+# Operational/derived data that carries real evidence paths — keep local, not in the public repo
+config/provenance-manifest.json
+config/hard-cases.yaml
