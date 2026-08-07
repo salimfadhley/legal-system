@@ -121,10 +121,11 @@ def claims(asserted_by, subject, object_, text, matters, size) -> None:  # type:
     help="Restrict to raw_path prefix(es); repeatable (scope to a document subset).",
 )
 @click.option(
-    "--include-analysis", is_flag=True, default=False,
-    help="Include claims from analysis/ (default excluded — they are mis-attributed).",
+    "--exclude-analysis", is_flag=True, default=False,
+    help="Exclude claims from analysis/ (our own work-product; included by default so "
+    "the detector can flag where a deliverable contradicts the evidence).",
 )
-def contradictions(subject, matters, size, paths, include_analysis) -> None:  # type: ignore[no-untyped-def]
+def contradictions(subject, matters, size, paths, exclude_analysis) -> None:  # type: ignore[no-untyped-def]
     """Find conflicting claims on the same (subject, predicate).
 
     WITHIN one speaker (asserted_by) — opposite polarity or a changed object — is that
@@ -134,7 +135,7 @@ def contradictions(subject, matters, size, paths, include_analysis) -> None:  # 
     """
     result = _query().contradictions(
         subject=subject, matters=list(matters) or None, size=size,
-        paths=list(paths) or None, exclude_analysis=not include_analysis,
+        paths=list(paths) or None, exclude_analysis=exclude_analysis,
     )
 
     def _cite(ref) -> str:  # type: ignore[no-untyped-def]

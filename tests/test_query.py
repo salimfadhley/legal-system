@@ -116,6 +116,24 @@ def test_claims_builds_nested_query() -> None:
     assert {"term": {"claims.asserted_by": "Goldberg"}} in must
 
 
+def test_contradictions_include_analysis_by_default() -> None:
+    # analysis/ (our own work-product) is IN scope by default so the detector can flag
+    # a deliverable that contradicts the evidence — no must_not on the query.
+    es = _FakeES()
+    CorpusQuery(es, "idx").contradictions()
+    assert es.last_search is not None
+    assert "must_not" not in es.last_search["query"]["bool"]
+
+
+def test_contradictions_can_opt_out_of_analysis() -> None:
+    es = _FakeES()
+    CorpusQuery(es, "idx").contradictions(exclude_analysis=True)
+    assert es.last_search is not None
+    assert {"prefix": {"raw_path": "analysis/"}} in es.last_search["query"]["bool"][
+        "must_not"
+    ]
+
+
 def _claim_doc(doc_id: str, raw_path: str, claim: dict[str, Any]) -> dict[str, Any]:
     """A search hit carrying one nested claim via inner_hits (contradiction fixture)."""
     return {

@@ -327,7 +327,7 @@ class CorpusQuery:
         subject: str | None = None,
         matters: str | list[str] | None = None,
         size: int = 2000,
-        exclude_analysis: bool = True,
+        exclude_analysis: bool = False,
         paths: str | list[str] | None = None,
     ) -> list[ClaimRef]:
         """Retrieve candidate claims (with polarity/claim_date) for pairing in Python.
@@ -358,9 +358,10 @@ class CorpusQuery:
             })
         bool_q: dict[str, Any] = {"must": [nested], "filter": filters}
         if exclude_analysis:
-            # Never let claims extracted from our OWN work product poison the detector —
-            # they are currently mis-attributed to the parties they are *about* (the
-            # claim-source-hygiene bug). Excluded until that is fixed.
+            # Opt-out only. Our own work product (analysis/) is INCLUDED by default so
+            # the detector can flag where a deliverable contradicts the evidence — the
+            # highest-value check. Callers pass exclude_analysis=True to hide drafting
+            # noise when they only want evidence-vs-evidence conflicts.
             bool_q["must_not"] = [{"prefix": {"raw_path": "analysis/"}}]
         resp = self.client.search(
             index=self.index,
@@ -399,7 +400,7 @@ class CorpusQuery:
         subject: str | None = None,
         matters: str | list[str] | None = None,
         size: int = 2000,
-        exclude_analysis: bool = True,
+        exclude_analysis: bool = False,
         paths: str | list[str] | None = None,
     ) -> Contradictions:
         """Find conflicting claims on the same normalized (subject, predicate).
