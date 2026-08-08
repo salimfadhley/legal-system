@@ -229,13 +229,26 @@ _SELFTEST_GOOD = "author: Paul Keitch\nclaim_source: Paul Keitch\nnotes: |\n  Ex
 _SELFTEST_BAD = "authour: Paul Keitch\n"
 
 
+# Fields that assert authority over inference (they OVERRIDE the LLM's guess). Setting one
+# without a ``method`` is an unexplained override — a guess indistinguishable from a check —
+# so ``metadata lint`` WARNs (it does not fail: the override may well be right, it is just
+# unexplained). This is the same principle as the grounding checker: a claim to have verified
+# something must say how.
+AUTHORITATIVE_FIELDS: frozenset[str] = frozenset({"author", "claim_source"})
+
+
 @dataclass(frozen=True)
 class LintFinding:
-    """One problem found by ``metadata lint`` (or ``ok`` for a clean file)."""
+    """One problem (or warning) found by ``metadata lint`` (or ``ok`` for a clean file).
+
+    ``ok`` is False only for hard errors (which fail CI). A warning keeps ``ok=True`` and
+    sets ``level="warn"`` so it is surfaced without gating.
+    """
 
     path: str
     ok: bool
     detail: str
+    level: str = "error"
 
 
 def lint_file(path: Path, root: Path) -> list[LintFinding]:
@@ -260,6 +273,23 @@ def lint_file(path: Path, root: Path) -> list[LintFinding]:
         findings.append(LintFinding(source, False, msg.split(": ", 1)[1]))
     if data.get("no_index") and not data.get("no_index_reason"):
         findings.append(LintFinding(source, False, "no_index set without no_index_reason"))
+    # A method-less authoritative override is a WARNING — only when the file is otherwise
+    # error-free (a hard error already speaks louder, and we must not overwrite it in a
+    # path→finding map). The override may be correct; it is simply unexplained.
+    if not any(not f.ok for f in findings):
+        set_authoritative = sorted(
+            k for k in AUTHORITATIVE_FIELDS if data.get(k) not in (None, "")
+        )
+        if set_authoritative and data.get("method") in (None, ""):
+            findings.append(
+                LintFinding(
+                    source,
+                    True,
+                    f"{', '.join(set_authoritative)} set without a method — an "
+                    "unexplained override (a guess indistinguishable from a check)",
+                    level="warn",
+                )
+            )
     if not findings:
         findings.append(LintFinding(source, True, "ok"))
     return findings

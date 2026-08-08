@@ -1538,17 +1538,99 @@ def metadata_lint(root: Path) -> None:  # type: ignore[no-untyped-def]
 
     findings = lint_root(Path(root))
     problems = [f for f in findings if not f.ok]
+    warnings = [f for f in findings if f.ok and f.level == "warn"]
     checked = {f.path for f in findings}
     for f in problems:
         click.echo(f"  ✗ {f.path}: {f.detail}")
+    for f in warnings:
+        click.echo(f"  ⚠ {f.path}: {f.detail}")
     if not problems:
-        click.echo(f"metadata lint: {len(checked)} file(s) checked — all clean ✓")
+        suffix = f" ({len(warnings)} warning(s))" if warnings else ""
+        click.echo(f"metadata lint: {len(checked)} file(s) checked — no errors ✓{suffix}")
         return
     click.echo(
         f"\nmetadata lint: {len(problems)} problem(s) across "
         f"{len(checked)} file(s) — FAILED"
     )
     raise SystemExit(1)
+
+
+@main.command("ground-check")
+@click.option(
+    "--root",
+    "root",
+    default=None,
+    help="goldberg-raw root to check (default: the configured raw project).",
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit the full report as JSON.")
+def ground_check(root, as_json) -> None:  # type: ignore[no-untyped-def]
+    """Mechanically catch FABRICATED or MISQUOTED legal authority before it reaches a filing.
+
+    Deterministic, NOT an LLM. In ``analysis/``, ``reports/`` and served filings it (1) tests
+    each quoted string that sits near a citation VERBATIM against the held primary text for
+    that authority — GREEN (exact), RED (held but the quote is ABSENT: the fabrication), AMBER
+    (no primary text held) — and (2) lists every citation for which NO primary text exists at
+    all, ranked by blast radius. Findings implicating a SERVED document sort to the very top.
+
+    It SELF-TESTS FIRST against an embedded known-good (→GREEN) and known-bad (→RED) fixture
+    and REFUSES to print any real result if the self-test fails: a checker that silently
+    passes everything launders unverified material as checked.
+    """
+    from goldberg_system.config import project_path
+    from goldberg_system.grounding import SelfTestError, check_root, run_selftest
+    from goldberg_system.grounding.checker import (
+        CITATION_WITHOUT_SOURCE,
+        MALFORMED_CITATION,
+        QUOTE,
+        REPEALED_CITATION,
+    )
+
+    try:
+        run_selftest()
+    except SelfTestError as exc:
+        raise SystemExit(f"ground-check REFUSING to report — self-test failed: {exc}") from exc
+
+    raw_root = Path(root) if root else project_path("raw")
+    report = check_root(raw_root)
+
+    if as_json:
+        click.echo(json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        c = report.counts()
+        click.echo(
+            f"ground-check: scanned {report.files_scanned} file(s) against "
+            f"{report.primary_texts} held primary text(s)"
+        )
+        click.echo(
+            f"  GREEN {c['GREEN']}  RED {c['RED']}  AMBER {c['AMBER']}  "
+            f"citation-without-source {c['citation_without_source']}"
+        )
+        click.echo(
+            "  RED = the quote is not present in the primary text held for the cited "
+            "authority (fabrication, misquote, OR a passage outside a held EXCERPT) — a "
+            "verify-at-source worklist, sharpest at the top (served, then blast radius)."
+        )
+        _mark = {"GREEN": "✓", "RED": "✗", "AMBER": "~"}
+        for f in report.sorted_findings():
+            tag = f"[{f.layer.name.lower()}]"
+            if f.kind == QUOTE and f.verdict is not None:
+                click.echo(f"  {_mark[f.verdict.value]} {tag} {f.file} — {f.detail}")
+                if f.verdict.value in {"RED", "AMBER"} and f.quote:
+                    click.echo(f'        quote: "{f.quote[:160]}"')
+            elif f.kind == REPEALED_CITATION:
+                click.echo(f"  ✗ {tag} {f.file} — {f.detail}")
+            elif f.kind == CITATION_WITHOUT_SOURCE:
+                click.echo(
+                    f"  ✗ {tag} blast={f.blast_radius} {f.authority_key} — {f.detail}"
+                )
+            elif f.kind == MALFORMED_CITATION:
+                click.echo(f"  ⚠ {tag} {f.file} — {f.detail}")
+
+    # Exit non-zero when any RED / citation-without-source / repealed finding exists, so a
+    # scheduler or pre-filing hook can gate on it.
+    red = report.counts()["RED"] + report.counts()["citation_without_source"]
+    red += sum(1 for f in report.findings if f.kind == REPEALED_CITATION)
+    raise SystemExit(1 if red else 0)
 
 
 if __name__ == "__main__":

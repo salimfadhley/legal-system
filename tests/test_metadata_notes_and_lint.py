@@ -145,6 +145,33 @@ def test_lint_flags_bad_and_passes_good(tmp_path: Path) -> None:
     assert "no_index_reason" in by_path["folder/metadata.yaml"].detail
 
 
+def test_lint_warns_on_authoritative_field_without_method(tmp_path: Path) -> None:
+    # author/claim_source set WITHOUT a method → a warning (ok stays True, level == "warn"),
+    # because an unexplained override is a guess indistinguishable from a check.
+    (tmp_path / "a.pdf").write_text("x")
+    (tmp_path / "a.pdf.metadata.yaml").write_text("author: Someone\n")
+    (tmp_path / "b.pdf").write_text("x")
+    (tmp_path / "b.pdf.metadata.yaml").write_text("claim_source: Someone\nmethod: read at source\n")
+
+    findings = lint_root(tmp_path)
+    by_path = {f.path: f for f in findings}
+    warn = by_path["a.pdf.metadata.yaml"]
+    assert warn.ok is True and warn.level == "warn"
+    assert "without a method" in warn.detail
+    # with a method present, no warning — the file is clean
+    assert by_path["b.pdf.metadata.yaml"].level == "error"  # the default "ok" finding
+    assert by_path["b.pdf.metadata.yaml"].ok is True
+
+
+def test_lint_error_suppresses_the_method_warning(tmp_path: Path) -> None:
+    # a hard error must not be overwritten by the warning in a path→finding map
+    (tmp_path / "bad.pdf").write_text("x")
+    (tmp_path / "bad.pdf.metadata.yaml").write_text("author: Someone\nbadkey: 1\n")
+    findings = lint_root(tmp_path)
+    by_path = {f.path: f for f in findings}
+    assert by_path["bad.pdf.metadata.yaml"].ok is False
+
+
 def test_lint_refuses_to_report_if_selftest_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     import goldberg_system.metadata.sidecar as sc
 
