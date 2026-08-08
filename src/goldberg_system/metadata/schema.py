@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from enum import Enum
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, model_validator
 
 
@@ -147,6 +149,33 @@ class DocumentMetadata(BaseModel):
 
     # --- additions (doc/design.md) ---
     author: str | None = None  # a.k.a. source_party — who is *speaking*
+
+    # --- per-file sidecar prose + receipt-provenance (doc/system/metadata.md) ---
+    notes: str | None = None
+    # Free casework prose. Two jobs: (1) fed to the enricher as GROUND-TRUTH context
+    # before extraction, so summary/claims/attribution reflect it; (2) appended to the
+    # indexed content inside an immutable annotation fence (never the document's words).
+    method: str | None = None
+    # FREE TEXT — what was actually opened/checked and when (e.g. "opened
+    # legislation.gov.uk XML for SI 2020/759, diffed"). Never an enum, never a boolean;
+    # absence means unverified (there is deliberately NO ``verified`` flag anywhere).
+    date_basis: str | None = None
+    # Free text: how we know the document's date ("on its face" / "PDF CreationDate" /
+    # "served in Oct 2025 bundle").
+    date_uncertain: bool = False
+    # True whenever ``date`` is set but ``date_basis`` is anything other than "on its
+    # face"; a sidecar may set it explicitly. With no date it stays at its default.
+    source_channel: str | None = None
+    # Free text: how the document reached us (provenance of receipt — legal, not
+    # housekeeping). Distinct from the enum ``handling.source_channel``.
+    obtained_note: str | None = None  # free text expanding on how it was obtained
+    superseded_by: str | None = None  # a doc_id / raw_path that replaces this document
+
+    metadata_error: str | None = None
+    # LOUD-but-present marker: a bad key / malformed sidecar / no_index-without-reason
+    # dropped a metadata layer. The document still ingests with default/inherited
+    # metadata; this records why so the failure is visible and never a silent skip.
+
     claim_source: str | None = None
     # Authoritative speaker/source for ALL claims in this document; when set (typically
     # via a folder metadata.yaml) it OVERRIDES each claim's LLM-inferred asserted_by.
@@ -181,6 +210,23 @@ class DocumentMetadata(BaseModel):
     relates_to: list[str] = []
 
     handling: HandlingFlags = HandlingFlags()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_date_uncertain(cls, data: Any) -> Any:
+        """Compute ``date_uncertain`` when a date is present but the caller left it unset.
+
+        Defaults True whenever ``date`` is set and ``date_basis`` is anything other than
+        "on its face"; an explicit ``date_uncertain`` always wins; with no date it is left
+        at its default. Only runs on dict input (fresh construction / frontmatter parse);
+        ``model_copy(update=...)`` callers compute it themselves (folder_base_fields).
+        """
+        if not isinstance(data, dict) or "date_uncertain" in data:
+            return data
+        if data.get("date"):
+            data = dict(data)
+            data["date_uncertain"] = data.get("date_basis") != "on its face"
+        return data
 
     @model_validator(mode="after")
     def _primary_matter_is_a_matter(self) -> DocumentMetadata:

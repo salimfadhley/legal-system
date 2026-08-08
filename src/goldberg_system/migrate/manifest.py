@@ -17,8 +17,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-import yaml
-
+from goldberg_system.metadata import sidecar
 from goldberg_system.migrate.allowlist import Allowlist
 
 if TYPE_CHECKING:
@@ -35,9 +34,22 @@ class ManifestEntry:
     origin: str = "received"
     party_role: str | None = None
     document_type: str | None = None
+    author: str | None = None
     claim_source: str | None = None
     no_index: bool = False  # legally/contractually restricted — never index (recursive)
     no_index_reason: str | None = None
+    # --- per-file sidecar prose + receipt-provenance (doc/system/metadata.md) ---
+    notes: str | None = None
+    method: str | None = None
+    date: str | None = None
+    date_basis: str | None = None
+    date_uncertain: bool = False
+    source_channel: str | None = None
+    obtained_note: str | None = None
+    superseded_by: str | None = None
+    # LOUD-but-present: a bad key / malformed layer / no_index-without-reason was
+    # rejected. The document is still manifested/ingested; this records why.
+    metadata_error: str | None = None
 
 
 def entry_is_no_index(entry: dict) -> bool:
@@ -60,28 +72,24 @@ def _sha256(path: Path) -> str:
 
 
 def _resolve_chain(rel: Path, root: Path) -> dict:
-    """Merge ``metadata.yaml`` from ``root`` down to ``rel``'s folder (child overrides).
+    """Merge the metadata chain for ``rel`` — folder ``metadata.yaml`` defaults **plus its
+    per-file ``<file>.metadata.yaml`` sidecar** as the final, most-specific layer.
 
-    Plain-dict merge over the archive's own vocabulary (``case_number`` etc.); no
-    schema validation here — translation to the schema happens at enrichment time.
+    Delegates to :func:`goldberg_system.metadata.sidecar.resolve_chain` (scalar override,
+    list union, whole-layer drop on a bad key). Returns the merged fields only; the loud
+    errors are consulted via :func:`resolve_chain_full`. No schema validation here —
+    translation to the schema happens at enrichment time.
     """
-    merged: dict = {}
-    cur = root
-    for seg in ("", *rel.parts[:-1]):  # folders only, root first
-        cur = cur / seg if seg else cur
-        meta = cur / "metadata.yaml"
-        if meta.is_file():
-            try:
-                data = yaml.safe_load(meta.read_text()) or {}
-            except yaml.YAMLError:
-                data = {}
-            merged.update({k: v for k, v in data.items() if v not in (None, "")})
-    return merged
+    return resolve_chain_full(rel, root).fields
 
 
-# Archive-vocab keys (folder metadata.yaml) that map straight onto the
-# same-named DocumentMetadata field — human-set folder metadata is authoritative
-# over per-file inference.
+def resolve_chain_full(rel: Path, root: Path) -> sidecar.ResolvedMetadata:
+    """The full resolution for ``rel`` — merged fields **and** loud metadata errors."""
+    return sidecar.resolve_chain(Path(rel), Path(root))
+
+
+# Archive-vocab keys (folder metadata.yaml / per-file sidecar) that map straight onto the
+# same-named DocumentMetadata field — human-set metadata is authoritative over inference.
 _PASSTHROUGH_FIELDS = (
     "party_role",
     "document_type",
@@ -89,30 +97,56 @@ _PASSTHROUGH_FIELDS = (
     "claim_source",
     "no_index",
     "no_index_reason",
+    # prose + receipt-provenance additions (each flows exactly like claim_source)
+    "notes",
+    "method",
+    "date",
+    "date_basis",
+    "source_channel",
+    "obtained_note",
+    "superseded_by",
 )
 
 
 def folder_base_fields(chain: dict) -> dict[str, object]:
-    """Translate a resolved folder ``metadata.yaml`` chain into DocumentMetadata
-    field values (``model_copy(update=...)`` kwargs).
+    """Translate a resolved metadata ``chain`` into DocumentMetadata field values
+    (``model_copy(update=...)`` kwargs).
 
-    The archive-vocab → schema mapping used to overlay authoritative folder metadata
-    onto a document: ``case_number`` → ``matters``/``primary_matter`` (mirroring
-    :func:`build_entry`'s ingest mapping) plus the same-named human-set pass-through
-    fields. Only keys actually present are returned, so callers overlay just what the
-    folder asserts and leave every other value untouched. Reused by ``re-enrich`` so a
-    casework ``metadata.yaml`` edit re-applies without a full Docling re-ingest.
+    The archive-vocab → schema mapping used to overlay authoritative folder/sidecar
+    metadata onto a document: ``case_number`` and/or ``matters`` → ``matters`` /
+    ``primary_matter`` plus the same-named human-set pass-through fields. Only keys
+    actually present are returned, so callers overlay just what the metadata asserts and
+    leave every other value untouched. ``date_uncertain`` is computed here (not a
+    pass-through) because this path applies via ``model_copy``, which bypasses the schema
+    validator. Reused by ``re-enrich`` so a casework metadata edit re-applies without a
+    full Docling re-ingest.
     """
     fields: dict[str, object] = {}
-    case_number = chain.get("case_number")
-    if case_number:
-        fields["matters"] = [str(case_number)]
-        fields["primary_matter"] = str(case_number)
+    matters = _resolve_matters(chain)
+    if matters:
+        fields["matters"] = matters
+        primary = chain.get("primary_matter")
+        fields["primary_matter"] = str(primary) if primary else matters[0]
     for key in _PASSTHROUGH_FIELDS:
         val = chain.get(key)
         if val is not None:
             fields[key] = val
+    date_uncertain = sidecar.resolve_date_uncertain(chain)
+    if date_uncertain is not None:
+        fields["date_uncertain"] = date_uncertain
     return fields
+
+
+def _resolve_matters(chain: dict) -> list[str]:
+    """Union ``case_number`` (archive vocab) with an explicit ``matters`` list (schema vocab)."""
+    matters: list[str] = []
+    case_number = chain.get("case_number")
+    if case_number:
+        matters.append(str(case_number))
+    for m in chain.get("matters") or []:
+        if str(m) not in matters:
+            matters.append(str(m))
+    return matters
 
 
 def _last_commit(root: Path, rel: Path) -> str:
@@ -149,7 +183,9 @@ def build_entry(
     rel = Path(rel)
     if rel.parts and rel.parts[0] == ".git":
         return None
-    if rel.name == "metadata.yaml" or allowlist.is_excluded_file(rel):
+    # A metadata carrier (folder defaults OR a per-file sidecar) is never itself a
+    # document — the single skip predicate keeps a sidecar from becoming an entry.
+    if sidecar.is_sidecar_name(rel.name) or allowlist.is_excluded_file(rel):
         return None
     tree = allowlist.tree_for(rel)
     if tree is None:  # only files under an allowlisted tree get a manifest entry
@@ -158,21 +194,40 @@ def build_entry(
     sha = _sha256(path)
     if known_shas is not None and sha in known_shas:
         return None
-    chain = _resolve_chain(rel, root)
-    case_number = chain.get("case_number")
+    resolved = resolve_chain_full(rel, root)
+    chain = resolved.fields
+    date_uncertain = sidecar.resolve_date_uncertain(chain)
     return ManifestEntry(
         sha256=sha,
         raw_path=rel.as_posix(),
         raw_commit=_last_commit(root, rel) if with_commit else "",
         size=path.stat().st_size,
-        matters=[str(case_number)] if case_number else [],
+        matters=_resolve_matters(chain),
         origin=tree.origin,
-        party_role=chain.get("party_role"),
-        document_type=chain.get("document_type"),
-        claim_source=chain.get("claim_source"),
+        party_role=_opt_str(chain.get("party_role")),
+        document_type=_opt_str(chain.get("document_type")),
+        author=_opt_str(chain.get("author")),
+        claim_source=_opt_str(chain.get("claim_source")),
         no_index=bool(chain.get("no_index", False)),
-        no_index_reason=chain.get("no_index_reason"),
+        no_index_reason=_opt_str(chain.get("no_index_reason")),
+        notes=_opt_str(chain.get("notes")),
+        method=_opt_str(chain.get("method")),
+        date=_opt_str(chain.get("date")),
+        date_basis=_opt_str(chain.get("date_basis")),
+        date_uncertain=bool(date_uncertain) if date_uncertain is not None else False,
+        source_channel=_opt_str(chain.get("source_channel")),
+        obtained_note=_opt_str(chain.get("obtained_note")),
+        superseded_by=_opt_str(chain.get("superseded_by")),
+        metadata_error=resolved.error_summary,
     )
+
+
+def _opt_str(value: object) -> str | None:
+    """Coerce a chain value to a trimmed non-empty string, else None."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def build_manifest(
@@ -234,9 +289,19 @@ class Manifest:
             origin=Origin(origin) if origin in ("received", "authored") else None,
             document_type=entry.get("document_type"),
             party_role=entry.get("party_role"),
+            author=entry.get("author"),
             claim_source=entry.get("claim_source"),
             no_index=bool(entry.get("no_index", False)),
             no_index_reason=entry.get("no_index_reason"),
+            notes=entry.get("notes"),
+            method=entry.get("method"),
+            date=entry.get("date"),
+            date_basis=entry.get("date_basis"),
+            date_uncertain=bool(entry.get("date_uncertain", False)),
+            source_channel=entry.get("source_channel"),
+            obtained_note=entry.get("obtained_note"),
+            superseded_by=entry.get("superseded_by"),
+            metadata_error=entry.get("metadata_error"),
         )
 
     def base_for(self, papra_doc: "PapraDocumentLike") -> "DocumentMetadata | None":

@@ -47,6 +47,15 @@ INDEX_MAPPING: dict[str, Any] = {
             "origin": {"type": "keyword"},
             "role": {"type": "keyword"},
             "date": {"type": "keyword"},  # document's own date: often free-form
+            # --- per-file sidecar prose + receipt-provenance (doc/system/metadata.md) ---
+            "notes": {"type": "text"},  # searchable casework annotation
+            "method": {"type": "text"},  # free text: what was actually opened/checked
+            "date_basis": {"type": "text"},  # how we know the date
+            "date_uncertain": {"type": "boolean"},
+            "source_channel": {"type": "keyword"},  # how the doc reached us (free text)
+            "obtained_note": {"type": "text"},
+            "superseded_by": {"type": "keyword"},  # machine-visible replacement pointer
+            "metadata_error": {"type": "text"},  # LOUD-but-present bad-metadata marker
             "ingested_at": {"type": "date"},
             "raw_path": {"type": "keyword"},
             "raw_commit": {"type": "keyword"},
@@ -115,6 +124,14 @@ def to_es_document(document: EnrichedDocument) -> dict[str, Any]:
         "origin": meta.origin.value if meta.origin else None,
         "role": meta.role.value if meta.role else None,
         "date": meta.date,
+        "notes": meta.notes,
+        "method": meta.method,
+        "date_basis": meta.date_basis,
+        "date_uncertain": meta.date_uncertain,
+        "source_channel": meta.source_channel,
+        "obtained_note": meta.obtained_note,
+        "superseded_by": meta.superseded_by,
+        "metadata_error": meta.metadata_error,
         "ingested_at": meta.ingested_at,
         "raw_path": meta.raw_path,
         "raw_commit": meta.raw_commit,

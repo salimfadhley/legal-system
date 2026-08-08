@@ -11,6 +11,7 @@ via threads; Docling processes async convert jobs in parallel server-side.
 
 from __future__ import annotations
 
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,8 @@ from goldberg_system.migrate.manifest import Manifest, entry_is_no_index
 from goldberg_system.observability.events import PipelineEvent, safe_emit
 from goldberg_system.pipeline import build_enriched_from_raw, write_to_sinks
 from goldberg_system.sinks.base import Sink
+
+logger = logging.getLogger(__name__)
 
 # Docling cannot extract text from audio/video — skip (they carry no OCR-able text).
 _SKIP_EXT = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4a", ".mp3", ".wav", ".ogg"}
@@ -148,6 +151,25 @@ def reingest_from_raw(
         try:
             base = manifest.base_for_sha(sha)
             assert base is not None  # sha came from the manifest
+            # LOUD-but-present: a rejected metadata layer (typo'd key, malformed sidecar,
+            # no_index-without-reason) must never turn a document into a *missing* one.
+            # The document ingests with default/inherited metadata; we log the failure at
+            # ERROR and carry ``metadata_error`` into the index so it stays visible.
+            if base.metadata_error:
+                logger.error(
+                    "reingest: metadata rejected for %s (document still ingested with "
+                    "default/inherited metadata): %s",
+                    raw_path,
+                    base.metadata_error,
+                )
+                emit(
+                    "received",
+                    "ok",
+                    sha,
+                    raw_path,
+                    reason="metadata rejected (bad-key/orphan/no-reason)",
+                    error=base.metadata_error,
+                )
             document = build_enriched_from_raw(raw_path, content, enricher, base=base)
             results = write_to_sinks(document, sinks)
             if all(r.ok for r in results):

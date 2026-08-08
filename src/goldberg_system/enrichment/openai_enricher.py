@@ -151,11 +151,24 @@ class OpenAIEnricher:
             if context_bits
             else ""
         )
+        # Casework ``notes`` are GROUND TRUTH about this document that one file in
+        # isolation cannot reveal (its exhibit number, that a folder is one speaker, that
+        # a garbled figure is OCR noise). Prepend them as authoritative context so the
+        # summary, claims and attribution reflect what the human knows — trusted over the
+        # document text where they differ.
+        notes = (md.notes or "").strip()
+        note_block = (
+            "AUTHORITATIVE CONTEXT from the case team (ground truth — trust this over the "
+            "document text where they differ; let it guide the summary, claims and "
+            f"attribution):\n{notes}\n\n"
+            if notes
+            else ""
+        )
         # Token-budget the body so the *whole* user message (fixed prefix + body)
         # stays within ``token_budget``. Give the body the budget minus the prefix's
         # token cost, then clamp the assembled message to be safe against token-
         # boundary drift when prefix + body are re-encoded together.
-        prefix = f"{_INSTRUCTIONS}\n\n{context}--- DOCUMENT ---\n"
+        prefix = f"{_INSTRUCTIONS}\n\n{note_block}{context}--- DOCUMENT ---\n"
         prefix_tokens = len(_encoding_for_model(self.model).encode(prefix))
         body = _truncate_to_tokens(
             request.markdown, max(token_budget - prefix_tokens, 0), self.model

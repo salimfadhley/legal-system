@@ -16,6 +16,7 @@ from goldberg_system.enrichment.adapter import EnrichmentAdapter, EnrichmentRequ
 from goldberg_system.enrichment.assemble import merge_enrichment
 from goldberg_system.identity import compute_doc_id
 from goldberg_system.metadata.schema import DocumentMetadata
+from goldberg_system.metadata.sidecar import append_annotation
 from goldberg_system.migrate.manifest import _resolve_chain, folder_base_fields
 from goldberg_system.provenance import now_iso
 from goldberg_system.sinks.base import EnrichedDocument, Sink, SinkResult
@@ -32,16 +33,24 @@ def build_enriched_from_raw(
     """Assemble an enriched document from a raw file's extracted ``content`` + its
     manifest ``base`` (the direct-Docling bulk path — no Papra involved)."""
     base = base.model_copy(update={"raw_path": raw_path})
+    # The enricher sees the ORIGINAL body; the casework ``notes`` reach it as
+    # authoritative context (openai_enricher._build_messages), never spliced into the
+    # text it extracts from.
     result = enricher.enrich(
         EnrichmentRequest(doc_id=raw_path, markdown=content, metadata=base)
     )
     enriched = merge_enrichment(base, result, ingested_at=ingested_at or now_iso())
+    # doc_id keys on the ORIGINAL extracted content (stable identity for the raw file),
+    # so adding/editing a note never mints a new document. The note is then appended to
+    # the stored/indexed body inside the immutable annotation fence — searchable, but
+    # never mistakable for the document's own words.
     doc_id = compute_doc_id(raw_path, content.encode("utf-8"))
+    stored_markdown = append_annotation(content, enriched.notes)
     return EnrichedDocument(
         doc_id=doc_id,
         raw_path=raw_path,
         raw_commit=base.raw_commit or "",
-        markdown=content,
+        markdown=stored_markdown,
         metadata=enriched,
     )
 

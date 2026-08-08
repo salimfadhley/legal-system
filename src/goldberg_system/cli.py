@@ -8,6 +8,7 @@ synthesises an attributed answer over the evidence documents. See ``AGENTS.md``.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import click
 
@@ -1508,6 +1509,46 @@ def ingest_catchup(batch, workers, index_override) -> None:  # type: ignore[no-u
         workers=workers,
     )
     click.echo(report.summary_line())
+
+
+@main.group()
+def metadata() -> None:
+    """Inspect and validate folder metadata.yaml + per-file *.metadata.yaml sidecars."""
+
+
+@metadata.command("lint")
+@click.argument("root", type=click.Path(exists=True, file_okay=False, path_type=Path))
+def metadata_lint(root: Path) -> None:  # type: ignore[no-untyped-def]
+    """Validate every folder metadata.yaml and *.metadata.yaml sidecar under ROOT.
+
+    Flags unknown/typo'd keys, malformed YAML, orphan sidecars (no target file), and any
+    ``no_index`` set without a ``no_index_reason``. Exit code is non-zero when any file
+    fails — so it can gate CI.
+
+    It SELF-TESTS FIRST against embedded good/bad fixtures and REFUSES to report (exiting
+    non-zero) if the self-test fails: a linter that silently passes everything is worse
+    than none.
+    """
+    from goldberg_system.metadata.sidecar import SelfTestError, lint_root, run_selftest
+
+    try:
+        run_selftest()
+    except SelfTestError as exc:
+        raise SystemExit(f"metadata lint REFUSING to report — {exc}") from exc
+
+    findings = lint_root(Path(root))
+    problems = [f for f in findings if not f.ok]
+    checked = {f.path for f in findings}
+    for f in problems:
+        click.echo(f"  ✗ {f.path}: {f.detail}")
+    if not problems:
+        click.echo(f"metadata lint: {len(checked)} file(s) checked — all clean ✓")
+        return
+    click.echo(
+        f"\nmetadata lint: {len(problems)} problem(s) across "
+        f"{len(checked)} file(s) — FAILED"
+    )
+    raise SystemExit(1)
 
 
 if __name__ == "__main__":

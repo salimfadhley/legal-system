@@ -202,7 +202,12 @@ def test_classify_path_restricted_is_not_invisible_gap(tmp_path: Path) -> None:
     raw = _seed(tmp_path, {"a.txt": "alpha"})
     sealed = raw / "evidence" / "sealed"
     sealed.mkdir()
-    (sealed / "metadata.yaml").write_text("no_index: true\n")
+    # A no_index MUST carry a no_index_reason (doc/system/metadata.md safety rule):
+    # a bare no_index is a bad-key-class error whose no_index is rejected, so give a
+    # reason here to genuinely restrict the subtree.
+    (sealed / "metadata.yaml").write_text(
+        "no_index: true\nno_index_reason: CPR 32.12 — sealed\n"
+    )
     (sealed / "s.txt").write_text("secret")
 
     out = classify_path(
