@@ -74,3 +74,10 @@ config/speaker-aliases.yaml
 # Operational/derived data that carries real evidence paths — keep local, not in the public repo
 config/provenance-manifest.json
 config/hard-cases.yaml
+
+# Restricted-reingest ALARM log — runtime state written by the sink/healer; read by
+# `legal_system status`. May carry real evidence paths; keep local, not in the public repo.
+config/restricted-reingest-alerts.jsonl
+
+# Exclusion registry carries real evidence paths — keep local, not in the public repo
+config/exclusion-registry.jsonl

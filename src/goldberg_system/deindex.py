@@ -17,6 +17,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from goldberg_system.exclusion_registry import (
+    SOURCE_DEINDEX,
+    ExclusionEntry,
+    append_exclusion,
+)
+from goldberg_system.provenance import now_iso
+
 # A prefix this short would purge (almost) the whole corpus by accident — refuse it
 # unless the operator passes ``force``. "/" or empty is always refused.
 MIN_PREFIX_LEN = 3
@@ -37,6 +44,7 @@ class DeindexResult:
     files_matched: int = 0  # extracted files whose path matched a prefix
     files_removed: int = 0  # extracted files actually unlinked (0 on dry-run)
     removed_paths: list[str] = field(default_factory=list)  # matched extracted raw_paths
+    registered: list[str] = field(default_factory=list)  # prefixes recorded in the registry
 
 
 def _validate_prefixes(prefixes: list[str], *, force: bool) -> list[str]:
@@ -94,11 +102,18 @@ def deindex(
     extracted_root: Path | str | None = None,
     dry_run: bool = False,
     force: bool = False,
+    reason: str | None = None,
+    registry_path: Path | str | None = None,
 ) -> DeindexResult:
     """Purge indexed content whose ``raw_path`` matches any of ``prefixes``.
 
     (a) counts (dry-run) or ``delete_by_query``-deletes matching Elasticsearch docs;
-    (b) if ``extracted_root`` is given, removes the mirrored derived-store files.
+    (b) if ``extracted_root`` is given, removes the mirrored derived-store files;
+    (c) if ``registry_path`` and ``reason`` are given (and not a dry-run), records each
+        purged prefix in the **durable exclusion registry** so the catch-up/reconcile
+        healer can never silently re-add it — the class-fault fix. A purge without a
+        recorded reason is exactly the silent act the registry exists to prevent, so the
+        CLI requires ``--reason``.
 
     Guards against an empty/root/too-short prefix (:class:`DeindexError`) so a stray
     ``deindex --path /`` cannot wipe the corpus.
@@ -124,6 +139,24 @@ def deindex(
                 md.unlink()
                 files_removed += 1
 
+    # (c) record the deliberate exclusion so it can never be silently re-added. Only on
+    # a real run with a reason + a registry target (append-only, human-readable JSONL).
+    registered: list[str] = []
+    if not dry_run and registry_path is not None and reason and reason.strip():
+        ts = now_iso()
+        for prefix in cleaned:
+            append_exclusion(
+                registry_path,
+                ExclusionEntry(
+                    raw_path=prefix,
+                    reason=reason.strip(),
+                    timestamp=ts,
+                    source=SOURCE_DEINDEX,
+                    raw_sha256=None,  # a prefix purge is not a single content hash
+                ),
+            )
+            registered.append(prefix)
+
     return DeindexResult(
         prefixes=cleaned,
         dry_run=dry_run,
@@ -132,4 +165,5 @@ def deindex(
         files_matched=files_matched,
         files_removed=files_removed,
         removed_paths=removed_paths,
+        registered=registered,
     )

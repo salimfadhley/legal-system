@@ -1,0 +1,5 @@
+# goldberg exclusion registry — append-only, human-readable (JSON Lines).
+#
+# Every line (after these '#' comments) records ONE deliberate purge that must NEVER be
+# re-added by an automated process. `legal_system deindex --reason ...` appends here for
+# every path it purges; `legal_system exclusions add` appends a manual entry.

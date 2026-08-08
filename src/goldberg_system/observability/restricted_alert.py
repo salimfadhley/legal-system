@@ -1,0 +1,130 @@
+"""The restricted-reingest ALARM — "nothing alarmed" was itself the fault.
+
+When the healer or the indexer encounters a document that is registered as a
+deliberate exclusion (or carries a ``no_index`` sidecar) and that WOULD otherwise have
+been (re-)added to the index, that event must be **impossible to miss**. Casework's
+words: *"a deliberately excluded document CANNOT be re-added by an automated process
+without something loudly saying so … the absence of an alert is itself the fault."*
+
+Two surfaces, one record:
+
+* an immediate **CRITICAL** log line (operators / journald), and
+* a durable, append-only JSONL alert log that :func:`goldberg_system.observability.state.aggregate`
+  reads to raise a first-class, NAMED health check — :data:`RESTRICTED_REINGEST_CHECK`
+  (``restricted_reingest_blocked``) — that turns ``legal_system status`` degraded. Not
+  a buried DLQ line: a named failing check that names WHAT was blocked and WHY.
+
+The alert carries the ``raw_path`` + ``reason`` so a human immediately sees which
+restricted document an automated process tried to re-add, and under what authority it
+was excluded.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+from goldberg_system.config import config_dir
+from goldberg_system.provenance import now_iso
+
+log = logging.getLogger("goldberg.restricted")
+
+# The NAMED health check surfaced by ``legal_system status`` (state.aggregate).
+RESTRICTED_REINGEST_CHECK = "restricted_reingest_blocked"
+
+ALERT_LOG_FILENAME = "restricted-reingest-alerts.jsonl"
+
+
+@dataclass(frozen=True)
+class BlockedReingest:
+    """One blocked attempt to (re-)add a restricted/registered-excluded document."""
+
+    raw_path: str
+    reason: str
+    source: str  # e.g. "catchup", "elasticsearch_indexer"
+    timestamp: str
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self), sort_keys=True, ensure_ascii=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "BlockedReingest":
+        return cls(
+            raw_path=str(data.get("raw_path") or ""),
+            reason=str(data.get("reason") or ""),
+            source=str(data.get("source") or ""),
+            timestamp=str(data.get("timestamp") or ""),
+        )
+
+
+def default_alert_log_path() -> Path:
+    """The durable alert log the status check reads (``<config_dir>/...``)."""
+    return config_dir() / ALERT_LOG_FILENAME
+
+
+def record_blocked_reingest(
+    raw_path: str,
+    reason: str,
+    *,
+    source: str,
+    log_path: Path | str | None = None,
+    logger: logging.Logger | None = None,
+) -> BlockedReingest:
+    """LOUDLY record that a restricted document was blocked from (re-)ingestion.
+
+    Always emits a CRITICAL log line. Appends a durable JSONL alert **only** when
+    ``log_path`` is given (production wiring passes :func:`default_alert_log_path`), so
+    unit-level callers can assert the CRITICAL behaviour without writing a file.
+    """
+    alert = BlockedReingest(
+        raw_path=raw_path,
+        reason=reason or "(no reason recorded)",
+        source=source,
+        timestamp=now_iso(),
+    )
+    (logger or log).critical(
+        "BLOCKED re-ingestion of restricted document %s (%s) — source=%s. "
+        "A deliberately-excluded document was almost re-added by an automated process.",
+        alert.raw_path,
+        alert.reason,
+        alert.source,
+    )
+    if log_path is not None:
+        p = Path(log_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a", encoding="utf-8") as fh:
+            fh.write(alert.to_json() + "\n")
+    return alert
+
+
+def load_blocked_reingests(
+    log_path: Path | str | None = None,
+) -> list[BlockedReingest]:
+    """Load recorded alerts (default: :func:`default_alert_log_path`). Missing → []."""
+    p = Path(log_path) if log_path is not None else default_alert_log_path()
+    if not p.is_file():
+        return []
+    alerts: list[BlockedReingest] = []
+    for raw_line in p.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            alerts.append(BlockedReingest.from_dict(json.loads(line)))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            log.warning("restricted-alert log: skipping malformed line: %s", line[:120])
+    return alerts
+
+
+def summarize_blocked(alerts: Iterable[BlockedReingest]) -> str:
+    """A one-line detail string for the health check, naming path + reason."""
+    items = list(alerts)
+    if not items:
+        return "none"
+    shown = "; ".join(f"{a.raw_path} ({a.reason})" for a in items[:5])
+    if len(items) > 5:
+        shown += f"; +{len(items) - 5} more"
+    return f"{len(items)} blocked restricted re-ingestion(s): {shown}"

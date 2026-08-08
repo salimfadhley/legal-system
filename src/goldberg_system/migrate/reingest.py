@@ -22,7 +22,7 @@ from goldberg_system.extract.docling_client import DoclingClient, DoclingError
 from goldberg_system.migrate.manifest import Manifest, entry_is_no_index
 from goldberg_system.observability.events import PipelineEvent, safe_emit
 from goldberg_system.pipeline import build_enriched_from_raw, write_to_sinks
-from goldberg_system.sinks.base import Sink
+from goldberg_system.sinks.base import Sink, SupportsRawPathDeletion
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class ReingestReport:
             self.skipped_indexed += 1
         elif status == "skipped-no-index":
             self.skipped_no_index += 1
-        elif status == "missing":
+        elif status == "missing-file":
             self.missing_file += 1
         else:  # failed / sink-failed / error
             self.failures += 1
@@ -121,14 +121,23 @@ def reingest_from_raw(
 
         path = root / raw_path
         if not path.is_file():
+            # TERMINAL, not transient: the raw file is gone. Retrying forever (casework
+            # saw the same path fail every 20-40 min) is wrong — and a stale index entry
+            # citing a raw_path that can no longer be opened reads as fabrication, so we
+            # tombstone it: remove the stale record from any deletion-capable sink.
+            removed = 0
+            for sink in sinks:
+                if isinstance(sink, SupportsRawPathDeletion):
+                    removed += sink.remove_by_raw_path(raw_path)
             emit(
                 "received",
                 "failed",
                 sha,
                 raw_path,
                 reason="file missing in goldberg-raw",
+                removed_stale=removed,
             )
-            return raw_path, "missing"
+            return raw_path, "missing-file"
         emit("received", "ok", sha, raw_path)
 
         try:

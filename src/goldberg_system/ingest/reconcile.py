@@ -26,6 +26,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
+from goldberg_system.exclusion_registry import ExclusionRegistry
 from goldberg_system.ingest.catchup import entry_is_ingestable
 from goldberg_system.migrate.allowlist import Allowlist
 from goldberg_system.migrate.manifest import _sha256, build_entry, entry_is_no_index
@@ -55,6 +56,7 @@ class GapReport:
     gap: list[GapFile] = field(default_factory=list)
     skipped_no_index: int = 0  # restricted (no_index) files excluded from the scan
     skipped_media: int = 0  # media (_SKIP_EXT) files excluded from the scan
+    skipped_excluded: int = 0  # deliberately-excluded (registry) files — never a gap
     indexed_truncated: bool = False  # the indexed-sha lookup itself hit its size cap
 
     @property
@@ -79,7 +81,8 @@ class GapReport:
         return (
             f"scanned={self.scanned} indexed={self.indexed_shas} "
             f"gap={self.gap_count} skipped_no_index={self.skipped_no_index} "
-            f"skipped_media={self.skipped_media} complete={self.complete}{cap}"
+            f"skipped_media={self.skipped_media} "
+            f"skipped_excluded={self.skipped_excluded} complete={self.complete}{cap}"
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -90,6 +93,7 @@ class GapReport:
             "gap_count": self.gap_count,
             "skipped_no_index": self.skipped_no_index,
             "skipped_media": self.skipped_media,
+            "skipped_excluded": self.skipped_excluded,
             "indexed_truncated": self.indexed_truncated,
             "by_tree": self.by_tree,
             "gap": [asdict(gf) for gf in self.gap],
@@ -103,6 +107,7 @@ def reconcile_gap(
     indexed_shas: Iterable[str],
     with_commit: bool = False,
     indexed_truncated: bool = False,
+    registry: ExclusionRegistry | None = None,
 ) -> GapReport:
     """List every ingestable goldberg-raw file whose content is NOT in the index.
 
@@ -126,6 +131,7 @@ def reconcile_gap(
     scanned = 0
     skipped_no_index = 0
     skipped_media = 0
+    skipped_excluded = 0
     gap: list[GapFile] = []
 
     for path in sorted(root.rglob("*")):
@@ -140,9 +146,13 @@ def reconcile_gap(
             continue
         record = asdict(entry)
         # Select-layer skip — the ONE shared predicate. Attribute the exclusion only
-        # for the report; entry_is_ingestable remains the authoritative gate.
-        if not entry_is_ingestable(record):
-            if entry_is_no_index(record):
+        # for the report; entry_is_ingestable remains the authoritative gate. A
+        # deliberately-excluded (registry) file is NOT an invisible gap to heal —
+        # attribute it first so a registered purge never shows up as "missing".
+        if not entry_is_ingestable(record, registry):
+            if registry is not None and registry.excludes_entry(record):
+                skipped_excluded += 1
+            elif entry_is_no_index(record):
                 skipped_no_index += 1
             else:
                 skipped_media += 1
@@ -163,6 +173,7 @@ def reconcile_gap(
         gap=gap,
         skipped_no_index=skipped_no_index,
         skipped_media=skipped_media,
+        skipped_excluded=skipped_excluded,
         indexed_truncated=indexed_truncated,
     )
 
@@ -224,6 +235,7 @@ def classify_path(
     indexed_shas: Iterable[str],
     allowlist: Allowlist,
     with_commit: bool = False,
+    registry: ExclusionRegistry | None = None,
 ) -> dict[str, Any]:
     """Classify a single ``raw_path``: is it in goldberg-raw, and is it in the index?
 
@@ -244,13 +256,23 @@ def classify_path(
 
     if in_raw:
         raw_sha = _sha256(abs_path)  # the same content hash catch-up computes
+        registry_hit = (
+            registry.match(raw_path=rel.as_posix(), raw_sha256=raw_sha)
+            if registry is not None
+            else None
+        )
         entry = build_entry(root, rel, allowlist, with_commit=with_commit)
-        if entry is None:
+        if registry_hit is not None:
+            # Deliberately excluded (a purge under undertaking): expected to be absent,
+            # and must NEVER be reported as an invisible gap to heal.
+            ingestable = False
+            note = f"deliberately excluded (registry): {registry_hit.reason}"
+        elif entry is None:
             # Walk-layer excluded (folder metadata.yaml / exclude_globs / outside tree):
             # legitimately not evidence, so it is expected to be absent from the index.
             ingestable = False
             note = "excluded from ingestion (not evidence / not under an allowlisted tree)"
-        elif not entry_is_ingestable(asdict(entry)):
+        elif not entry_is_ingestable(asdict(entry), registry):
             ingestable = False
             note = (
                 "restricted (no_index)"

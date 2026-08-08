@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from goldberg_system.enrichment.adapter import EnrichmentAdapter
+from goldberg_system.exclusion_registry import ExclusionEntry, ExclusionRegistry
 from goldberg_system.extract.docling_client import DoclingClient
 from goldberg_system.migrate.allowlist import Allowlist
 from goldberg_system.migrate.manifest import (
@@ -40,6 +41,7 @@ from goldberg_system.migrate.manifest import (
 )
 from goldberg_system.migrate.reingest import _SKIP_EXT, reingest_from_raw
 from goldberg_system.observability.events import EventSink
+from goldberg_system.observability.restricted_alert import record_blocked_reingest
 from goldberg_system.provenance import now_iso
 from goldberg_system.sinks.base import Sink
 
@@ -69,6 +71,7 @@ class CatchupReport:
     elapsed: float  # seconds
     remaining_pending: int = 0  # TRUE pending NOT reached this bounded pass (backlog)
     no_index_skipped: int = 0  # restricted (no_index) docs excluded from ingestion
+    deliberately_excluded: int = 0  # registered exclusions the healer refused to re-add
 
     @property
     def degraded(self) -> bool:
@@ -90,6 +93,7 @@ class CatchupReport:
             f"skipped={self.skipped} dead_lettered={self.dead_lettered} "
             f"remaining_pending={self.remaining_pending} "
             f"no_index_skipped={self.no_index_skipped} "
+            f"deliberately_excluded={self.deliberately_excluded} "
             f"degraded={self.degraded} elapsed={self.elapsed:.1f}s"
         )
 
@@ -158,7 +162,9 @@ def refresh_provenance(
     )
 
 
-def entry_is_ingestable(entry: dict) -> bool:
+def entry_is_ingestable(
+    entry: dict, registry: ExclusionRegistry | None = None
+) -> bool:
     """The single select-layer predicate: is this entry eligible to be indexed?
 
     ONE skip list, shared by catch-up selection (:func:`select_pending` /
@@ -166,6 +172,10 @@ def entry_is_ingestable(entry: dict) -> bool:
     (:mod:`goldberg_system.ingest.reconcile`), so neither can drift from the other.
     It excludes exactly what catch-up excludes at selection time:
 
+    * **deliberately-excluded** entries — a ``raw_path``/``raw_sha256`` in the
+      exclusion registry (a purge under a court undertaking, etc.). This is the
+      class-fault fix: a registered exclusion is NEVER a gap to heal, even if it
+      carries no ``no_index`` sidecar;
     * restricted (``no_index``) subtrees — provenance-tracked but never indexed; and
     * media extensions (:data:`_SKIP_EXT`) — no OCR-able text.
 
@@ -173,6 +183,8 @@ def entry_is_ingestable(entry: dict) -> bool:
     matches, files outside any allowlisted tree) is applied earlier by
     :func:`build_entry` / :func:`refresh_provenance`, not here.
     """
+    if registry is not None and registry.excludes_entry(entry):  # deliberate purge
+        return False
     if entry_is_no_index(entry):  # restricted subtree — never index (recursive)
         return False
     if Path(entry.get("raw_path", "")).suffix.lower() in _SKIP_EXT:  # media
@@ -186,20 +198,21 @@ def select_pending(
     batch: int,
     *,
     non_indexable: frozenset[str] = frozenset(),
+    registry: ExclusionRegistry | None = None,
 ) -> list[tuple[str, dict]]:
     """The bounded batch of not-yet-indexed, ingestable manifest entries.
 
     Extracted from the reconciler's diff selection: excludes already-indexed shas
     (resume / idempotency), any ``non_indexable`` shas (empty/media proven this run),
-    and everything :func:`entry_is_ingestable` rejects (restricted + media) — so the
-    batch is spent on real pending work and the pass always makes forward progress
-    (FR-007).
+    and everything :func:`entry_is_ingestable` rejects (deliberately-excluded +
+    restricted + media) — so the batch is spent on real pending work, the pass always
+    makes forward progress (FR-007), and a registered exclusion can never be selected.
     """
     pending: list[tuple[str, dict]] = []
     for sha, entry in manifest.items():
         if sha in skip or sha in non_indexable:
             continue
-        if not entry_is_ingestable(entry):
+        if not entry_is_ingestable(entry, registry):
             continue
         pending.append((sha, entry))
         if len(pending) >= batch:
@@ -212,6 +225,7 @@ def count_pending(
     skip: set[str],
     *,
     non_indexable: frozenset[str] = frozenset(),
+    registry: ExclusionRegistry | None = None,
 ) -> int:
     """The TRUE total of not-yet-indexed, ingestable manifest entries (no batch cap).
 
@@ -223,10 +237,35 @@ def count_pending(
     for sha, entry in manifest.items():
         if sha in skip or sha in non_indexable:
             continue
-        if not entry_is_ingestable(entry):  # restricted + media — same skip list
+        if not entry_is_ingestable(entry, registry):  # same shared skip list
             continue
         total += 1
     return total
+
+
+def detect_blocked_reingests(
+    manifest: Manifest,
+    skip: set[str],
+    registry: ExclusionRegistry,
+) -> list[tuple[str, dict, ExclusionEntry]]:
+    """Registered exclusions the healer WOULD have (re-)added this pass — to alarm on.
+
+    An entry qualifies when it is not already indexed (``sha not in skip`` — so it is a
+    genuine re-add attempt, the exact failing scenario), is not a media file (which
+    legitimately never indexes anyway), and matches the exclusion registry. Everything
+    returned is logged CRITICAL and recorded as a first-class alert by :func:`run_catchup`;
+    it is the "something loudly saying so" casework required.
+    """
+    blocked: list[tuple[str, dict, ExclusionEntry]] = []
+    for sha, entry in manifest.items():
+        if sha in skip:  # already indexed — not a re-add attempt this pass
+            continue
+        if Path(entry.get("raw_path", "")).suffix.lower() in _SKIP_EXT:
+            continue  # media never indexes; not a meaningful "would have added"
+        match = registry.match_entry(entry)
+        if match is not None:
+            blocked.append((sha, entry, match))
+    return blocked
 
 
 def log_no_index_skips(manifest: Manifest) -> int:
@@ -266,16 +305,25 @@ def run_catchup(
     with_commit: bool = True,
     run_id_prefix: str = "catchup",
     clock: Callable[[], str] = now_iso,
+    registry: ExclusionRegistry | None = None,
+    alert_log: Path | str | None = None,
 ) -> CatchupReport:
     """Run exactly one bounded catch-up pass and return its :class:`CatchupReport`.
 
     A single pass — **no loop** (NFR-002): the event-driven processor, not polling,
     keeps the index current after this returns. Never raises on a per-document error
     (bad docs dead-letter via the reingest path and are counted).
+
+    ``registry`` (default: the tracked :func:`ExclusionRegistry.load_default`) is the
+    class-fault guard: a registered exclusion is never selected, and encountering one
+    that WOULD have been re-added is logged CRITICAL and recorded as a first-class
+    alert (``alert_log`` → :func:`~goldberg_system.observability.restricted_alert.record_blocked_reingest`).
     """
     started = clock()
     t0 = time.monotonic()
     run_id = f"{run_id_prefix}-{started}"
+    if registry is None:
+        registry = ExclusionRegistry.load_default()
 
     # 1. provenance BEFORE indexing (persisted to the manifest)
     refresh = refresh_provenance(
@@ -290,10 +338,23 @@ def run_catchup(
     # 2. resume set — what is already indexed
     skip = set(already_indexed())
 
+    # 2b. THE ALARM: registered exclusions this pass would otherwise have re-added must
+    #     be impossible to miss — CRITICAL log + a durable, named status alert. The
+    #     absence of an alert here was itself the fault.
+    blocked = detect_blocked_reingests(manifest, skip, registry)
+    for _sha, entry, match in blocked:
+        record_blocked_reingest(
+            entry.get("raw_path", "?"),
+            match.reason,
+            source="catchup",
+            log_path=alert_log,
+        )
+
     # 3. select the bounded difference — and count the TRUE (unbounded) pending total
     #    so any backlog beyond this batch is surfaced (remaining_pending), not silent.
-    total_pending = count_pending(manifest, skip)
-    pending = select_pending(manifest, skip, batch)
+    #    The registry is threaded through BOTH so a deliberate exclusion is never a gap.
+    total_pending = count_pending(manifest, skip, registry=registry)
+    pending = select_pending(manifest, skip, batch, registry=registry)
     only = {entry.get("raw_path", "") for _, entry in pending}
 
     # 4. process the difference via the reused reingest path
@@ -331,6 +392,7 @@ def run_catchup(
         elapsed=time.monotonic() - t0,
         remaining_pending=remaining_pending,
         no_index_skipped=no_index_skipped,
+        deliberately_excluded=len(blocked),
     )
 
 

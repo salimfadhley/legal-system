@@ -145,8 +145,15 @@ def aggregate(
     documents_index: str = "goldberg_documents",
     events_index: str = "goldberg_pipeline_events",
     failure_window_hours: float = DEFAULT_FAILURE_WINDOW_HOURS,
+    restricted_alert_log: Any | None = None,
 ) -> SystemState:
     """Assemble the canonical :class:`SystemState` from the observability indices."""
+    from goldberg_system.observability.restricted_alert import (
+        RESTRICTED_REINGEST_CHECK,
+        load_blocked_reingests,
+        summarize_blocked,
+    )
+
     docs = _count(client, documents_index)
     stage_status = _stage_status_counts(client, events_index)
     failures = _recent(client, events_index, ["failed"])
@@ -156,6 +163,11 @@ def aggregate(
 
     n_failed = sum(v for k, v in stage_status.items() if k.endswith("/failed"))
     n_skipped = sum(v for k, v in stage_status.items() if k.endswith("/skipped"))
+
+    # First-class ALARM: any restricted / deliberately-excluded document an automated
+    # process tried to re-add. A NAMED failing check (not a buried DLQ line) — casework:
+    # "the absence of an alert is itself the fault." Empty log → ok (excludes nothing).
+    blocked = load_blocked_reingests(restricted_alert_log)
 
     window = int(failure_window_hours)
     checks = [
@@ -173,6 +185,11 @@ def aggregate(
             name="events_flowing",
             ok=bool(stage_status),
             detail=(last_indexed or "no indexed events yet"),
+        ),
+        HealthCheck(
+            name=RESTRICTED_REINGEST_CHECK,
+            ok=not blocked,
+            detail=summarize_blocked(blocked),
         ),
     ]
     status = "ok" if all(c.ok for c in checks) else "degraded"

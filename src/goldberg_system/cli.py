@@ -410,6 +410,7 @@ def reconcile(do_ingest, limit, workers, as_json, index_override) -> None:  # ty
     verdict means the corpus really is fully represented.
     """
     from goldberg_system.config import project_path
+    from goldberg_system.exclusion_registry import ExclusionRegistry
     from goldberg_system.ingest.reconcile import indexed_raw_shas, reconcile_gap
     from goldberg_system.migrate.allowlist import Allowlist
     from goldberg_system.sinks import ElasticsearchIndexer
@@ -426,6 +427,7 @@ def reconcile(do_ingest, limit, workers, as_json, index_override) -> None:  # ty
         allowlist=allowlist,
         indexed_shas=indexed,
         indexed_truncated=truncated,
+        registry=ExclusionRegistry.load_default(),
     )
 
     dispatched: int | None = None
@@ -438,6 +440,10 @@ def reconcile(do_ingest, limit, workers, as_json, index_override) -> None:  # ty
             raw_root2, manifest_path, allowlist2, docling, enricher, indexer2,
             event_sink, already_indexed,
         ) = _build_ingest_deps(index_override)
+        from goldberg_system.observability.restricted_alert import (
+            default_alert_log_path,
+        )
+
         catchup = run_catchup(
             raw_root=raw_root2,
             manifest_path=manifest_path,
@@ -449,6 +455,7 @@ def reconcile(do_ingest, limit, workers, as_json, index_override) -> None:  # ty
             events=event_sink,
             batch=limit,
             workers=workers,
+            alert_log=default_alert_log_path(),
         )
         catchup_summary = catchup.summary_line()
         dispatched = catchup.pending
@@ -706,8 +713,9 @@ def trace(key) -> None:  # type: ignore[no-untyped-def]
     help="Only count what would be purged; delete nothing.",
 )
 @click.option(
-    "--reason", default=None,
-    help="Why this content is being purged (recorded in the printed summary, "
+    "--reason", default=None, required=True,
+    help="Why this content is being purged (REQUIRED — recorded in the durable "
+    "exclusion registry so the healer can never silently re-add it, "
     "e.g. 'CPR 32.12 — restricted witness statements').",
 )
 @click.option(
@@ -728,10 +736,12 @@ def deindex_cmd(paths, extracted_root, dry_run, reason, index_override, force) -
     overrides) so a stray ``--path /`` cannot wipe the corpus.
     """
     from goldberg_system.deindex import DeindexError, deindex
+    from goldberg_system.exclusion_registry import default_registry_path
     from goldberg_system.sinks import ElasticsearchIndexer
 
     indexer = ElasticsearchIndexer.from_env()
     index = index_override or indexer.index
+    registry_path = default_registry_path()
 
     try:
         result = deindex(
@@ -741,6 +751,8 @@ def deindex_cmd(paths, extracted_root, dry_run, reason, index_override, force) -
             extracted_root=extracted_root,
             dry_run=dry_run,
             force=force,
+            reason=reason,
+            registry_path=registry_path,
         )
     except DeindexError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -750,6 +762,11 @@ def deindex_cmd(paths, extracted_root, dry_run, reason, index_override, force) -
     if reason:
         click.echo(f"  reason: {reason}")
     click.echo(f"  prefixes: {', '.join(result.prefixes)}")
+    if result.registered:
+        click.echo(
+            f"  exclusion registry: recorded {len(result.registered)} prefix(es) "
+            f"→ {registry_path}"
+        )
     if dry_run:
         click.echo(f"  elasticsearch: {result.es_matched} document(s) WOULD be deleted")
     else:
@@ -767,6 +784,79 @@ def deindex_cmd(paths, extracted_root, dry_run, reason, index_override, force) -
             click.echo(f"    - {rp}")
     if not dry_run:
         click.echo("done. (extracted-store deletions are unstaged — commit them.)")
+
+
+@main.group("exclusions")
+def exclusions() -> None:
+    """The durable exclusion registry — deliberately-purged documents that must NEVER
+    be re-added by an automated process (the CPR-32.12 class-fault guard)."""
+
+
+@exclusions.command("list")
+@click.option(
+    "--registry", "registry_override", default=None,
+    help="Registry file to read (default: config/exclusion-registry.jsonl).",
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit the entries as JSON.")
+def exclusions_list(registry_override, as_json) -> None:  # type: ignore[no-untyped-def]
+    """List every recorded deliberate exclusion (raw_path, reason, source, timestamp)."""
+    from goldberg_system.exclusion_registry import (
+        ExclusionRegistry,
+        default_registry_path,
+    )
+
+    path = Path(registry_override) if registry_override else default_registry_path()
+    registry = ExclusionRegistry.load(path)
+    if as_json:
+        click.echo(
+            json.dumps(
+                [
+                    {
+                        "raw_path": e.raw_path,
+                        "raw_sha256": e.raw_sha256,
+                        "reason": e.reason,
+                        "timestamp": e.timestamp,
+                        "source": e.source,
+                    }
+                    for e in registry.entries
+                ],
+                indent=2,
+            )
+        )
+        return
+    click.echo(f"exclusion registry: {path}")
+    if not registry.entries:
+        click.echo("  (no exclusions recorded)")
+        return
+    click.echo(f"  {len(registry.entries)} exclusion(s):")
+    for e in registry.entries:
+        sha = f" sha={e.raw_sha256[:12]}…" if e.raw_sha256 else ""
+        click.echo(f"    • [{e.source}] {e.raw_path}{sha}")
+        click.echo(f"        {e.reason}  ({e.timestamp})")
+
+
+@exclusions.command("add")
+@click.option("--path", "raw_path", required=True, help="raw_path (or prefix) to exclude.")
+@click.option("--reason", required=True, help="Why this content must never be re-added.")
+@click.option("--sha256", "raw_sha256", default=None, help="Content SHA-256 (if known).")
+@click.option(
+    "--registry", "registry_override", default=None,
+    help="Registry file to append to (default: config/exclusion-registry.jsonl).",
+)
+def exclusions_add(raw_path, reason, raw_sha256, registry_override) -> None:  # type: ignore[no-untyped-def]
+    """Manually record a deliberate exclusion (source=manual). Append-only."""
+    from goldberg_system.exclusion_registry import (
+        SOURCE_MANUAL,
+        default_registry_path,
+        record_exclusion,
+    )
+
+    path = Path(registry_override) if registry_override else default_registry_path()
+    entry = record_exclusion(
+        raw_path, reason=reason, source=SOURCE_MANUAL, raw_sha256=raw_sha256, path=path
+    )
+    click.echo(f"recorded exclusion → {path}")
+    click.echo(f"  • {entry.raw_path}  ({entry.reason})")
 
 
 @main.command("backfill-extracted")
@@ -1306,6 +1396,10 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
         MessagingConfig.from_env(), durable=durable, max_deliver=max_deliver
     )
 
+    from goldberg_system.observability.restricted_alert import default_alert_log_path
+
+    restricted_alert_log = default_alert_log_path()
+
     # One bounded startup catch-up (no loop) — closes gaps from downtime.
     catchup_report = None
     if not no_catchup:
@@ -1321,6 +1415,7 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
             events=event_sink,
             batch=batch,
             workers=workers,
+            alert_log=restricted_alert_log,
         )
         click.echo(catchup_report.summary_line())
 
@@ -1401,6 +1496,7 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
                     events=event_sink,
                     batch=batch,
                     workers=workers,
+                    alert_log=restricted_alert_log,
                 )
 
             catchup_task = asyncio.create_task(

@@ -49,3 +49,17 @@ class Sink(Protocol):
     def write(self, document: EnrichedDocument) -> SinkResult:
         """Persist/index ``document``; return a :class:`SinkResult`."""
         ...
+
+
+@runtime_checkable
+class SupportsRawPathDeletion(Protocol):
+    """A sink that can remove a stale record by its ``raw_path``.
+
+    Used to tombstone an indexed document whose raw file has been deleted from
+    goldberg-raw: an indexed doc citing a raw_path that can no longer be opened reads
+    as fabrication, so the stale entry must be removed when the source vanishes.
+    """
+
+    def remove_by_raw_path(self, raw_path: str) -> int:
+        """Delete every record whose ``raw_path`` equals ``raw_path``; return the count."""
+        ...

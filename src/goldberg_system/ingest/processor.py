@@ -55,11 +55,16 @@ from goldberg_system.sinks.base import Sink
 
 log = logging.getLogger("goldberg.ingest")
 
-# A per-file status that means "done, do not retry". Everything else (missing,
-# sink-failed, extract-failed, error) is treated as transient → retry then dead-letter.
+# A per-file status that means "done, do not retry". Everything else (sink-failed,
+# extract-failed, error, and the transient "missing" = not-yet-processed/unpulled-LFS)
+# is treated as transient → retry then dead-letter.
 _TERMINAL_OK = frozenset(
     {"indexed", "skipped-indexed", "skipped-media", "skipped-empty", "skipped-no-index"}
 )
+# TERMINAL-but-not-success: the raw file is gone from goldberg-raw. This must NOT be
+# retried forever (casework saw the same path fail every 20-40 min); reingest has already
+# tombstoned the stale index entry. We ack (stop the loop) rather than nak indefinitely.
+_TERMINAL_MISSING_FILE = frozenset({"missing-file"})
 
 
 @dataclass(frozen=True)
@@ -72,7 +77,9 @@ class FileResult:
 
     @property
     def ok(self) -> bool:
-        return self.status in _TERMINAL_OK
+        # "ok" here means "terminal, do not retry" — both a clean outcome and a
+        # terminal missing-file (already tombstoned) stop redelivery.
+        return self.status in _TERMINAL_OK or self.status in _TERMINAL_MISSING_FILE
 
 
 @dataclass

@@ -14,10 +14,16 @@ deliberate follow-up, not indexed here yet.
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
 from typing import Any
 
+from goldberg_system.exclusion_registry import ExclusionRegistry
 from goldberg_system.identity import compute_content_hash
+from goldberg_system.observability.restricted_alert import record_blocked_reingest
 from goldberg_system.sinks.base import EnrichedDocument, SinkResult
+
+log = logging.getLogger("goldberg.sink")
 
 INDEX_MAPPING: dict[str, Any] = {
     # A document can carry many atomic claims; the contradiction detector retrieves
@@ -172,9 +178,21 @@ def ensure_index(client: Any, index: str) -> bool:
 class ElasticsearchIndexer:
     """A :class:`~goldberg_system.sinks.base.Sink` that indexes into Elasticsearch."""
 
-    def __init__(self, client: Any, index: str) -> None:
+    def __init__(
+        self,
+        client: Any,
+        index: str,
+        *,
+        registry: ExclusionRegistry | None = None,
+        alert_log: Path | str | None = None,
+    ) -> None:
         self.client = client
         self.index = index
+        # The exclusion registry (defense in depth). ``None`` at direct construction
+        # means "empty" (consulting it is a no-op) so unit tests stay side-effect-free;
+        # ``from_env`` loads the tracked default so production is always guarded.
+        self.registry = registry if registry is not None else ExclusionRegistry()
+        self.alert_log = alert_log
 
     @property
     def name(self) -> str:
@@ -183,21 +201,47 @@ class ElasticsearchIndexer:
     def ensure_index(self) -> bool:
         return ensure_index(self.client, self.index)
 
-    def write(self, document: EnrichedDocument) -> SinkResult:
-        # Defense in depth (the LOUD path): a restricted (no_index) document must never
-        # be written to the search index. If one reaches here it means the quiet ingest
-        # skip was bypassed, so we refuse it as a FAILED result — it dead-letters loudly
-        # (same philosophy as dead-lettering an un-decryptable doc) rather than leaking.
-        if document.metadata.no_index:
-            reason = document.metadata.no_index_reason or "(no reason given)"
-            return SinkResult(
-                sink=self.name,
-                ok=False,
-                detail=(
-                    f"refusing to index no_index document: "
-                    f"{document.raw_path} ({reason})"
-                ),
+    def _refusal(self, document: EnrichedDocument) -> tuple[str, str] | None:
+        """``(alert_reason, sink_detail)`` if the document must NOT be indexed, else None.
+
+        Two loud guards, in order of authority:
+        1. a registered **deliberate exclusion** (a purge under undertaking) — refused
+           even when the document carries NO ``no_index`` sidecar (the class fault:
+           sidecars patched the known four, but the RULE must hold for any future
+           deliberate exclusion); then
+        2. a ``no_index`` sidecar on the document itself.
+        """
+        hit = self.registry.match(
+            raw_path=document.raw_path, raw_sha256=document.metadata.raw_sha256
+        )
+        if hit is not None:
+            reason = f"deliberately excluded (registry): {hit.reason}"
+            return reason, (
+                f"refusing to index deliberately-excluded document: "
+                f"{document.raw_path} ({hit.reason})"
             )
+        if document.metadata.no_index:
+            why = document.metadata.no_index_reason or "(no reason given)"
+            return f"no_index: {why}", (
+                f"refusing to index no_index document: {document.raw_path} ({why})"
+            )
+        return None
+
+    def write(self, document: EnrichedDocument) -> SinkResult:
+        # Defense in depth (the LOUD path): a restricted / deliberately-excluded document
+        # must never be written to the search index. If one reaches here the quiet ingest
+        # skip was bypassed, so we refuse it as a FAILED result AND alarm (CRITICAL log +
+        # a named status alert) — silence on a re-add is itself the fault.
+        refusal = self._refusal(document)
+        if refusal is not None:
+            alert_reason, detail = refusal
+            record_blocked_reingest(
+                document.raw_path,
+                alert_reason,
+                source=self.name,
+                log_path=self.alert_log,
+            )
+            return SinkResult(sink=self.name, ok=False, detail=detail)
         try:
             self.client.index(
                 index=self.index,
@@ -208,9 +252,30 @@ class ElasticsearchIndexer:
         except Exception as exc:  # noqa: BLE001 - report any backend failure
             return SinkResult(sink=self.name, ok=False, detail=str(exc))
 
+    def remove_by_raw_path(self, raw_path: str) -> int:
+        """Delete every indexed document whose ``raw_path`` equals ``raw_path``.
+
+        Used to tombstone a stale entry when its raw file has vanished from
+        goldberg-raw. Returns the number of documents deleted (0 if none / on error).
+        """
+        try:
+            resp = self.client.delete_by_query(
+                index=self.index,
+                query={"term": {"raw_path": raw_path}},
+                refresh=True,
+            )
+            return int((resp or {}).get("deleted", 0))
+        except Exception as exc:  # noqa: BLE001 - a failed tombstone must not crash ingest
+            log.warning("stale-entry removal failed for %s: %s", raw_path, exc)
+            return 0
+
     @classmethod
     def from_env(cls) -> ElasticsearchIndexer:
-        """Build from ``GOLDBERG_ES_URL`` / ``GOLDBERG_ES_INDEX`` (with defaults)."""
+        """Build from ``GOLDBERG_ES_URL`` / ``GOLDBERG_ES_INDEX`` (with defaults).
+
+        Loads the tracked exclusion registry and points alerts at the durable log so a
+        production indexer is always guarded and always alarms visibly.
+        """
         import os
 
         try:
@@ -221,6 +286,13 @@ class ElasticsearchIndexer:
             pass
         from elasticsearch import Elasticsearch
 
+        from goldberg_system.observability.restricted_alert import default_alert_log_path
+
         url = os.environ.get("GOLDBERG_ES_URL", "http://192.168.86.31:9200")
         index = os.environ.get("GOLDBERG_ES_INDEX", "goldberg_documents")
-        return cls(Elasticsearch(url), index)
+        return cls(
+            Elasticsearch(url),
+            index,
+            registry=ExclusionRegistry.load_default(),
+            alert_log=default_alert_log_path(),
+        )
