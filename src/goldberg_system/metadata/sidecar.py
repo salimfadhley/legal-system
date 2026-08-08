@@ -19,15 +19,36 @@ This module is the single source of truth for:
 Two principles from the design doc are enforced here, never advisory:
 
 1. **Human metadata beats inference** — resolved values overlay the LLM's guesses.
-2. **Never fail silently** — a typo'd key, an orphan sidecar, a ``no_index`` with no
-   reason, or malformed YAML is *loud*: the offending **layer is dropped** (its values
-   are NOT applied) and the document still ingests with default/inherited metadata,
-   carrying a visible ``metadata_error``. Turning a typo into a *missing document* is
-   the exact failure this avoids.
+2. **Never fail silently** — a typo'd key, an orphan sidecar, or malformed YAML is
+   *loud*: the offending **layer is dropped** (its values are NOT applied) and the
+   document still ingests with default/inherited metadata, carrying a visible
+   ``metadata_error``. Turning a typo into a *missing document* is the exact failure
+   this avoids.
+
+**The ``no_index`` exclusion dimension is the one exception — it FAILS CLOSED.** For
+every ORDINARY field the risk of a bad layer is *losing a document*, so we fail open
+(ingest anyway, loudly). For ``no_index`` the risk is the opposite and far worse —
+*exposing legally-restricted material* — so any **apparent** exclusion attempt resolves
+to do-not-index and is recorded loudly (see :class:`_NoIndexResolution`):
+
+* ``no_index`` set truthy;
+* a fuzzy/typo variant of the key present *at all* (``noindex``, ``no-index``,
+  ``NO_INDEX``, ``no _index`` — anything that normalises to ``"noindex"``);
+* ``no_index`` present but the value is not a clean boolean;
+* ``no_index: true`` with a missing/empty ``no_index_reason``;
+* a layer that will not parse (malformed YAML / non-mapping) — we cannot prove it was
+  NOT an exclusion, so the subtree it governs fails closed.
+
+It is a **one-way latch**: ``no_index`` resolves as a logical OR across the chain, so a
+narrower ``no_index: false`` can never defeat a parent's exclusion (lifting one is a
+deliberate edit at the level that set it, visible in git). ``no_index_category``
+(``legally_obligatory`` | ``housekeeping``) is machine-distinguishable and defaults to
+the safer ``legally_obligatory`` so an unclassified exclusion alarms loudly.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -60,6 +81,7 @@ ALLOWED_KEYS: frozenset[str] = frozenset(
         "claim_source",
         "no_index",
         "no_index_reason",
+        "no_index_category",
         # --- prose + receipt-provenance additions (doc/system/metadata.md) ---
         "notes",
         "method",
@@ -74,6 +96,39 @@ ALLOWED_KEYS: frozenset[str] = frozenset(
 # List-valued keys are UNIONed across chain layers (augment); every other key is a scalar
 # and the most-specific layer OVERRIDES (last-writer-wins).
 LIST_KEYS: frozenset[str] = frozenset({"matters", "parties", "keywords"})
+
+# --- the fail-closed exclusion dimension (no_index) -------------------------------------
+NO_INDEX_KEY = "no_index"
+NO_INDEX_REASON_KEY = "no_index_reason"
+NO_INDEX_CATEGORY_KEY = "no_index_category"
+
+# The two recognised exclusion classes. ``legally_obligatory`` (court undertaking /
+# privilege / statutory restriction, e.g. CPIA s.17) is an INCIDENT if wrongly indexed;
+# ``housekeeping`` (build artefact / duplicate / derived) is noise. A missing/unknown
+# category defaults to ``legally_obligatory`` — the SAFER reading — so an unclassified
+# exclusion alarms loudly, not quietly.
+CATEGORY_LEGALLY_OBLIGATORY = "legally_obligatory"
+CATEGORY_HOUSEKEEPING = "housekeeping"
+RECOGNISED_NO_INDEX_CATEGORIES: frozenset[str] = frozenset(
+    {CATEGORY_LEGALLY_OBLIGATORY, CATEGORY_HOUSEKEEPING}
+)
+
+# A key "means no_index" if, lowercased with all whitespace/underscore/hyphen separators
+# stripped, it equals ``"noindex"``. This catches every fuzzy/typo variant casework named
+# (``noindex``, ``no-index``, ``No_Index``, ``NO_INDEX``, ``no _index``, …). The canonical
+# spelling is ``no_index``; ANY other spelling that matches is treated as an apparent
+# exclusion attempt (we cannot trust a value written under a misspelled key).
+_NOINDEX_NORMALISED = "noindex"
+_KEY_SEPARATORS = re.compile(r"[\s_\-]+")
+
+
+def _normalise_key(key: object) -> str:
+    return _KEY_SEPARATORS.sub("", str(key).lower())
+
+
+def is_no_index_key(key: object) -> bool:
+    """True if ``key`` is ``no_index`` OR a case/separator/typo variant of it."""
+    return _normalise_key(key) == _NOINDEX_NORMALISED
 
 # The value that means a date is asserted at face value — the only ``date_basis`` for which
 # ``date_uncertain`` defaults to False when a date is present (any other basis ⇒ uncertain).
@@ -134,9 +189,21 @@ class ResolvedMetadata:
         return "; ".join(self.errors) if self.errors else None
 
 
-def validate_layer(data: dict, source: str) -> list[str]:
-    """Return loud messages for every unknown key in one metadata ``data`` layer."""
-    unknown = sorted(k for k in data if k not in ALLOWED_KEYS)
+def validate_layer(
+    data: dict, source: str, *, ignore_no_index_variants: bool = False
+) -> list[str]:
+    """Return loud messages for every unknown key in one metadata ``data`` layer.
+
+    ``ignore_no_index_variants`` omits keys that normalise to ``no_index`` from the
+    unknown-key complaint — the fail-closed exclusion resolver already reports a
+    suspected-typo error for those, so the ordinary path must not double-report them.
+    """
+    unknown = sorted(
+        k
+        for k in data
+        if k not in ALLOWED_KEYS
+        and not (ignore_no_index_variants and is_no_index_key(k))
+    )
     if not unknown:
         return []
     return [f"{source}: unknown key(s) {unknown} — layer rejected, values NOT applied"]
@@ -169,17 +236,133 @@ def _chain_layers(rel: Path, root: Path) -> list[Path]:
     return layers
 
 
+@dataclass
+class _NoIndexResolution:
+    """Fold the ``no_index`` exclusion dimension across a file's chain — FAIL CLOSED.
+
+    ``no_index`` is a logical OR / one-way latch: once ANY layer sets it true — or merely
+    *appears* to attempt an exclusion — no narrower layer can turn it off. Every ambiguity
+    (a key typo, an unparseable value, a missing reason, a layer that would not parse)
+    resolves to do-not-index and is recorded loudly. The category resolves to the safer
+    ``legally_obligatory`` unless a well-formed layer explicitly and unambiguously says
+    ``housekeeping``.
+    """
+
+    latched: bool = False  # an exclusion (or apparent attempt) has fired → do-not-index
+    mentioned: bool = False  # some no_index key appeared (even a clean ``false``)
+    ambiguous: bool = False  # an apparent attempt we could not confirm safe
+    unknown_category: bool = False
+    explicit_reason: str | None = None
+    explicit_categories: set[str] = field(default_factory=set)
+    errors: list[str] = field(default_factory=list)
+
+    def note_unparseable_layer(self, source: str, detail: str) -> None:
+        """A layer that would not parse governs its subtree — fail it closed."""
+        self.latched = True
+        self.mentioned = True
+        self.ambiguous = True
+        self.errors.append(
+            f"{source}: {detail} — cannot rule out an exclusion; "
+            f"EXCLUDED fail-closed (do-not-index)"
+        )
+
+    def examine(self, data: dict, source: str) -> None:
+        """Inspect ONE parsed mapping's RAW keys for an apparent exclusion attempt.
+
+        Run on the raw layer BEFORE the unknown-key drop that governs ordinary fields, so
+        a fail-closed signal is never lost when the layer is dropped for an unrelated typo.
+        """
+        typos = sorted(k for k in data if is_no_index_key(k) and k != NO_INDEX_KEY)
+        if typos:  # a misspelled key present at all ⇒ assume exclusion was intended
+            self.latched = True
+            self.mentioned = True
+            self.ambiguous = True
+            self.errors.append(
+                f"{source}: suspected no_index typo {typos} — an apparent exclusion "
+                f"attempt; EXCLUDED fail-closed (do-not-index)"
+            )
+        if NO_INDEX_KEY in data:
+            self.mentioned = True
+            value = data[NO_INDEX_KEY]
+            if not isinstance(value, bool):  # ``maybe``, ``"true"``, 1, … — untrustworthy
+                self.latched = True
+                self.ambiguous = True
+                self.errors.append(
+                    f"{source}: no_index value {value!r} is not a clean boolean — "
+                    f"EXCLUDED fail-closed (do-not-index)"
+                )
+            elif value is True:
+                self.latched = True
+                reason = data.get(NO_INDEX_REASON_KEY)
+                if reason is None or not str(reason).strip():
+                    self.ambiguous = True
+                    self.errors.append(
+                        f"{source}: no_index set without no_index_reason — "
+                        f"EXCLUDED fail-closed (do-not-index)"
+                    )
+                else:
+                    self.explicit_reason = str(reason).strip()
+            # value is False ⇒ contributes nothing (OR-latch never lets it unset a parent).
+        category = data.get(NO_INDEX_CATEGORY_KEY)
+        if category is not None and str(category).strip():
+            value = str(category).strip()
+            if value in RECOGNISED_NO_INDEX_CATEGORIES:
+                self.explicit_categories.add(value)
+            else:
+                self.unknown_category = True
+                self.errors.append(
+                    f"{source}: unknown no_index_category {value!r} — defaulting to "
+                    f"{CATEGORY_LEGALLY_OBLIGATORY} (the safer reading)"
+                )
+
+    def resolved_reason(self) -> str:
+        if self.explicit_reason:
+            return self.explicit_reason
+        return (
+            "fail-closed: an apparent exclusion could not be confirmed safe "
+            "(see metadata_error)"
+        )
+
+    def resolved_category(self) -> str:
+        # Any ambiguity, an unknown category, or an explicit legally_obligatory ⇒ the
+        # serious class. Only a clean, explicit, housekeeping-ONLY exclusion is noise.
+        if (
+            self.ambiguous
+            or self.unknown_category
+            or CATEGORY_LEGALLY_OBLIGATORY in self.explicit_categories
+        ):
+            return CATEGORY_LEGALLY_OBLIGATORY
+        if self.explicit_categories == {CATEGORY_HOUSEKEEPING}:
+            return CATEGORY_HOUSEKEEPING
+        return CATEGORY_LEGALLY_OBLIGATORY  # missing category ⇒ safer reading
+
+    def apply(self, merged: dict[str, object]) -> None:
+        """Overwrite the exclusion keys on ``merged`` with the latched resolution."""
+        if self.latched:
+            merged[NO_INDEX_KEY] = True
+            merged[NO_INDEX_REASON_KEY] = self.resolved_reason()
+            merged[NO_INDEX_CATEGORY_KEY] = self.resolved_category()
+        elif self.mentioned:
+            merged[NO_INDEX_KEY] = False
+
+
 def resolve_chain(rel: Path, root: Path) -> ResolvedMetadata:
     """Resolve ``rel``'s full metadata chain (folder defaults + its per-file sidecar).
 
-    Every existing layer is validated in order. A layer with an unknown key, malformed
-    YAML, or a non-mapping body is **dropped whole** (its values are not applied) and the
-    failure is recorded — never raised — so the document still ingests. Finally, a
-    resolved ``no_index`` without a ``no_index_reason`` is itself a bad-key-class error:
-    the ``no_index`` is rejected (forced False) and the failure recorded loudly.
+    Ordinary fields **fail OPEN** exactly as before: a layer with an unknown key,
+    malformed YAML, or a non-mapping body is dropped whole (its values are not applied)
+    and the failure is recorded — never raised — so the document still ingests.
+
+    The ``no_index`` exclusion dimension **fails CLOSED** and is resolved SEPARATELY
+    (:class:`_NoIndexResolution`), examining every layer's raw data *independently* of the
+    unknown-key drop — so a fail-closed signal survives a layer that is dropped for an
+    unrelated typo, and an unparseable layer still excludes the subtree it governs. The
+    resolution is a one-way OR-latch, so a narrower ``no_index: false`` can never unset a
+    parent's exclusion.
     """
     merged: dict[str, object] = {}
     errors: list[str] = []
+    no_index = _NoIndexResolution()
     for layer in _chain_layers(rel, root):
         if not layer.is_file():
             continue
@@ -188,22 +371,22 @@ def resolve_chain(rel: Path, root: Path) -> ResolvedMetadata:
             data = yaml.safe_load(layer.read_text()) or {}
         except yaml.YAMLError as exc:
             errors.append(f"{source}: malformed YAML ({exc.__class__.__name__}) — layer rejected")
+            no_index.note_unparseable_layer(source, f"malformed YAML ({exc.__class__.__name__})")
             continue
         if not isinstance(data, dict):
             errors.append(f"{source}: not a mapping — layer rejected")
+            no_index.note_unparseable_layer(source, "metadata layer is not a mapping")
             continue
-        layer_errors = validate_layer(data, source)
+        # Exclusion dimension FIRST, on the raw layer — never lost to the ordinary drop.
+        no_index.examine(data, source)
+        layer_errors = validate_layer(data, source, ignore_no_index_variants=True)
         if layer_errors:
             errors.extend(layer_errors)
-            continue  # DROP the whole layer — its values are NOT applied
+            continue  # DROP the whole layer for ORDINARY fields — values NOT applied
         _merge_layer(merged, data)
 
-    if merged.get("no_index") and not merged.get("no_index_reason"):
-        errors.append(
-            f"{rel.as_posix()}: no_index set without no_index_reason — no_index REJECTED"
-        )
-        merged["no_index"] = False
-
+    errors.extend(no_index.errors)
+    no_index.apply(merged)  # the latched, fail-closed exclusion resolution wins
     return ResolvedMetadata(fields=merged, errors=errors)
 
 
@@ -269,10 +452,15 @@ def lint_file(path: Path, root: Path) -> list[LintFinding]:
     if not isinstance(data, dict):
         findings.append(LintFinding(source, False, "not a mapping"))
         return findings
-    for msg in validate_layer(data, source):
+    for msg in validate_layer(data, source, ignore_no_index_variants=True):
         findings.append(LintFinding(source, False, msg.split(": ", 1)[1]))
-    if data.get("no_index") and not data.get("no_index_reason"):
-        findings.append(LintFinding(source, False, "no_index set without no_index_reason"))
+    # The fail-closed exclusion dimension: a typo variant, an unparseable value, or a
+    # reason-less no_index is a HARD error at lint time too (the resolver would exclude
+    # the subtree — better to catch the mistake before ingest).
+    _excl = _NoIndexResolution()
+    _excl.examine(data, source)
+    for msg in _excl.errors:
+        findings.append(LintFinding(source, False, msg.split(": ", 1)[1]))
     # A method-less authoritative override is a WARNING — only when the file is otherwise
     # error-free (a hard error already speaks louder, and we must not overwrite it in a
     # path→finding map). The override may be correct; it is simply unexplained.

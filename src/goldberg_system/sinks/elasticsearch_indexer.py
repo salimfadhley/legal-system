@@ -201,15 +201,18 @@ class ElasticsearchIndexer:
     def ensure_index(self) -> bool:
         return ensure_index(self.client, self.index)
 
-    def _refusal(self, document: EnrichedDocument) -> tuple[str, str] | None:
-        """``(alert_reason, sink_detail)`` if the document must NOT be indexed, else None.
+    def _refusal(self, document: EnrichedDocument) -> tuple[str, str, str | None] | None:
+        """``(alert_reason, sink_detail, category)`` if it must NOT be indexed, else None.
 
         Two loud guards, in order of authority:
         1. a registered **deliberate exclusion** (a purge under undertaking) — refused
            even when the document carries NO ``no_index`` sidecar (the class fault:
            sidecars patched the known four, but the RULE must hold for any future
-           deliberate exclusion); then
-        2. a ``no_index`` sidecar on the document itself.
+           deliberate exclusion). The registry records no category, so it defaults to the
+           safer ``legally_obligatory`` (a purge under undertaking IS legally obligatory);
+           then
+        2. a ``no_index`` sidecar on the document itself — carrying its resolved
+           ``no_index_category`` so the alarm's severity matches the exclusion class.
         """
         hit = self.registry.match(
             raw_path=document.raw_path, raw_sha256=document.metadata.raw_sha256
@@ -219,26 +222,28 @@ class ElasticsearchIndexer:
             return reason, (
                 f"refusing to index deliberately-excluded document: "
                 f"{document.raw_path} ({hit.reason})"
-            )
+            ), None  # None → legally_obligatory (a purge under undertaking)
         if document.metadata.no_index:
             why = document.metadata.no_index_reason or "(no reason given)"
             return f"no_index: {why}", (
                 f"refusing to index no_index document: {document.raw_path} ({why})"
-            )
+            ), document.metadata.no_index_category
         return None
 
     def write(self, document: EnrichedDocument) -> SinkResult:
         # Defense in depth (the LOUD path): a restricted / deliberately-excluded document
         # must never be written to the search index. If one reaches here the quiet ingest
-        # skip was bypassed, so we refuse it as a FAILED result AND alarm (CRITICAL log +
-        # a named status alert) — silence on a re-add is itself the fault.
+        # skip was bypassed, so we refuse it as a FAILED result AND alarm (severity-aware:
+        # CRITICAL for legally_obligatory, WARNING for housekeeping + a named status
+        # alert) — silence on a re-add is itself the fault.
         refusal = self._refusal(document)
         if refusal is not None:
-            alert_reason, detail = refusal
+            alert_reason, detail, category = refusal
             record_blocked_reingest(
                 document.raw_path,
                 alert_reason,
                 source=self.name,
+                category=category,
                 log_path=self.alert_log,
             )
             return SinkResult(sink=self.name, ok=False, detail=detail)

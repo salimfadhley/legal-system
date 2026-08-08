@@ -347,6 +347,7 @@ def run_catchup(
             entry.get("raw_path", "?"),
             match.reason,
             source="catchup",
+            category=entry.get("no_index_category"),  # None → safer legally_obligatory
             log_path=alert_log,
         )
 

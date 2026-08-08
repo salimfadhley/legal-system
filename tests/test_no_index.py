@@ -88,12 +88,16 @@ def test_no_index_resolves_recursively_through_the_chain(tmp_path: Path) -> None
     assert fields["no_index_reason"].startswith("CPR 32.12")
 
 
-def test_child_folder_may_reinclude_with_no_index_false(tmp_path: Path) -> None:
+def test_child_no_index_false_cannot_unset_parent_exclusion(tmp_path: Path) -> None:
+    # ONE-WAY LATCH (casework requirement): once a parent folder sets no_index, a narrower
+    # ``no_index: false`` can NEVER re-include a subtree — no_index resolves as a logical
+    # OR across the chain, not last-writer-wins. Lifting an exclusion must be a deliberate
+    # edit at the level that set it (visible in git), not a quiet child override.
     root = tmp_path / "raw"
     restricted = root / "evidence" / "restricted"
     (restricted / "public").mkdir(parents=True)
     (restricted / "metadata.yaml").write_text("no_index: true\nno_index_reason: r\n")
-    # a child folder deliberately re-includes itself
+    # a child folder tries to re-include itself — and must be DEFEATED by the latch
     (restricted / "public" / "metadata.yaml").write_text("no_index: false\n")
     (restricted / "public" / "ok.txt").write_text("fine")
     (restricted / "hidden.txt").write_text("nope")
@@ -101,7 +105,8 @@ def test_child_folder_may_reinclude_with_no_index_false(tmp_path: Path) -> None:
     hidden = build_entry(root, Path("evidence/restricted/hidden.txt"), _allowlist())
     public = build_entry(root, Path("evidence/restricted/public/ok.txt"), _allowlist())
     assert hidden is not None and hidden.no_index is True
-    assert public is not None and public.no_index is False
+    # the child's ``no_index: false`` did NOT defeat the parent exclusion
+    assert public is not None and public.no_index is True
 
 
 # --------------------------------------------------------------------------- #

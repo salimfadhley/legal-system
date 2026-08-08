@@ -195,17 +195,20 @@ def test_unknown_key_drops_layer_but_keeps_document(tmp_path: Path) -> None:
     assert entry.matters == ["4225"]
 
 
-def test_no_index_without_reason_is_rejected_loudly(tmp_path: Path) -> None:
+def test_no_index_without_reason_fails_closed_and_alarms(tmp_path: Path) -> None:
     root = _seed(tmp_path)
     (root / "evidence" / "folder" / "doc.pdf.metadata.yaml").write_text(
         "no_index: true\n"
     )
     entry = build_entry(root, Path("evidence/folder/doc.pdf"), _allowlist(tmp_path))
     assert entry is not None
-    # a no_index with no reason is a bad-key-class error: the no_index is rejected
-    assert entry.no_index is False
+    # FAIL CLOSED (casework): no_index: true with a missing reason now EXCLUDES the doc
+    # (do-not-index) and alarms that the reason is missing — it must never "index anyway".
+    assert entry.no_index is True
     assert entry.metadata_error is not None
     assert "no_index_reason" in entry.metadata_error
+    # an unclassified exclusion defaults to the safer, higher-severity category
+    assert entry.no_index_category == "legally_obligatory"
 
 
 def test_no_index_with_reason_is_honoured(tmp_path: Path) -> None:
@@ -226,9 +229,14 @@ def test_malformed_yaml_layer_rejected_not_fatal(tmp_path: Path) -> None:
     )
     entry = build_entry(root, Path("evidence/folder/doc.pdf"), _allowlist(tmp_path))
     assert entry is not None
+    # ORDINARY fields still FAIL OPEN: the dropped layer's author is simply not applied.
     assert entry.author is None
     assert entry.metadata_error is not None
     assert "malformed YAML" in entry.metadata_error
+    # …but the EXCLUSION dimension FAILS CLOSED: an unparseable layer could have been an
+    # exclusion, so the document it governs is do-not-index (over-exclusion is cheap).
+    assert entry.no_index is True
+    assert entry.no_index_category == "legally_obligatory"
 
 
 @pytest.mark.parametrize("bad_key", ["autor", "mater", "claimsource", "no_indexx"])

@@ -38,6 +38,10 @@ class ManifestEntry:
     claim_source: str | None = None
     no_index: bool = False  # legally/contractually restricted — never index (recursive)
     no_index_reason: str | None = None
+    # The machine-distinguishable exclusion class (sidecar.CATEGORY_*): resolved to the
+    # safer ``legally_obligatory`` unless a well-formed layer says ``housekeeping``. Feeds
+    # the restricted-reingest alarm's severity. Only meaningful when ``no_index`` is True.
+    no_index_category: str | None = None
     # --- per-file sidecar prose + receipt-provenance (doc/system/metadata.md) ---
     notes: str | None = None
     method: str | None = None
@@ -97,6 +101,7 @@ _PASSTHROUGH_FIELDS = (
     "claim_source",
     "no_index",
     "no_index_reason",
+    "no_index_category",
     # prose + receipt-provenance additions (each flows exactly like claim_source)
     "notes",
     "method",
@@ -210,6 +215,7 @@ def build_entry(
         claim_source=_opt_str(chain.get("claim_source")),
         no_index=bool(chain.get("no_index", False)),
         no_index_reason=_opt_str(chain.get("no_index_reason")),
+        no_index_category=_opt_str(chain.get("no_index_category")),
         notes=_opt_str(chain.get("notes")),
         method=_opt_str(chain.get("method")),
         date=_opt_str(chain.get("date")),
@@ -293,6 +299,7 @@ class Manifest:
             claim_source=entry.get("claim_source"),
             no_index=bool(entry.get("no_index", False)),
             no_index_reason=entry.get("no_index_reason"),
+            no_index_category=entry.get("no_index_category"),
             notes=entry.get("notes"),
             method=entry.get("method"),
             date=entry.get("date"),

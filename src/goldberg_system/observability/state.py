@@ -151,6 +151,7 @@ def aggregate(
     from goldberg_system.observability.restricted_alert import (
         RESTRICTED_REINGEST_CHECK,
         load_blocked_reingests,
+        partition_by_severity,
         summarize_blocked,
     )
 
@@ -167,7 +168,11 @@ def aggregate(
     # First-class ALARM: any restricted / deliberately-excluded document an automated
     # process tried to re-add. A NAMED failing check (not a buried DLQ line) — casework:
     # "the absence of an alert is itself the fault." Empty log → ok (excludes nothing).
+    # Severity-aware: a ``legally_obligatory`` block is an INCIDENT that fails the check
+    # (degrades health); a ``housekeeping`` block is NOISE — surfaced in the detail but
+    # not degrading — so the two classes are a distinct, machine-readable signal.
     blocked = load_blocked_reingests(restricted_alert_log)
+    blocked_incidents, _blocked_noise = partition_by_severity(blocked)
 
     window = int(failure_window_hours)
     checks = [
@@ -188,7 +193,7 @@ def aggregate(
         ),
         HealthCheck(
             name=RESTRICTED_REINGEST_CHECK,
-            ok=not blocked,
+            ok=not blocked_incidents,  # only a legally_obligatory INCIDENT degrades health
             detail=summarize_blocked(blocked),
         ),
     ]

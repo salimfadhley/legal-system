@@ -183,11 +183,16 @@ class DocumentMetadata(BaseModel):
     # never a mixed-party folder like an email thread.
     no_index: bool = False
     no_index_reason: str | None = None
+    no_index_category: str | None = None
     # Mark a legally/contractually RESTRICTED subtree that must never be indexed or
     # searchable (e.g. CPR 32.12 witness statements, or a party's own account that
     # must not surface as if it were evidence). Set on a folder ``metadata.yaml`` it
-    # applies RECURSIVELY to everything below (a child may set ``no_index: false`` to
-    # re-include a subfolder). ``no_index_reason`` records why. These are enforced at
+    # applies RECURSIVELY to everything below. ``no_index`` is a FAIL-CLOSED, one-way
+    # OR-latch (sidecar.resolve_chain): once set at any level a narrower ``no_index:
+    # false`` can NEVER unset it — lifting an exclusion is a deliberate edit at the level
+    # that set it. ``no_index_reason`` records why; ``no_index_category``
+    # (``legally_obligatory`` | ``housekeeping``, defaulting to the safer
+    # ``legally_obligatory``) drives the restricted-reingest alarm's severity. Enforced at
     # BOTH ends: ingest discovery skips them quietly, and every sink refuses to write a
     # ``no_index`` document (it dead-letters loudly rather than leaking into the index).
     matters: list[str] = []

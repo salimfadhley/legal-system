@@ -8,6 +8,9 @@ import yaml
 
 from goldberg_system.observability.state import SystemState, aggregate
 
+from pathlib import Path as _Path
+_NO_ALERT_LOG = _Path("/nonexistent/no-restricted-alerts.jsonl")  # hermetic: read no real alerts
+
 
 class _StateES:
     """A fake ES that routes by index + shape of the request."""
@@ -99,7 +102,7 @@ class _StateES:
 
 
 def test_aggregate_builds_system_state() -> None:
-    state = aggregate(_StateES())
+    state = aggregate(_StateES(), restricted_alert_log=_NO_ALERT_LOG)
     assert isinstance(state, SystemState)
     assert state.corpus["documents"] == 42
     assert state.pipeline["by_stage_status"]["indexed/ok"] == 40
@@ -111,7 +114,7 @@ def test_aggregate_builds_system_state() -> None:
 
 
 def test_system_state_yaml_mode_roundtrips() -> None:
-    state = aggregate(_StateES())
+    state = aggregate(_StateES(), restricted_alert_log=_NO_ALERT_LOG)
     loaded = yaml.safe_load(state.to_yaml())
     # the LLM-readable mode is the same data as the model
     assert loaded["corpus"]["documents"] == 42
@@ -147,7 +150,7 @@ def test_aggregate_healthy_when_no_failures() -> None:
         return {"hits": {"hits": [{"_source": {"ts": "2026-07-21T12:00:00Z"}}]}}
 
     es.search = search  # type: ignore[method-assign]
-    state = aggregate(es)
+    state = aggregate(es, restricted_alert_log=_NO_ALERT_LOG)
     assert state.health["status"] == "ok"
 
 
@@ -190,7 +193,7 @@ def test_no_recent_failures_ignores_old_failures_outside_window() -> None:
         return {"hits": {"hits": [{"_source": {"ts": "2026-07-21T12:00:00Z"}}]}}
 
     es.search = search  # type: ignore[method-assign]
-    state = aggregate(es)
+    state = aggregate(es, restricted_alert_log=_NO_ALERT_LOG)
     assert _check(state, "no_recent_failures")["ok"] is True
     assert state.dlq["failed"] == 7  # historical count still surfaced in the DLQ view
     assert state.health["status"] == "ok"
@@ -198,7 +201,7 @@ def test_no_recent_failures_ignores_old_failures_outside_window() -> None:
 
 def test_no_recent_failures_trips_on_recent_failure() -> None:
     """A failure inside the window trips the check and shows the window (FR-009)."""
-    state = aggregate(_StateES())  # fake returns total=1 for the windowed query
+    state = aggregate(_StateES(), restricted_alert_log=_NO_ALERT_LOG)  # fake returns total=1 for the windowed query
     check = _check(state, "no_recent_failures")
     assert check["ok"] is False
     assert "24h" in check["detail"]

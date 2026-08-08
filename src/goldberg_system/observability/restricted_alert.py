@@ -28,6 +28,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from goldberg_system.config import config_dir
+from goldberg_system.metadata.sidecar import (
+    CATEGORY_HOUSEKEEPING,
+    CATEGORY_LEGALLY_OBLIGATORY,
+    RECOGNISED_NO_INDEX_CATEGORIES,
+)
 from goldberg_system.provenance import now_iso
 
 log = logging.getLogger("goldberg.restricted")
@@ -36,6 +41,31 @@ log = logging.getLogger("goldberg.restricted")
 RESTRICTED_REINGEST_CHECK = "restricted_reingest_blocked"
 
 ALERT_LOG_FILENAME = "restricted-reingest-alerts.jsonl"
+
+# Severity per exclusion class. A ``legally_obligatory`` accidental (re-)index is an
+# INCIDENT (court undertaking / privilege / statutory restriction breached); a
+# ``housekeeping`` one is NOISE (a build artefact / duplicate almost re-added).
+SEVERITY_INCIDENT = "incident"
+SEVERITY_NOISE = "noise"
+
+
+def normalise_category(category: str | None) -> str:
+    """Coerce a stored/None category to a recognised class — safer reading on doubt.
+
+    A missing or UNKNOWN category resolves to ``legally_obligatory`` so an unclassified
+    exclusion alarms at the higher severity rather than being quietly treated as noise.
+    """
+    value = (category or "").strip()
+    return value if value in RECOGNISED_NO_INDEX_CATEGORIES else CATEGORY_LEGALLY_OBLIGATORY
+
+
+def severity_for_category(category: str | None) -> str:
+    """``incident`` for ``legally_obligatory`` (the safe default), else ``noise``."""
+    return (
+        SEVERITY_NOISE
+        if normalise_category(category) == CATEGORY_HOUSEKEEPING
+        else SEVERITY_INCIDENT
+    )
 
 
 @dataclass(frozen=True)
@@ -46,6 +76,16 @@ class BlockedReingest:
     reason: str
     source: str  # e.g. "catchup", "elasticsearch_indexer"
     timestamp: str
+    category: str = CATEGORY_LEGALLY_OBLIGATORY  # safer default when unrecorded
+
+    @property
+    def severity(self) -> str:
+        """``incident`` (legally_obligatory) vs ``noise`` (housekeeping)."""
+        return severity_for_category(self.category)
+
+    @property
+    def is_incident(self) -> bool:
+        return self.severity == SEVERITY_INCIDENT
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), sort_keys=True, ensure_ascii=False)
@@ -57,6 +97,7 @@ class BlockedReingest:
             reason=str(data.get("reason") or ""),
             source=str(data.get("source") or ""),
             timestamp=str(data.get("timestamp") or ""),
+            category=normalise_category(data.get("category")),
         )
 
 
@@ -70,27 +111,35 @@ def record_blocked_reingest(
     reason: str,
     *,
     source: str,
+    category: str | None = None,
     log_path: Path | str | None = None,
     logger: logging.Logger | None = None,
 ) -> BlockedReingest:
     """LOUDLY record that a restricted document was blocked from (re-)ingestion.
 
-    Always emits a CRITICAL log line. Appends a durable JSONL alert **only** when
+    The log SEVERITY is category-aware: a ``legally_obligatory`` block (the safe default
+    for a missing/unknown category) is an INCIDENT logged at CRITICAL; a ``housekeeping``
+    block is NOISE logged at WARNING. Appends a durable JSONL alert **only** when
     ``log_path`` is given (production wiring passes :func:`default_alert_log_path`), so
-    unit-level callers can assert the CRITICAL behaviour without writing a file.
+    unit-level callers can assert the logging behaviour without writing a file.
     """
     alert = BlockedReingest(
         raw_path=raw_path,
         reason=reason or "(no reason recorded)",
         source=source,
         timestamp=now_iso(),
+        category=normalise_category(category),
     )
-    (logger or log).critical(
-        "BLOCKED re-ingestion of restricted document %s (%s) — source=%s. "
-        "A deliberately-excluded document was almost re-added by an automated process.",
+    emit = (logger or log).critical if alert.is_incident else (logger or log).warning
+    emit(
+        "BLOCKED re-ingestion of restricted document %s (%s) — source=%s severity=%s "
+        "category=%s. A deliberately-excluded document was almost re-added by an "
+        "automated process.",
         alert.raw_path,
         alert.reason,
         alert.source,
+        alert.severity,
+        alert.category,
     )
     if log_path is not None:
         p = Path(log_path)
@@ -119,12 +168,30 @@ def load_blocked_reingests(
     return alerts
 
 
-def summarize_blocked(alerts: Iterable[BlockedReingest]) -> str:
-    """A one-line detail string for the health check, naming path + reason."""
+def partition_by_severity(
+    alerts: Iterable[BlockedReingest],
+) -> tuple[list[BlockedReingest], list[BlockedReingest]]:
+    """Split alerts into ``(incidents, noise)`` — legally_obligatory vs housekeeping."""
     items = list(alerts)
+    incidents = [a for a in items if a.is_incident]
+    noise = [a for a in items if not a.is_incident]
+    return incidents, noise
+
+
+def summarize_blocked(alerts: Iterable[BlockedReingest]) -> str:
+    """A one-line detail string for the health check, naming path + reason + severity.
+
+    Leads with the INCIDENT (``legally_obligatory``) count so the distinct, higher-severity
+    signal is unmissable, then notes any ``housekeeping`` noise separately.
+    """
+    incidents, noise = partition_by_severity(alerts)
+    items = incidents + noise
     if not items:
         return "none"
-    shown = "; ".join(f"{a.raw_path} ({a.reason})" for a in items[:5])
+    shown = "; ".join(f"{a.raw_path} ({a.reason}) [{a.severity}]" for a in items[:5])
     if len(items) > 5:
         shown += f"; +{len(items) - 5} more"
-    return f"{len(items)} blocked restricted re-ingestion(s): {shown}"
+    return (
+        f"{len(incidents)} INCIDENT (legally_obligatory) + {len(noise)} noise "
+        f"(housekeeping) blocked restricted re-ingestion(s): {shown}"
+    )
