@@ -107,6 +107,11 @@ services:
         "${INGEST_MAX_DELIVER:-5}",
         "--batch",
         "${INGEST_BATCH:-50}",
+        # Periodic self-healing reconciliation: re-run the bounded catch-up every
+        # interval so a failed git hook (as in the 2026-08 outage) can no longer let
+        # the corpus silently fall behind between restarts. 0 disables.
+        "--catchup-interval",
+        "${INGEST_CATCHUP_INTERVAL:-900}",
         "--extracted-root",
         "/data/goldberg-extracted",
         "--health-port",
