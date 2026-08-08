@@ -30,7 +30,6 @@ from goldberg_system.observability.restricted_alert import (
     RESTRICTED_REINGEST_CHECK,
     BlockedReingest,
     load_blocked_reingests,
-    record_blocked_reingest,
     severity_for_category,
 )
 from goldberg_system.observability.state import aggregate
@@ -249,7 +248,14 @@ def test_unknown_category_defaults_to_the_safer_reading(tmp_path: Path) -> None:
 
 
 class _MinimalStateES:
-    """Just enough ES for ``aggregate`` to build a benign SystemState."""
+    """Just enough ES for ``aggregate`` to build a benign SystemState.
+
+    ``restricted_hits`` are the ``_source`` dicts the LIVE restricted-reingest query
+    (``bool.should``) returns — documents actually indexed right now.
+    """
+
+    def __init__(self, restricted_hits: list[dict[str, Any]] | None = None) -> None:
+        self._restricted_hits = restricted_hits or []
 
     def count(self, index: str) -> dict[str, Any]:
         return {"count": 5}
@@ -262,6 +268,8 @@ class _MinimalStateES:
             return {"aggregations": {"t": {"buckets": []}}}
         q = kw.get("query", {})
         bool_q = q.get("bool", {})
+        if "should" in bool_q:  # the live restricted-exposure query
+            return {"hits": {"hits": [{"_source": s} for s in self._restricted_hits]}}
         if any("range" in c for c in bool_q.get("filter", []) + bool_q.get("must", [])):
             return {"hits": {"total": {"value": 0}}}
         return {"hits": {"hits": []}}
@@ -271,34 +279,41 @@ def _check(state: Any, name: str) -> dict[str, Any]:
     return next(c for c in state.health["checks"] if c["name"] == name)
 
 
-def test_legally_obligatory_incident_degrades_but_housekeeping_noise_does_not(
-    tmp_path: Path,
-) -> None:
-    # A housekeeping-only re-add is NOISE — the named check stays ok, health stays ok.
-    noise_log = tmp_path / "noise.jsonl"
-    record_blocked_reingest(
-        "evidence/build/dup.txt",
-        "duplicate build artefact",
-        source="catchup",
-        category="housekeeping",
-        log_path=noise_log,
+def test_legally_obligatory_incident_degrades_but_housekeeping_noise_does_not() -> None:
+    from goldberg_system.exclusion_registry import ExclusionEntry, ExclusionRegistry
+
+    # A housekeeping no_index document IN THE INDEX is NOISE — the check stays ok.
+    noise_es = _MinimalStateES(
+        restricted_hits=[
+            {
+                "raw_path": "evidence/build/dup.txt",
+                "no_index": True,
+                "no_index_reason": "duplicate build artefact",
+                "no_index_category": "housekeeping",
+            }
+        ]
     )
-    state = aggregate(_MinimalStateES(), restricted_alert_log=noise_log)
+    state = aggregate(noise_es, registry=ExclusionRegistry())  # empty registry
     check = _check(state, RESTRICTED_REINGEST_CHECK)
-    # The distinct signal: a housekeeping-only block does NOT fail the restricted check.
+    # The distinct signal: a housekeeping-only exposure does NOT fail the restricted check.
     assert check["ok"] is True
     assert "housekeeping" in check["detail"]
 
-    # A legally_obligatory re-add is an INCIDENT — the named check FAILS, health degraded.
-    incident_log = tmp_path / "incident.jsonl"
-    record_blocked_reingest(
-        "evidence/sealed/secret.txt",
-        "CPR 32.12 — restricted",
-        source="catchup",
-        category="legally_obligatory",
-        log_path=incident_log,
+    # A legally_obligatory document IN THE INDEX is an INCIDENT — the check FAILS.
+    incident_es = _MinimalStateES(
+        restricted_hits=[{"raw_path": "evidence/sealed/secret.txt", "raw_sha256": None}]
     )
-    state = aggregate(_MinimalStateES(), restricted_alert_log=incident_log)
+    registry = ExclusionRegistry(
+        [
+            ExclusionEntry(
+                raw_path="evidence/sealed",
+                reason="CPR 32.12 — restricted",
+                timestamp="2026-08-08T00:00:00Z",
+                source="deindex",
+            )
+        ]
+    )
+    state = aggregate(incident_es, registry=registry)
     check = _check(state, RESTRICTED_REINGEST_CHECK)
     assert check["ok"] is False
     assert "INCIDENT" in check["detail"]

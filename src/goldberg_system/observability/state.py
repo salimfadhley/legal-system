@@ -145,15 +145,25 @@ def aggregate(
     documents_index: str = "goldberg_documents",
     events_index: str = "goldberg_pipeline_events",
     failure_window_hours: float = DEFAULT_FAILURE_WINDOW_HOURS,
-    restricted_alert_log: Any | None = None,
+    registry: Any | None = None,
 ) -> SystemState:
-    """Assemble the canonical :class:`SystemState` from the observability indices."""
+    """Assemble the canonical :class:`SystemState` from the observability indices.
+
+    ``registry`` (default: the tracked :func:`ExclusionRegistry.load_default`) drives the
+    live ``restricted_reingest_blocked`` check; inject a hermetic registry in tests so no
+    real file is read.
+    """
     from goldberg_system.observability.restricted_alert import (
         RESTRICTED_REINGEST_CHECK,
-        load_blocked_reingests,
+        find_indexed_restricted,
         partition_by_severity,
-        summarize_blocked,
+        summarize_exposures,
     )
+
+    if registry is None:
+        from goldberg_system.exclusion_registry import ExclusionRegistry
+
+        registry = ExclusionRegistry.load_default()
 
     docs = _count(client, documents_index)
     stage_status = _stage_status_counts(client, events_index)
@@ -165,14 +175,16 @@ def aggregate(
     n_failed = sum(v for k, v in stage_status.items() if k.endswith("/failed"))
     n_skipped = sum(v for k, v in stage_status.items() if k.endswith("/skipped"))
 
-    # First-class ALARM: any restricted / deliberately-excluded document an automated
-    # process tried to re-add. A NAMED failing check (not a buried DLQ line) — casework:
-    # "the absence of an alert is itself the fault." Empty log → ok (excludes nothing).
-    # Severity-aware: a ``legally_obligatory`` block is an INCIDENT that fails the check
-    # (degrades health); a ``housekeeping`` block is NOISE — surfaced in the detail but
-    # not degrading — so the two classes are a distinct, machine-readable signal.
-    blocked = load_blocked_reingests(restricted_alert_log)
-    blocked_incidents, _blocked_noise = partition_by_severity(blocked)
+    # First-class ALARM, driven by a LIVE index query — NOT the historical alert log.
+    # A restricted document correctly present-in-raw-and-absent-from-index is ROUTINE
+    # (the protection working) and produces no hit here, so it can never degrade health.
+    # Only a deliberately-excluded / no_index document ACTUALLY IN THE INDEX right now —
+    # the real CPR-32.12 exposure — appears, and it always turns the check red.
+    # Severity-aware: a ``legally_obligatory`` exposure is an INCIDENT that fails the
+    # check (degrades health); a ``housekeeping`` one is NOISE — surfaced in the detail
+    # but not degrading — so the two classes are a distinct, machine-readable signal.
+    exposures = find_indexed_restricted(client, documents_index, registry)
+    blocked_incidents, _blocked_noise = partition_by_severity(exposures)
 
     window = int(failure_window_hours)
     checks = [
@@ -194,7 +206,7 @@ def aggregate(
         HealthCheck(
             name=RESTRICTED_REINGEST_CHECK,
             ok=not blocked_incidents,  # only a legally_obligatory INCIDENT degrades health
-            detail=summarize_blocked(blocked),
+            detail=summarize_exposures(exposures),
         ),
     ]
     status = "ok" if all(c.ok for c in checks) else "degraded"

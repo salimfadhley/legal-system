@@ -9,7 +9,9 @@ These tests exercise the three enforcement points and the alarm together:
 2. the sink refuses a registered document even WITHOUT a ``no_index`` sidecar;
 3. the raw-vs-index reconciler classifies a registered path as ``deliberately_excluded``
    rather than an invisible gap to heal; and
-4. the alarm surfaces as a NAMED failing status check (``restricted_reingest_blocked``).
+4. the ``restricted_reingest_blocked`` health check is driven by a LIVE index query — it
+   fails only when a restricted document is ACTUALLY IN THE INDEX (the real exposure),
+   never from routine present-in-raw exclusion or a stale historical alert log.
 """
 
 from __future__ import annotations
@@ -172,11 +174,12 @@ def test_registered_exclusion_survives_full_catchup_without_reingest(tmp_path: P
     assert report.indexed == 1
     assert report.deliberately_excluded == 1
     assert "deliberately_excluded=1" in report.summary_line()
-    # …and the alarm fired durably, naming what was blocked and why
-    alerts = load_blocked_reingests(alert_log)
-    assert [a.raw_path for a in alerts] == ["evidence/sealed/secret.txt"]
-    assert alerts[0].reason.startswith("CPR 32.12")
-    assert alerts[0].source == "catchup"
+    # CRY-WOLF REGRESSION: a restricted file correctly present-in-raw-and-absent-from-
+    # index is ROUTINE (the protection working), NOT an incident. Catch-up must count it
+    # but must NOT write an alert (the old code fired one every pass forever) and must not
+    # degrade health. The genuine incident is a live index exposure / a sink refusal.
+    assert load_blocked_reingests(alert_log) == []
+    assert not alert_log.exists()
 
 
 # --------------------------------------------------------------------------- #
@@ -287,10 +290,18 @@ def test_classify_path_registered_is_not_invisible_gap(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 4. the alarm surfaces as a NAMED failing status check
+# 4. the alarm is driven by a LIVE index query — a restricted document ACTUALLY
+#    IN THE INDEX right now (the real CPR-32.12 exposure), never a stale log.
 # --------------------------------------------------------------------------- #
 class _MinimalStateES:
-    """Enough of an ES to let ``aggregate`` build a SystemState (all empty/benign)."""
+    """Enough of an ES to let ``aggregate`` build a SystemState.
+
+    ``restricted_hits`` are the ``_source`` dicts the live restricted-reingest query
+    (``bool.should``) returns — i.e. documents that are actually indexed right now.
+    """
+
+    def __init__(self, restricted_hits: list[dict[str, Any]] | None = None) -> None:
+        self._restricted_hits = restricted_hits or []
 
     def count(self, index: str) -> dict[str, Any]:
         return {"count": 5}
@@ -303,6 +314,8 @@ class _MinimalStateES:
             return {"aggregations": {"t": {"buckets": []}}}
         q = kw.get("query", {})
         bool_q = q.get("bool", {})
+        if "should" in bool_q:  # the live restricted-exposure query
+            return {"hits": {"hits": [{"_source": s} for s in self._restricted_hits]}}
         if any("range" in c for c in bool_q.get("filter", []) + bool_q.get("must", [])):
             return {"hits": {"total": {"value": 0}}}
         return {"hits": {"hits": []}}
@@ -312,28 +325,77 @@ def _check(state: Any, name: str) -> dict[str, Any]:
     return next(c for c in state.health["checks"] if c["name"] == name)
 
 
-def test_status_named_check_ok_when_no_alerts(tmp_path: Path) -> None:
-    state = aggregate(_MinimalStateES(), restricted_alert_log=tmp_path / "none.jsonl")
+def test_status_named_check_ok_when_index_clean() -> None:
+    # registry HAS an exclusion, but nothing matching is in the index → routine, ok.
+    state = aggregate(_MinimalStateES(), registry=_registry("evidence/sealed"))
     check = _check(state, RESTRICTED_REINGEST_CHECK)
     assert check["ok"] is True
     assert check["detail"] == "none"
 
 
-def test_status_named_check_fails_and_names_what_was_blocked(tmp_path: Path) -> None:
-    from goldberg_system.observability.restricted_alert import record_blocked_reingest
-
-    alert_log = tmp_path / "alerts.jsonl"
-    record_blocked_reingest(
-        "evidence/sealed/secret.txt",
-        "CPR 32.12 — restricted",
-        source="catchup",
-        log_path=alert_log,
+def test_status_named_check_fails_when_registered_doc_is_indexed() -> None:
+    # THE real exposure: a deliberately-excluded document is actually in the index NOW.
+    es = _MinimalStateES(
+        restricted_hits=[{"raw_path": "evidence/sealed/secret.txt", "raw_sha256": None}]
     )
-
-    state = aggregate(_MinimalStateES(), restricted_alert_log=alert_log)
+    state = aggregate(es, registry=_registry("evidence/sealed"))
 
     check = _check(state, RESTRICTED_REINGEST_CHECK)
-    assert check["ok"] is False  # a NAMED failing check, not a buried DLQ line
+    assert check["ok"] is False  # a NAMED failing check driven by the live index
     assert "evidence/sealed/secret.txt" in check["detail"]
-    assert "CPR 32.12" in check["detail"]
+    assert "CPR 32.12" in check["detail"]  # reason comes from the registry match
     assert state.health["status"] == "degraded"
+
+
+def test_stale_alert_log_no_longer_degrades_health(tmp_path: Path) -> None:
+    # FIX 5: a historical alert log (the 11 stale routine entries) must NOT keep health
+    # red. Health is now driven by the live index only — a clean index reads ok even
+    # when an old alert log is bursting with entries.
+    from goldberg_system.observability.restricted_alert import record_blocked_reingest
+
+    stale_log = tmp_path / "restricted-reingest-alerts.jsonl"
+    for _ in range(11):
+        record_blocked_reingest(
+            "evidence/sealed/secret.txt",
+            "CPR 32.12 — restricted",
+            source="catchup",
+            log_path=stale_log,
+        )
+
+    # aggregate takes NO alert-log argument any more; the stale log cannot reach it.
+    state = aggregate(_MinimalStateES(), registry=_registry("evidence/sealed"))
+    check = _check(state, RESTRICTED_REINGEST_CHECK)
+    assert check["ok"] is True  # clean index → ok, despite 11 stale log entries
+    assert load_blocked_reingests(stale_log)  # the log still exists, just no longer read
+
+
+def test_legally_obligatory_exposure_is_incident_and_degrades() -> None:
+    # A legally_obligatory exposure (registry match, no category → safe default) is an
+    # INCIDENT that fails the check.
+    es = _MinimalStateES(
+        restricted_hits=[{"raw_path": "evidence/sealed/secret.txt", "raw_sha256": None}]
+    )
+    state = aggregate(es, registry=_registry("evidence/sealed"))
+    check = _check(state, RESTRICTED_REINGEST_CHECK)
+    assert check["ok"] is False
+    assert "INCIDENT" in check["detail"]
+
+
+def test_housekeeping_exposure_is_noise_not_incident() -> None:
+    # A housekeeping no_index document in the index is NOISE — surfaced but not failing
+    # the check (empty registry: it is not a registered legal exclusion).
+    es = _MinimalStateES(
+        restricted_hits=[
+            {
+                "raw_path": "evidence/tmp/build.log",
+                "no_index": True,
+                "no_index_reason": "build artefact",
+                "no_index_category": "housekeeping",
+            }
+        ]
+    )
+    state = aggregate(es, registry=ExclusionRegistry())  # empty registry
+    check = _check(state, RESTRICTED_REINGEST_CHECK)
+    assert check["ok"] is True  # noise does not degrade
+    assert "evidence/tmp/build.log" in check["detail"]
+    assert "noise" in check["detail"]

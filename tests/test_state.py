@@ -6,10 +6,11 @@ from typing import Any
 
 import yaml
 
+from goldberg_system.exclusion_registry import ExclusionRegistry
 from goldberg_system.observability.state import SystemState, aggregate
 
-from pathlib import Path as _Path
-_NO_ALERT_LOG = _Path("/nonexistent/no-restricted-alerts.jsonl")  # hermetic: read no real alerts
+# hermetic: an EMPTY registry excludes nothing, so aggregate reads no real registry file
+_EMPTY_REGISTRY = ExclusionRegistry()
 
 
 class _StateES:
@@ -26,6 +27,9 @@ class _StateES:
 
     def search(self, **kw: Any) -> dict[str, Any]:
         aggs = kw.get("aggs") or {}
+        # the live restricted-reingest exposure query (bool.should) → no exposures
+        if "should" in kw.get("query", {}).get("bool", {}):
+            return {"hits": {"hits": []}}
         # stage/status nested agg
         if "stage" in aggs:
             return {
@@ -102,7 +106,7 @@ class _StateES:
 
 
 def test_aggregate_builds_system_state() -> None:
-    state = aggregate(_StateES(), restricted_alert_log=_NO_ALERT_LOG)
+    state = aggregate(_StateES(), registry=_EMPTY_REGISTRY)
     assert isinstance(state, SystemState)
     assert state.corpus["documents"] == 42
     assert state.pipeline["by_stage_status"]["indexed/ok"] == 40
@@ -114,7 +118,7 @@ def test_aggregate_builds_system_state() -> None:
 
 
 def test_system_state_yaml_mode_roundtrips() -> None:
-    state = aggregate(_StateES(), restricted_alert_log=_NO_ALERT_LOG)
+    state = aggregate(_StateES(), registry=_EMPTY_REGISTRY)
     loaded = yaml.safe_load(state.to_yaml())
     # the LLM-readable mode is the same data as the model
     assert loaded["corpus"]["documents"] == 42
@@ -127,6 +131,8 @@ def test_aggregate_healthy_when_no_failures() -> None:
 
     # a variant with no failed events → health ok
     def search(**kw: Any) -> dict[str, Any]:
+        if "should" in kw.get("query", {}).get("bool", {}):
+            return {"hits": {"hits": []}}  # no live restricted exposures
         if (kw.get("aggs") or {}).get("stage"):
             return {
                 "aggregations": {
@@ -150,7 +156,7 @@ def test_aggregate_healthy_when_no_failures() -> None:
         return {"hits": {"hits": [{"_source": {"ts": "2026-07-21T12:00:00Z"}}]}}
 
     es.search = search  # type: ignore[method-assign]
-    state = aggregate(es, restricted_alert_log=_NO_ALERT_LOG)
+    state = aggregate(es, registry=_EMPTY_REGISTRY)
     assert state.health["status"] == "ok"
 
 
@@ -164,6 +170,8 @@ def test_no_recent_failures_ignores_old_failures_outside_window() -> None:
 
     def search(**kw: Any) -> dict[str, Any]:
         aggs = kw.get("aggs") or {}
+        if "should" in kw.get("query", {}).get("bool", {}):
+            return {"hits": {"hits": []}}  # no live restricted exposures
         if "stage" in aggs:
             # there ARE historical failures in the stage/status counts …
             return {
@@ -193,7 +201,7 @@ def test_no_recent_failures_ignores_old_failures_outside_window() -> None:
         return {"hits": {"hits": [{"_source": {"ts": "2026-07-21T12:00:00Z"}}]}}
 
     es.search = search  # type: ignore[method-assign]
-    state = aggregate(es, restricted_alert_log=_NO_ALERT_LOG)
+    state = aggregate(es, registry=_EMPTY_REGISTRY)
     assert _check(state, "no_recent_failures")["ok"] is True
     assert state.dlq["failed"] == 7  # historical count still surfaced in the DLQ view
     assert state.health["status"] == "ok"
@@ -201,7 +209,7 @@ def test_no_recent_failures_ignores_old_failures_outside_window() -> None:
 
 def test_no_recent_failures_trips_on_recent_failure() -> None:
     """A failure inside the window trips the check and shows the window (FR-009)."""
-    state = aggregate(_StateES(), restricted_alert_log=_NO_ALERT_LOG)  # fake returns total=1 for the windowed query
+    state = aggregate(_StateES(), registry=_EMPTY_REGISTRY)  # fake returns total=1 for the windowed query
     check = _check(state, "no_recent_failures")
     assert check["ok"] is False
     assert "24h" in check["detail"]

@@ -859,6 +859,68 @@ def exclusions_add(raw_path, reason, raw_sha256, registry_override) -> None:  # 
     click.echo(f"  • {entry.raw_path}  ({entry.reason})")
 
 
+@exclusions.command("verify")
+@click.option(
+    "--registry", "registry_override", default=None,
+    help="Registry file to read (default: config/exclusion-registry.jsonl).",
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit the exposures as JSON.")
+def exclusions_verify(registry_override, as_json) -> None:  # type: ignore[no-untyped-def]
+    """LIVE exposure check — restricted documents CURRENTLY IN THE INDEX (CPR-32.12).
+
+    A one-call answer to "is any deliberately-excluded / no_index document actually
+    indexed right now?" — the real exposure, not the routine present-in-raw exclusion.
+    Exits non-zero when any legally_obligatory exposure is found so a scheduler can alarm.
+    """
+    from goldberg_system.exclusion_registry import (
+        ExclusionRegistry,
+        default_registry_path,
+    )
+    from goldberg_system.observability.restricted_alert import (
+        find_indexed_restricted,
+        partition_by_severity,
+    )
+
+    path = Path(registry_override) if registry_override else default_registry_path()
+    registry = ExclusionRegistry.load(path)
+    q = _query()
+    exposures = find_indexed_restricted(q.client, q.index, registry)
+    incidents, noise = partition_by_severity(exposures)
+
+    if as_json:
+        click.echo(
+            json.dumps(
+                {
+                    "in_index": len(exposures),
+                    "incidents": len(incidents),
+                    "noise": len(noise),
+                    "documents": [
+                        {
+                            "raw_path": e.raw_path,
+                            "reason": e.reason,
+                            "category": e.category,
+                            "severity": e.severity,
+                        }
+                        for e in exposures
+                    ],
+                },
+                indent=2,
+            )
+        )
+    else:
+        n = len(exposures)
+        mark = "✗" if incidents else ("⚠" if noise else "✓")
+        click.echo(f"{mark} {n} restricted document(s) currently in the index")
+        if n:
+            click.echo(
+                f"  {len(incidents)} INCIDENT (legally_obligatory) + "
+                f"{len(noise)} noise (housekeeping):"
+            )
+            for e in exposures:
+                click.echo(f"    [{e.severity}] {e.raw_path}  — {e.reason}")
+    raise SystemExit(1 if incidents else 0)
+
+
 @main.command("backfill-extracted")
 @click.option(
     "--extracted-root",

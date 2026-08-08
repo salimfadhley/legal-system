@@ -41,7 +41,6 @@ from goldberg_system.migrate.manifest import (
 )
 from goldberg_system.migrate.reingest import _SKIP_EXT, reingest_from_raw
 from goldberg_system.observability.events import EventSink
-from goldberg_system.observability.restricted_alert import record_blocked_reingest
 from goldberg_system.provenance import now_iso
 from goldberg_system.sinks.base import Sink
 
@@ -248,13 +247,17 @@ def detect_blocked_reingests(
     skip: set[str],
     registry: ExclusionRegistry,
 ) -> list[tuple[str, dict, ExclusionEntry]]:
-    """Registered exclusions the healer WOULD have (re-)added this pass — to alarm on.
+    """Registered exclusions the healer correctly REFUSED to (re-)add this pass.
 
-    An entry qualifies when it is not already indexed (``sha not in skip`` — so it is a
-    genuine re-add attempt, the exact failing scenario), is not a media file (which
-    legitimately never indexes anyway), and matches the exclusion registry. Everything
-    returned is logged CRITICAL and recorded as a first-class alert by :func:`run_catchup`;
-    it is the "something loudly saying so" casework required.
+    An entry qualifies when it is not already indexed (``sha not in skip``), is not a
+    media file (which legitimately never indexes anyway), and matches the exclusion
+    registry. This is the ``deliberately_excluded`` count — the protection **working**,
+    a routine outcome. It is NOT an incident: a restricted file correctly present in raw
+    and absent from the index is normal operation, so :func:`run_catchup` counts it (and
+    may debug-log it) but does NOT raise the alarm on it. The genuine incident — a
+    restricted document actually PRESENT IN THE INDEX — is detected by the live query in
+    :func:`~goldberg_system.observability.restricted_alert.find_indexed_restricted`, and
+    a real write attempt is refused (and alarmed) at the sink.
     """
     blocked: list[tuple[str, dict, ExclusionEntry]] = []
     for sha, entry in manifest.items():
@@ -315,9 +318,13 @@ def run_catchup(
     (bad docs dead-letter via the reingest path and are counted).
 
     ``registry`` (default: the tracked :func:`ExclusionRegistry.load_default`) is the
-    class-fault guard: a registered exclusion is never selected, and encountering one
-    that WOULD have been re-added is logged CRITICAL and recorded as a first-class
-    alert (``alert_log`` → :func:`~goldberg_system.observability.restricted_alert.record_blocked_reingest`).
+    class-fault guard: a registered exclusion is never selected. Encountering one that
+    would otherwise have been re-added is ROUTINE (the protection working) — it is
+    counted as ``deliberately_excluded`` and optionally debug-logged, but it does NOT
+    raise the cry-wolf alarm. The genuine incident (a restricted document actually in
+    the index) is surfaced by the live ``restricted_reingest_blocked`` health check; a
+    real write attempt is refused and alarmed at the sink. ``alert_log`` is retained for
+    call-site compatibility and is no longer written by routine catch-up detection.
     """
     started = clock()
     t0 = time.monotonic()
@@ -338,17 +345,19 @@ def run_catchup(
     # 2. resume set — what is already indexed
     skip = set(already_indexed())
 
-    # 2b. THE ALARM: registered exclusions this pass would otherwise have re-added must
-    #     be impossible to miss — CRITICAL log + a durable, named status alert. The
-    #     absence of an alert here was itself the fault.
+    # 2b. ROUTINE, NOT AN INCIDENT: registered exclusions the healer correctly refused
+    #     to re-add. A restricted file present-in-raw-and-absent-from-index is normal
+    #     operation (the protection working) — firing the alarm on it every pass was the
+    #     cry-wolf bug. We COUNT it (deliberately_excluded) and quietly debug-log it, but
+    #     raise NO alarm and do NOT degrade health. The genuine incident — a restricted
+    #     document actually IN the index — is caught by the live restricted_reingest_blocked
+    #     health check; a real write attempt is refused (and alarmed) at the sink.
     blocked = detect_blocked_reingests(manifest, skip, registry)
     for _sha, entry, match in blocked:
-        record_blocked_reingest(
+        log.debug(
+            "deliberately excluded (registered) %s — %s; correctly not re-ingested",
             entry.get("raw_path", "?"),
             match.reason,
-            source="catchup",
-            category=entry.get("no_index_category"),  # None → safer legally_obligatory
-            log_path=alert_log,
         )
 
     # 3. select the bounded difference — and count the TRUE (unbounded) pending total

@@ -178,6 +178,109 @@ def partition_by_severity(
     return incidents, noise
 
 
+def find_indexed_restricted(
+    client: object,
+    documents_index: str,
+    registry: object,
+    *,
+    size: int = 1000,
+) -> list[BlockedReingest]:
+    """LIVE-index exposure query — the real CPR-32.12 signal, not a historical log.
+
+    Returns one :class:`BlockedReingest` (``source="index"``) per document **currently
+    present in the document index** that is either
+
+    * covered by the exclusion ``registry`` (by ``raw_path`` prefix or ``raw_sha256``) —
+      a deliberately-purged document that has somehow been (re-)indexed, or
+    * carries a ``no_index: true`` sidecar in its stored metadata.
+
+    This is the sole driver of the ``restricted_reingest_blocked`` health check: a
+    routine "present-in-raw-but-not-indexed" exclusion produces **nothing here** (there
+    is no index hit), so it can never degrade health; a genuine live exposure always
+    does. A registry match has no recorded category, so it normalises to
+    ``legally_obligatory`` → INCIDENT (the safe reading); a ``no_index`` hit uses the
+    document's stored ``no_index_category`` so housekeeping stays noise.
+
+    ``registry`` is duck-typed (anything exposing ``entries`` and ``match``) so callers
+    can inject a hermetic fake. Any query error yields ``[]`` — the check degrades on a
+    real hit, never on an unreadable index.
+    """
+    should: list[dict[str, object]] = []
+    for entry in getattr(registry, "entries", []):
+        raw_path = getattr(entry, "raw_path", None)
+        raw_sha = getattr(entry, "raw_sha256", None)
+        if raw_path:
+            # Prefix mirrors the registry's own literal-prefix purge semantics: a purged
+            # folder prefix covers everything indexed beneath it. Fail-safe over-match.
+            should.append({"prefix": {"raw_path": raw_path}})
+        if raw_sha:
+            should.append({"term": {"raw_sha256": raw_sha}})
+    should.append({"term": {"no_index": True}})
+    query = {"bool": {"should": should, "minimum_should_match": 1}}
+    try:
+        resp = client.search(  # type: ignore[attr-defined]
+            index=documents_index,
+            query=query,
+            size=size,
+            source_includes=[
+                "raw_path",
+                "raw_sha256",
+                "no_index",
+                "no_index_reason",
+                "no_index_category",
+            ],
+        )
+    except Exception:  # noqa: BLE001 - an unreadable index yields no exposures, not a crash
+        return []
+    exposures: list[BlockedReingest] = []
+    match = getattr(registry, "match", None)
+    for hit in resp.get("hits", {}).get("hits", []):
+        src = hit.get("_source", {})
+        raw_path = src.get("raw_path") or ""
+        raw_sha = src.get("raw_sha256")
+        hit_match = (
+            match(raw_path=raw_path, raw_sha256=raw_sha) if callable(match) else None
+        )
+        if hit_match is not None:
+            # Registered exclusion (e.g. a court undertaking). No stored category on the
+            # registry entry → normalises to legally_obligatory → INCIDENT (safe reading).
+            reason = getattr(hit_match, "reason", "") or "registered exclusion"
+            category = src.get("no_index_category")
+        else:
+            # Reached here via the no_index term — use the document's own metadata.
+            reason = src.get("no_index_reason") or "no_index sidecar"
+            category = src.get("no_index_category")
+        exposures.append(
+            BlockedReingest(
+                raw_path=raw_path,
+                reason=reason,
+                source="index",
+                timestamp=now_iso(),
+                category=normalise_category(category),
+            )
+        )
+    return exposures
+
+
+def summarize_exposures(exposures: Iterable[BlockedReingest]) -> str:
+    """One-line detail for the health check — restricted docs CURRENTLY IN THE INDEX.
+
+    Leads with the INCIDENT (``legally_obligatory``) count so the higher-severity signal
+    is unmissable, then notes any ``housekeeping`` noise separately.
+    """
+    incidents, noise = partition_by_severity(exposures)
+    items = incidents + noise
+    if not items:
+        return "none"
+    shown = "; ".join(f"{a.raw_path} ({a.reason}) [{a.severity}]" for a in items[:5])
+    if len(items) > 5:
+        shown += f"; +{len(items) - 5} more"
+    return (
+        f"{len(incidents)} INCIDENT (legally_obligatory) + {len(noise)} noise "
+        f"(housekeeping) restricted document(s) CURRENTLY IN THE INDEX: {shown}"
+    )
+
+
 def summarize_blocked(alerts: Iterable[BlockedReingest]) -> str:
     """A one-line detail string for the health check, naming path + reason + severity.
 
