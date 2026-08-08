@@ -370,6 +370,143 @@ def alert(manifest_path, max_failures, alert_on_skipped, as_json) -> None:  # ty
     raise SystemExit(exit_code(alerts))
 
 
+@main.command("reconcile")
+@click.option(
+    "--ingest",
+    "do_ingest",
+    is_flag=True,
+    help="Additionally close the gap: publish/process the not-yet-indexed files "
+    "via the bounded catch-up path (default is a read-only report).",
+)
+@click.option(
+    "--limit",
+    default=500,
+    show_default=True,
+    help="With --ingest, the max documents dispatched this pass (bounds CPU); the "
+    "remainder is reported, never silently capped.",
+)
+@click.option(
+    "--workers", default=2, show_default=True, help="With --ingest, concurrent docs."
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+@click.option(
+    "--index",
+    "index_override",
+    default=None,
+    help="Target index (e.g. goldberg_documents_test for isolated testing).",
+)
+def reconcile(do_ingest, limit, workers, as_json, index_override) -> None:  # type: ignore[no-untyped-def]
+    """Raw-vs-index reconciliation: what is committed to goldberg-raw but NOT indexed.
+
+    A never-ingested document is indistinguishable from a non-existent one on the query
+    side, so a silent gap (e.g. the git publish-commit hook failing) stays invisible.
+    This walks goldberg-raw's ingestable files (the SAME skip rules catch-up uses) and
+    lists every file whose content (raw_sha256) is absent from the index.
+
+    Default is a read-only REPORT (no side effects). ``--ingest`` additionally closes the
+    gap via the bounded catch-up path, honouring ``--limit`` and reporting how many were
+    dispatched and how many remain. The scan itself is never capped — a "COMPLETE"
+    verdict means the corpus really is fully represented.
+    """
+    from goldberg_system.config import project_path
+    from goldberg_system.ingest.reconcile import indexed_raw_shas, reconcile_gap
+    from goldberg_system.migrate.allowlist import Allowlist
+    from goldberg_system.sinks import ElasticsearchIndexer
+
+    raw_root = project_path("raw")
+    allowlist = Allowlist.load()
+    indexer = ElasticsearchIndexer.from_env()
+    if index_override:
+        indexer.index = index_override
+
+    indexed, truncated = indexed_raw_shas(indexer.client, indexer.index)
+    report = reconcile_gap(
+        raw_root=raw_root,
+        allowlist=allowlist,
+        indexed_shas=indexed,
+        indexed_truncated=truncated,
+    )
+
+    dispatched: int | None = None
+    remaining: int | None = None
+    catchup_summary: str | None = None
+    if do_ingest and report.gap:
+        from goldberg_system.ingest import run_catchup
+
+        (
+            raw_root2, manifest_path, allowlist2, docling, enricher, indexer2,
+            event_sink, already_indexed,
+        ) = _build_ingest_deps(index_override)
+        catchup = run_catchup(
+            raw_root=raw_root2,
+            manifest_path=manifest_path,
+            allowlist=allowlist2,
+            docling=docling,
+            enricher=enricher,
+            sinks=[indexer2],
+            already_indexed=already_indexed,
+            events=event_sink,
+            batch=limit,
+            workers=workers,
+        )
+        catchup_summary = catchup.summary_line()
+        dispatched = catchup.pending
+        remaining = catchup.remaining_pending
+
+    if as_json:
+        payload = report.to_dict()
+        if do_ingest:
+            payload["ingest"] = {
+                "requested": True,
+                "limit": limit,
+                "dispatched": dispatched or 0,
+                "remaining": remaining or 0,
+                "catchup_summary": catchup_summary,
+            }
+        click.echo(json.dumps(payload, indent=2))
+    else:
+        status = "✓ COMPLETE" if report.complete else "✗ GAP — committed but INVISIBLE"
+        click.echo(status)
+        click.echo(f"  scanned (ingestable raw files): {report.scanned}")
+        click.echo(f"  indexed (raw_sha256 in index):  {report.indexed_shas}")
+        click.echo(f"  GAP (in raw, not indexed):      {report.gap_count}")
+        click.echo(
+            f"  excluded: no_index={report.skipped_no_index} "
+            f"media={report.skipped_media}"
+        )
+        if report.indexed_truncated:
+            click.echo(
+                "  ⚠ indexed-sha lookup hit its size cap — gap may be OVER-reported "
+                "(never under-reported); raise the cap for an exact count."
+            )
+        if report.by_tree:
+            click.echo("  gap by tree:")
+            for tree, n in report.by_tree.items():
+                click.echo(f"    {n:5d}  {tree}")
+        if report.gap:
+            click.echo("\n  invisible raw_paths:")
+            for gf in report.gap:
+                click.echo(f"    - {gf.raw_path}")
+        if do_ingest:
+            click.echo("")
+            if catchup_summary is None:
+                click.echo("  --ingest: nothing to do (no gap).")
+            else:
+                click.echo(f"  --ingest dispatched={dispatched} remaining={remaining}")
+                if remaining:
+                    click.echo(
+                        f"  ⚠ {remaining} file(s) exceeded --limit={limit} and were "
+                        "NOT dispatched this pass — run reconcile --ingest again."
+                    )
+                click.echo(f"  catch-up: {catchup_summary}")
+
+    # Exit non-zero when the corpus is not fully represented (unless we just closed it):
+    # lets a scheduler treat a silent gap as an alert, like `audit`.
+    unresolved = report.gap_count if not do_ingest else (remaining or 0)
+    if unresolved:
+        raise SystemExit(1)
+
+
 @main.command()
 @click.option(
     "--yaml", "as_yaml", is_flag=True, help="Emit the LLM-readable YAML mode."
@@ -1074,17 +1211,10 @@ def _build_ingest_deps(index_override: str | None = None):  # type: ignore[no-un
     event_sink.ensure_index()
 
     def already_indexed() -> set:  # type: ignore[type-arg]
-        resp = indexer.client.search(
-            index=indexer.index,
-            query={"exists": {"field": "raw_sha256"}},
-            size=10000,
-            source_includes=["raw_sha256"],
-        )
-        return {
-            h["_source"]["raw_sha256"]
-            for h in resp["hits"]["hits"]
-            if h["_source"].get("raw_sha256")
-        }
+        from goldberg_system.ingest.reconcile import indexed_raw_shas
+
+        shas, _truncated = indexed_raw_shas(indexer.client, indexer.index)
+        return shas
 
     return raw_root, manifest_path, allowlist, docling, enricher, indexer, event_sink, already_indexed
 
@@ -1113,6 +1243,12 @@ def _build_ingest_deps(index_override: str | None = None):  # type: ignore[no-un
     "--no-catchup", is_flag=True, help="Skip the one-shot startup catch-up pass."
 )
 @click.option(
+    "--catchup-interval", default=0, show_default=True,
+    help="Re-run the bounded catch-up every N seconds while serving (0 = off, "
+    "startup-only). Periodic self-healing: caps how far the raw-vs-index gap can "
+    "grow if the git publish-commit hook silently fails between restarts.",
+)
+@click.option(
     "--index", "index_override", default=None,
     help="Target index (e.g. goldberg_documents_test for isolated testing).",
 )
@@ -1121,7 +1257,7 @@ def _build_ingest_deps(index_override: str | None = None):  # type: ignore[no-un
     help="Also mirror each ingested doc as a frontmatter .md under this root "
          "(goldberg-extracted, ADR 0015). Defaults to $GOLDBERG_EXTRACTED_ROOT.",
 )
-def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, index_override, extracted_root) -> None:  # type: ignore[no-untyped-def]
+def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, catchup_interval, index_override, extracted_root) -> None:  # type: ignore[no-untyped-def]
     """Event-driven ingest service: startup catch-up, then consume commit triggers.
 
     On start it runs ONE bounded catch-up (unless --no-catchup) to close any gap from
@@ -1140,6 +1276,7 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
         build_commit_processor,
         make_health_server,
         run_catchup,
+        run_periodic_catchup,
     )
     from goldberg_system.messaging import (
         MessagingConfig,
@@ -1243,6 +1380,38 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
             except (NotImplementedError, RuntimeError):  # pragma: no cover
                 pass
 
+        # Periodic self-healing: re-run the bounded catch-up on a timer so the
+        # raw-vs-index gap cannot grow unbounded between restarts even if the git
+        # publish-commit hook silently fails (task #2). Off by default (interval=0).
+        catchup_task = None
+        if catchup_interval and catchup_interval > 0:
+            async def _one_pass():  # type: ignore[no-untyped-def]
+                # run_catchup is blocking (CPU + IO) — offload it so it never stalls
+                # the event loop or the NATS consumer.
+                return await asyncio.to_thread(
+                    run_catchup,
+                    raw_root=raw_root,
+                    manifest_path=manifest_path,
+                    allowlist=allowlist,
+                    docling=docling,
+                    enricher=enricher,
+                    sinks=sinks,
+                    already_indexed=already_indexed,
+                    events=event_sink,
+                    batch=batch,
+                    workers=workers,
+                )
+
+            catchup_task = asyncio.create_task(
+                run_periodic_catchup(
+                    interval=float(catchup_interval),
+                    run_pass=_one_pass,
+                    should_continue=lambda: not stop.is_set(),
+                    on_report=lambda r: click.echo(f"periodic catch-up: {r.summary_line()}"),
+                )
+            )
+            click.echo(f"periodic catch-up: every {catchup_interval}s")
+
         click.echo(
             f"consuming {cfg.commit_subject} (durable={cfg.durable}, "
             f"max_deliver={cfg.max_deliver}) → {indexer.index}"
@@ -1250,6 +1419,12 @@ def ingest_serve(durable, workers, max_deliver, batch, health_port, no_catchup, 
         try:
             await processor.run_forever(should_stop=stop.is_set)
         finally:
+            if catchup_task is not None:
+                catchup_task.cancel()
+                try:
+                    await catchup_task
+                except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                    pass
             await conn.close()
 
     asyncio.run(_serve())

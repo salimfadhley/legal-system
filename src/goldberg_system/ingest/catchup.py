@@ -20,13 +20,14 @@ primitives — :func:`build_entry`, :class:`Manifest`, and the reingest ``_SKIP_
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from goldberg_system.enrichment.adapter import EnrichmentAdapter
 from goldberg_system.extract.docling_client import DoclingClient
@@ -157,6 +158,28 @@ def refresh_provenance(
     )
 
 
+def entry_is_ingestable(entry: dict) -> bool:
+    """The single select-layer predicate: is this entry eligible to be indexed?
+
+    ONE skip list, shared by catch-up selection (:func:`select_pending` /
+    :func:`count_pending`) AND the raw-vs-index reconciler
+    (:mod:`goldberg_system.ingest.reconcile`), so neither can drift from the other.
+    It excludes exactly what catch-up excludes at selection time:
+
+    * restricted (``no_index``) subtrees — provenance-tracked but never indexed; and
+    * media extensions (:data:`_SKIP_EXT`) — no OCR-able text.
+
+    The *walk* layer (``.git`` internals, folder ``metadata.yaml``, ``exclude_globs``
+    matches, files outside any allowlisted tree) is applied earlier by
+    :func:`build_entry` / :func:`refresh_provenance`, not here.
+    """
+    if entry_is_no_index(entry):  # restricted subtree — never index (recursive)
+        return False
+    if Path(entry.get("raw_path", "")).suffix.lower() in _SKIP_EXT:  # media
+        return False
+    return True
+
+
 def select_pending(
     manifest: Manifest,
     skip: set[str],
@@ -168,16 +191,15 @@ def select_pending(
 
     Extracted from the reconciler's diff selection: excludes already-indexed shas
     (resume / idempotency), any ``non_indexable`` shas (empty/media proven this run),
-    and media extensions — so the batch is spent on real pending work and the pass
-    always makes forward progress (FR-007).
+    and everything :func:`entry_is_ingestable` rejects (restricted + media) — so the
+    batch is spent on real pending work and the pass always makes forward progress
+    (FR-007).
     """
     pending: list[tuple[str, dict]] = []
     for sha, entry in manifest.items():
         if sha in skip or sha in non_indexable:
             continue
-        if entry_is_no_index(entry):  # restricted subtree — never index (recursive)
-            continue
-        if Path(entry.get("raw_path", "")).suffix.lower() in _SKIP_EXT:
+        if not entry_is_ingestable(entry):
             continue
         pending.append((sha, entry))
         if len(pending) >= batch:
@@ -201,9 +223,7 @@ def count_pending(
     for sha, entry in manifest.items():
         if sha in skip or sha in non_indexable:
             continue
-        if entry_is_no_index(entry):  # restricted subtree — excluded from ingestion
-            continue
-        if Path(entry.get("raw_path", "")).suffix.lower() in _SKIP_EXT:
+        if not entry_is_ingestable(entry):  # restricted + media — same skip list
             continue
         total += 1
     return total
@@ -312,3 +332,39 @@ def run_catchup(
         remaining_pending=remaining_pending,
         no_index_skipped=no_index_skipped,
     )
+
+
+async def run_periodic_catchup(
+    *,
+    interval: float,
+    run_pass: Callable[[], Awaitable[CatchupReport]],
+    should_continue: Callable[[], bool],
+    on_report: Callable[[CatchupReport], None] | None = None,
+    wait: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> int:
+    """Re-run the bounded catch-up every ``interval`` seconds until told to stop.
+
+    Periodic **self-healing** (task #2): the one-shot startup catch-up only closes the
+    gap that existed at boot. If the git publish-commit hook silently fails while the
+    service is up (the exact ~2-day failure this work exists to prevent), the gap would
+    otherwise grow unbounded until the next restart. A running consumer that re-runs the
+    *same* bounded ``run_catchup`` on a timer caps that growth at one interval.
+
+    This is deliberately **decoupled from wall-clock time and from ``run_catchup``'s
+    internals** so it is unit-testable without sleeping: inject ``wait`` (the delay
+    between passes) and ``run_pass`` (a zero-arg coroutine that performs one bounded
+    pass — production wraps :func:`run_catchup` in :func:`asyncio.to_thread` so its
+    blocking CPU/IO never stalls the event loop / the NATS consumer). ``should_continue``
+    is checked both before waiting and after, so a stop requested mid-interval ends the
+    loop promptly without an extra pass. Returns the number of passes actually run.
+    """
+    passes = 0
+    while should_continue():
+        await wait(interval)
+        if not should_continue():  # stop requested during the interval → no extra pass
+            break
+        report = await run_pass()
+        passes += 1
+        if on_report is not None:
+            on_report(report)
+    return passes

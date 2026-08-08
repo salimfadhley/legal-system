@@ -67,6 +67,56 @@ def trace_document(identifier: str) -> list[dict[str, Any]]:
 
 
 @mcp.tool()
+def raw_index_gap(raw_path: str | None = None, limit: int = 200) -> dict[str, Any]:
+    """Detect documents committed to goldberg-raw but MISSING from the index.
+
+    A never-ingested document is otherwise indistinguishable from a non-existent one:
+    querying the index for it simply returns nothing. Use this to make that gap visible
+    without a shell.
+
+    Two modes:
+    * pass ``raw_path`` to check ONE file — returns ``in_raw``/``in_index`` booleans,
+      its ``raw_sha256``, whether it is ``ingestable`` (media/restricted files never
+      index), and ``invisible_gap`` (committed + ingestable + not indexed);
+    * omit ``raw_path`` for the whole-corpus gap — ``gap_count``, ``by_tree``, and up to
+      ``limit`` invisible ``raw_paths``. The scan is never capped, so ``complete: true``
+      means the corpus really is fully represented.
+    """
+    from goldberg_system.config import project_path
+    from goldberg_system.ingest.reconcile import (
+        classify_path,
+        indexed_raw_shas,
+        reconcile_gap,
+    )
+    from goldberg_system.migrate.allowlist import Allowlist
+
+    q = _q()
+    raw_root = project_path("raw")
+    allowlist = Allowlist.load()
+    indexed, truncated = indexed_raw_shas(q.client, q.index)
+
+    if raw_path is not None:
+        return classify_path(
+            raw_root=raw_root,
+            raw_path=raw_path,
+            indexed_shas=indexed,
+            allowlist=allowlist,
+        )
+
+    report = reconcile_gap(
+        raw_root=raw_root,
+        allowlist=allowlist,
+        indexed_shas=indexed,
+        indexed_truncated=truncated,
+    )
+    payload = report.to_dict()
+    # Bound the inline gap list for the wire; the count/by_tree remain exact.
+    payload["gap_truncated"] = report.gap_count > limit
+    payload["gap"] = payload["gap"][:limit]
+    return payload
+
+
+@mcp.tool()
 def component_health() -> dict[str, Any]:
     """The ``goldberg doctor`` liveness board as structured data — every pipeline
     component (Elasticsearch, Docling, the enricher, the MCP server, the live-index
