@@ -369,3 +369,20 @@ def _quote_verdicts(report) -> dict[str, Verdict]:  # type: ignore[no-untyped-de
         for f in report.findings
         if f.kind == QUOTE and f.verdict is not None
     }
+
+
+def test_sent_bundles_served_content_vs_draft_layering() -> None:
+    """sent_bundles/ mixes served text (SERVED) with internal drafts (not SERVED)."""
+    from pathlib import Path
+    from goldberg_system.grounding.checker import Layer, layer_of
+
+    base = "evidence/evidence_of_service/sent_bundles/2026-08-06_x/"
+    assert layer_of(Path(base + "2026-08-06_sent-text.txt")) is Layer.SERVED
+    assert layer_of(Path(base + "covering-email.txt")) is Layer.SERVED
+    assert layer_of(Path(base + "2026-08-06_email_as_sent.txt")) is Layer.SERVED
+    # internal working files are drafts, NOT served — must not inflate the served tier
+    assert layer_of(Path(base + "WORK-PRODUCT_strategy-at-the-time.md")) is Layer.ANALYSIS
+    assert layer_of(Path(base + "SIMULATION_anticipated.md")) is Layer.ANALYSIS
+    assert layer_of(Path(base + "SERVICE-RECORD.md")) is Layer.ANALYSIS
+    # the real sent/ dir stays SERVED
+    assert layer_of(Path("evidence/evidence_of_service/sent/letter.md")) is Layer.SERVED

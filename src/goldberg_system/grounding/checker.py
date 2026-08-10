@@ -62,10 +62,23 @@ class Layer(enum.Enum):
 
 # Sub-paths (relative to the raw root) that define each citing layer we scan. Authorities are
 # the ground truth, not a citing layer, so they are not scanned for findings.
-_LAYER_DIRS: tuple[tuple[str, Layer], tuple[str, Layer], tuple[str, Layer]] = (
+# The layer here is indicative only — layer_of() classifies each file (sent_bundles mixes
+# served text with internal drafts, so it can't be a whole-dir label).
+_LAYER_DIRS: tuple[tuple[str, Layer], ...] = (
     ("evidence/evidence_of_service/sent", Layer.SERVED),
+    # Decoded plain-text copies of served letters (the .eml originals are raw MIME and stay
+    # excluded until a decoder is built). The actually-served text here is the SERVED layer —
+    # a fabricated citation in a served filing is permanent — so it must be checked now.
+    ("evidence/evidence_of_service/sent_bundles", Layer.SERVED),
     ("reports", Layer.REPORTS),
     ("analysis", Layer.ANALYSIS),
+)
+
+# Within sent_bundles/, these filename markers are the text that actually WENT OUT (SERVED);
+# everything else there (WORK-PRODUCT_*, SIMULATION_*, SERVICE-RECORD, README) is internal draft.
+_SERVED_CONTENT_MARKERS = (
+    "sent-text", "sent_text", "covering-email", "covering_email",
+    "email_as_sent", "email-as-sent",
 )
 
 # Only text we can test verbatim. ``.eml`` is deliberately EXCLUDED: served emails are raw
@@ -103,7 +116,15 @@ def _malformed_shapes(text: str, parsed: list[AuthorityRef]) -> list[tuple[str, 
 
 def layer_of(rel_path: Path) -> Layer:
     posix = rel_path.as_posix()
-    if "evidence_of_service/sent" in posix:
+    name = rel_path.name.lower()
+    # sent_bundles/ is mixed: the served text is SERVED (an error there is already out the
+    # door), the internal working files are drafts. Check it BEFORE the generic sent/ rule,
+    # because "evidence_of_service/sent" is a substring of ".../sent_bundles/".
+    if "evidence_of_service/sent_bundles/" in posix:
+        if any(marker in name for marker in _SERVED_CONTENT_MARKERS):
+            return Layer.SERVED
+        return Layer.ANALYSIS
+    if "evidence_of_service/sent/" in posix:
         return Layer.SERVED
     if posix.startswith("authorities_primary_text/"):
         return Layer.AUTHORITIES
