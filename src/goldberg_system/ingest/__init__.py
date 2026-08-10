@@ -19,11 +19,14 @@ Public surface:
 from goldberg_system.ingest.catchup import (
     CatchupReport,
     ProvenanceRefresh,
+    count_missing_source,
+    count_pending,
     entry_is_ingestable,
     refresh_provenance,
     run_catchup,
     run_periodic_catchup,
     select_pending,
+    source_is_present,
 )
 from goldberg_system.ingest.commit_files import changed_files
 from goldberg_system.ingest.reconcile import (
@@ -52,6 +55,8 @@ __all__ = [
     "build_commit_processor",
     "changed_files",
     "classify_path",
+    "count_missing_source",
+    "count_pending",
     "entry_is_ingestable",
     "indexed_raw_shas",
     "make_health_server",
@@ -60,4 +65,5 @@ __all__ = [
     "run_catchup",
     "run_periodic_catchup",
     "select_pending",
+    "source_is_present",
 ]

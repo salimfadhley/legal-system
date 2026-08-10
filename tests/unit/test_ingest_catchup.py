@@ -14,6 +14,7 @@ from typing import Any
 
 from goldberg_system.ingest.catchup import (
     CatchupReport,
+    count_missing_source,
     count_pending,
     run_catchup,
     select_pending,
@@ -133,6 +134,45 @@ def test_count_pending_is_unbounded_true_total() -> None:
     )
     # 5 entries, minus 1 media, minus 1 already-indexed = 3 pending (uncapped)
     assert count_pending(manifest, skip={"s2"}) == 3
+
+
+# --------------------------------------------------------------------------- #
+# deleted-source skip (retry-loop guard): a file removed from goldberg-raw is a
+# permanent failure, not pending work — selection must not re-attempt it forever.
+# --------------------------------------------------------------------------- #
+def test_selection_skips_manifest_entries_whose_source_was_deleted(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "evidence").mkdir()
+    (tmp_path / "evidence" / "live.txt").write_text("still here")
+    # gone.txt is in the manifest but NOT on disk (deleted from goldberg-raw).
+    manifest = Manifest(
+        {
+            "s1": {"raw_path": "evidence/live.txt"},
+            "s2": {"raw_path": "evidence/gone.txt"},
+        }
+    )
+
+    # Without raw_root the check is off (back-compat): both entries are pending.
+    assert count_pending(manifest, skip=set()) == 2
+
+    # With raw_root the deleted-source entry is excluded from BOTH select and count.
+    pending = select_pending(manifest, skip=set(), batch=50, raw_root=tmp_path)
+    paths = [e["raw_path"] for _, e in pending]
+    assert paths == ["evidence/live.txt"]
+    assert count_pending(manifest, skip=set(), raw_root=tmp_path) == 1
+    assert count_missing_source(manifest, skip=set(), raw_root=tmp_path) == 1
+
+
+def test_deleted_source_skip_treats_broken_symlink_as_absent(tmp_path: Path) -> None:
+    # casework left symlinks as a stopgap for removed videos; a broken symlink must
+    # read as absent so the dead path is not re-attempted.
+    (tmp_path / "evidence").mkdir()
+    (tmp_path / "evidence" / "ghost.txt").symlink_to(tmp_path / "does_not_exist.txt")
+    manifest = Manifest({"s1": {"raw_path": "evidence/ghost.txt"}})
+
+    assert count_pending(manifest, skip=set(), raw_root=tmp_path) == 0
+    assert count_missing_source(manifest, skip=set(), raw_root=tmp_path) == 1
 
 
 # --------------------------------------------------------------------------- #

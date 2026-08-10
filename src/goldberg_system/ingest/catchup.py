@@ -71,6 +71,7 @@ class CatchupReport:
     remaining_pending: int = 0  # TRUE pending NOT reached this bounded pass (backlog)
     no_index_skipped: int = 0  # restricted (no_index) docs excluded from ingestion
     deliberately_excluded: int = 0  # registered exclusions the healer refused to re-add
+    missing_source_skipped: int = 0  # entries whose source file was deleted from raw
 
     @property
     def degraded(self) -> bool:
@@ -93,6 +94,7 @@ class CatchupReport:
             f"remaining_pending={self.remaining_pending} "
             f"no_index_skipped={self.no_index_skipped} "
             f"deliberately_excluded={self.deliberately_excluded} "
+            f"missing_source_skipped={self.missing_source_skipped} "
             f"degraded={self.degraded} elapsed={self.elapsed:.1f}s"
         )
 
@@ -191,6 +193,22 @@ def entry_is_ingestable(
     return True
 
 
+def source_is_present(entry: dict, raw_root: Path | str) -> bool:
+    """Does this manifest entry's source file still exist on disk?
+
+    The manifest is append-only provenance: it RETAINS an entry after its file is
+    deleted from goldberg-raw (so we can still prove the file once existed and audit
+    the deletion via ``audit --orphans``). But a deleted file can NEVER be re-ingested
+    — reingesting it fails with ``file missing in goldberg-raw`` every pass. Left
+    unchecked, catch-up re-selects the same dead paths from the manifest each cycle and
+    dead-letters them forever, a permanent retry loop that buries genuine failures in
+    noise. Selection therefore skips entries whose source is gone (:func:`select_pending`
+    / :func:`count_pending` when given ``raw_root``). ``.exists()`` follows symlinks, so
+    a broken symlink left as a stopgap for a removed file correctly reads as absent.
+    """
+    return (Path(raw_root) / entry.get("raw_path", "")).exists()
+
+
 def select_pending(
     manifest: Manifest,
     skip: set[str],
@@ -198,6 +216,7 @@ def select_pending(
     *,
     non_indexable: frozenset[str] = frozenset(),
     registry: ExclusionRegistry | None = None,
+    raw_root: Path | str | None = None,
 ) -> list[tuple[str, dict]]:
     """The bounded batch of not-yet-indexed, ingestable manifest entries.
 
@@ -206,12 +225,20 @@ def select_pending(
     and everything :func:`entry_is_ingestable` rejects (deliberately-excluded +
     restricted + media) — so the batch is spent on real pending work, the pass always
     makes forward progress (FR-007), and a registered exclusion can never be selected.
+
+    When ``raw_root`` is given, entries whose source file no longer exists on disk are
+    also skipped: a file deleted from goldberg-raw is a permanent failure, not pending
+    work, and re-attempting it every pass is the retry loop this guards against (see
+    :func:`source_is_present`). The check is last so it only stats the small surviving
+    candidate set, not the whole manifest.
     """
     pending: list[tuple[str, dict]] = []
     for sha, entry in manifest.items():
         if sha in skip or sha in non_indexable:
             continue
         if not entry_is_ingestable(entry, registry):
+            continue
+        if raw_root is not None and not source_is_present(entry, raw_root):
             continue
         pending.append((sha, entry))
         if len(pending) >= batch:
@@ -225,12 +252,15 @@ def count_pending(
     *,
     non_indexable: frozenset[str] = frozenset(),
     registry: ExclusionRegistry | None = None,
+    raw_root: Path | str | None = None,
 ) -> int:
     """The TRUE total of not-yet-indexed, ingestable manifest entries (no batch cap).
 
-    Same predicate as :func:`select_pending` but unbounded — used to compute
-    ``remaining_pending`` so a backlog larger than one catch-up ``batch`` is reported
-    (and health marked degraded) rather than silently deferred (FR-007).
+    Same predicate as :func:`select_pending` (including the ``raw_root`` deleted-source
+    skip) but unbounded — used to compute ``remaining_pending`` so a backlog larger than
+    one catch-up ``batch`` is reported (and health marked degraded) rather than silently
+    deferred (FR-007). Without the ``raw_root`` skip this count is inflated by dead paths
+    that can never clear, which would keep health permanently degraded.
     """
     total = 0
     for sha, entry in manifest.items():
@@ -238,7 +268,34 @@ def count_pending(
             continue
         if not entry_is_ingestable(entry, registry):  # same shared skip list
             continue
+        if raw_root is not None and not source_is_present(entry, raw_root):
+            continue
         total += 1
+    return total
+
+
+def count_missing_source(
+    manifest: Manifest,
+    skip: set[str],
+    raw_root: Path | str,
+    *,
+    registry: ExclusionRegistry | None = None,
+) -> int:
+    """How many not-yet-indexed, ingestable entries have a DELETED source file.
+
+    The surplus that :func:`count_pending` now excludes: entries that would have been
+    selected for ingest but whose file is gone from goldberg-raw. Surfaced on the
+    :class:`CatchupReport` so the deleted-source skip is visible and auditable, never
+    silent — same philosophy as ``no_index_skipped`` and ``deliberately_excluded``.
+    """
+    total = 0
+    for sha, entry in manifest.items():
+        if sha in skip:
+            continue
+        if not entry_is_ingestable(entry, registry):
+            continue
+        if not source_is_present(entry, raw_root):
+            total += 1
     return total
 
 
@@ -363,9 +420,22 @@ def run_catchup(
     # 3. select the bounded difference — and count the TRUE (unbounded) pending total
     #    so any backlog beyond this batch is surfaced (remaining_pending), not silent.
     #    The registry is threaded through BOTH so a deliberate exclusion is never a gap.
-    total_pending = count_pending(manifest, skip, registry=registry)
-    pending = select_pending(manifest, skip, batch, registry=registry)
+    total_pending = count_pending(manifest, skip, registry=registry, raw_root=raw_root)
+    pending = select_pending(
+        manifest, skip, batch, registry=registry, raw_root=raw_root
+    )
     only = {entry.get("raw_path", "") for _, entry in pending}
+
+    # Deleted-source entries excluded from selection this pass — a permanent failure,
+    # not pending work. Counted (never silent) so the retry-loop guard is auditable.
+    missing_source = count_missing_source(manifest, skip, raw_root, registry=registry)
+    if missing_source:
+        log.info(
+            "skipped %d manifest entr%s whose source file was deleted from goldberg-raw "
+            "(retained in manifest for audit --orphans; not re-ingested)",
+            missing_source,
+            "y" if missing_source == 1 else "ies",
+        )
 
     # 4. process the difference via the reused reingest path
     indexed = 0
@@ -403,6 +473,7 @@ def run_catchup(
         remaining_pending=remaining_pending,
         no_index_skipped=no_index_skipped,
         deliberately_excluded=len(blocked),
+        missing_source_skipped=missing_source,
     )
 
 
