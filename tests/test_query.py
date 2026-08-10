@@ -385,3 +385,152 @@ def test_fetch_claim_refs_uses_high_inner_hits_cap() -> None:
     CorpusQuery(es, "idx")._fetch_claim_refs()
     nested = es.last_search["query"]["bool"]["must"][0]["nested"]
     assert nested["inner_hits"]["size"] == _INNER_HITS_CLAIM_CAP
+
+
+# --------------------------------------------------------------------------------- #
+# precision guards (2026-08-10): suppress same-representation + negation-diff-object
+# --------------------------------------------------------------------------------- #
+def test_doc_stem_collapses_representations() -> None:
+    from goldberg_system.query import _doc_stem
+
+    base = "evidence/x/statement_of_costs"
+    assert _doc_stem("evidence/x/statement_of_costs.md") == base
+    assert _doc_stem("evidence/x/statement_of_costs_ocr.pdf") == base
+    assert _doc_stem("evidence/x/pdf_original/statement_of_costs.PDF") == base
+    # stacked extension
+    assert _doc_stem("evidence/x/objection.ocr.txt") == "evidence/x/objection"
+    # genuinely different leaves (page splits) stay distinct
+    assert _doc_stem("evidence/x/ocr_deacon/p-1.txt") != _doc_stem(
+        "evidence/x/ocr_deacon/p-16.txt"
+    )
+
+
+def test_same_document_stem_opposite_polarity_is_suppressed() -> None:
+    # The identical claim extracted from a .pdf and its _ocr.pdf, with polarity flipped
+    # by the OCR difference — a transcription artifact, not a contradiction.
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_pdf", "evidence/x/statement_of_costs.pdf",
+                    {"subject": "the applicant", "predicate": "is",
+                     "object": "VAT registered", "asserted_by": "Simon Goldberg",
+                     "polarity": True, "source_span": "The Applicant is not VAT registered and cannot recover VAT on fees."},
+                ),
+                _claim_doc(
+                    "gb_ocr", "evidence/x/statement_of_costs_ocr.pdf",
+                    {"subject": "the applicant", "predicate": "is",
+                     "object": "VAT registered", "asserted_by": "Simon Goldberg",
+                     "polarity": False, "source_span": "The Applicant is not VAT registered and cannot recover VAT on fees or disbursements."},
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert result.within_speaker == []  # same document, different encoding → suppressed
+    assert result.contested == []
+
+
+def test_identical_source_span_across_paths_is_suppressed() -> None:
+    # Different paths (page-split vs whole), but the SAME quoted sentence → same source.
+    span = "the material sought is not necessary, relevant or proportionate."
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_1", "evidence/x/objection.pdf",
+                    {"subject": "the material sought", "predicate": "is",
+                     "object": "necessary", "asserted_by": "Katrina Jean Deacon",
+                     "polarity": False, "source_span": span},
+                ),
+                _claim_doc(
+                    "gb_2", "evidence/x/ocr_deacon/p-1.txt",
+                    {"subject": "the material sought", "predicate": "is",
+                     "object": "necessary", "asserted_by": "Katrina Jean Deacon",
+                     "polarity": True, "source_span": span},
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert result.within_speaker == []
+
+
+def test_negation_predicate_with_different_objects_is_suppressed() -> None:
+    # "Goldberg does not identify X" vs "…does not identify Y" — two distinct
+    # observations, not an opposite-polarity contradiction.
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "an_1", "analysis/a.tex",
+                    {"subject": "goldberg", "predicate": "does not identify",
+                     "object": "a false statement by Fadhley", "asserted_by": "deep research",
+                     "polarity": True},
+                ),
+                _claim_doc(
+                    "an_2", "analysis/b.tex",
+                    {"subject": "goldberg", "predicate": "does not identify",
+                     "object": "which meetings Deacon attended", "asserted_by": "deep research",
+                     "polarity": False},
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert result.within_speaker == []
+
+
+def test_negation_predicate_same_object_still_flagged() -> None:
+    # A REAL contradiction on a negation predicate keeps the SAME object with opposite
+    # polarity — must still surface (guard (b) must not over-suppress).
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_1", "evidence/police/statement.pdf",
+                    {"subject": "goldberg", "predicate": "does not allege",
+                     "object": "a joint enterprise", "asserted_by": "Simon Goldberg",
+                     "polarity": True},
+                ),
+                _claim_doc(
+                    "gb_2", "evidence/court/case_summary.pdf",
+                    {"subject": "goldberg", "predicate": "does not allege",
+                     "object": "a joint enterprise", "asserted_by": "Simon Goldberg",
+                     "polarity": False},
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert len(result.within_speaker) == 1
+    assert result.within_speaker[0].kind == "opposite_polarity"
+
+
+def test_real_cross_document_contradiction_still_flagged() -> None:
+    # Different documents, same object, opposite polarity, non-negation predicate —
+    # the target signal; must survive both guards.
+    resp = {
+        "hits": {
+            "hits": [
+                _claim_doc(
+                    "gb_police", "evidence/police/mg6c.pdf",
+                    {"subject": "the campaign", "predicate": "was",
+                     "object": "one orchestrated enterprise", "asserted_by": "Simon Goldberg",
+                     "polarity": False, "source_span": "The reports are per-person and per-force."},
+                ),
+                _claim_doc(
+                    "gb_court", "evidence/court/witness_statement.pdf",
+                    {"subject": "the campaign", "predicate": "was",
+                     "object": "one orchestrated enterprise", "asserted_by": "Simon Goldberg",
+                     "polarity": True, "source_span": "It was one orchestrated campaign by three people."},
+                ),
+            ]
+        }
+    }
+    result = CorpusQuery(_FakeES(resp), "idx").contradictions()
+    assert len(result.within_speaker) == 1
+    assert result.within_speaker[0].kind == "opposite_polarity"
+    assert {result.within_speaker[0].left.doc_id, result.within_speaker[0].right.doc_id} == {
+        "gb_police", "gb_court",
+    }

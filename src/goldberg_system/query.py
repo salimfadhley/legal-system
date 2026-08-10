@@ -10,6 +10,7 @@ attributed answer — the tools do retrieval, not answer-generation.
 from __future__ import annotations
 
 import os
+import re
 from itertools import combinations
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,93 @@ def _conflict_kind(a: Any, b: Any) -> str | None:
     if _norm(a.object) != _norm(b.object):
         return "conflicting_object"
     return None
+
+
+# --- precision guards (2026-08-10) ------------------------------------------------
+# The surface-form matcher produced two artifact classes that swamped the real signal:
+#   (a) the SAME document in several representations (.pdf/.md/_ocr, page-splits, or the
+#       identical sentence quoted twice) flips polarity on IDENTICAL text — a
+#       transcription/extraction difference, never a real change of account; and
+#   (b) a negation-bearing predicate ("does not identify X" vs "does not identify Y")
+#       grouped under one (subject, predicate) reads two DIFFERENT true observations as
+#       an opposite-polarity contradiction because the negation lives in the predicate.
+# Both are suppressed below so the within-speaker/cross-audience signal is not buried.
+
+# Extensions and directory components that are pure REPRESENTATION markers — the same
+# document re-encoded, not different content.
+_FORMAT_EXTS: frozenset[str] = frozenset(
+    {"pdf", "md", "txt", "ocr", "tsv", "eml", "docx", "doc", "pptx",
+     "json", "vtt", "srt", "html", "htm", "rtf", "csv"}
+)
+_FORMAT_DIR_TOKENS: frozenset[str] = frozenset(
+    {"pdf_original", "ocr_output", "markdown", "md", "text", "txt", "tsv",
+     "ocr", "images", "img", "original"}
+)
+_STEM_SUFFIX_RE = re.compile(r"[ _\-]*(ocr|original|copy|\(\d+\))$")
+_FORMAT_DIR_RE = re.compile(r"^(ocr_.+|.+_ocr)$")
+
+
+def _doc_stem(raw_path: str | None) -> str:
+    """A document's identity with representation encoding stripped.
+
+    Collapses ``…/statement_of_costs.md``, ``…/statement_of_costs_ocr.pdf`` and
+    ``…/pdf_original/statement_of_costs.PDF`` to one stem, so several encodings of one
+    document are recognised as the same source. Page-split leaves (``p-1``, ``p-16``)
+    keep distinct stems — genuinely different content — and are caught instead by the
+    identical-``source_span`` test in :func:`_is_same_representation`.
+    """
+    if not raw_path:
+        return ""
+    parts = [p for p in str(raw_path).split("/") if p]
+    if not parts:
+        return ""
+    *dirs, leaf = parts
+    dirs = [
+        d for d in dirs
+        if d.lower() not in _FORMAT_DIR_TOKENS and not _FORMAT_DIR_RE.match(d.lower())
+    ]
+    leaf = leaf.lower()
+    changed = True
+    while changed:  # strip stacked extensions (e.g. ".ocr.txt")
+        changed = False
+        m = re.search(r"\.([a-z0-9]{1,5})$", leaf)
+        if m and m.group(1) in _FORMAT_EXTS:
+            leaf = leaf[: m.start()]
+            changed = True
+    changed = True
+    while changed:  # strip trailing representation/copy markers
+        new = _STEM_SUFFIX_RE.sub("", leaf)
+        changed = new != leaf
+        leaf = new
+    return "/".join([*dirs, leaf])
+
+
+def _is_same_representation(a: Any, b: Any) -> bool:
+    """True when two claims are the same underlying source, not a real disagreement.
+
+    Same document id, same representation-stripped path stem, or an identical quoted
+    ``source_span`` — any of these means the "conflict" is a transcription/extraction
+    difference between copies of one text, so it must not be reported as a contradiction.
+    """
+    if getattr(a, "doc_id", None) and a.doc_id == getattr(b, "doc_id", None):
+        return True
+    sa, sb = _doc_stem(getattr(a, "raw_path", None)), _doc_stem(getattr(b, "raw_path", None))
+    if sa and sa == sb:
+        return True
+    qa, qb = _norm(getattr(a, "source_span", None)), _norm(getattr(b, "source_span", None))
+    return bool(qa) and qa == qb
+
+
+# Negation carried IN the predicate: a genuine opposite-polarity contradiction on such a
+# predicate needs the SAME object ("does not identify the murderer" true vs false). With
+# DIFFERENT objects it is two distinct observations, not a contradiction.
+_NEGATION_RE = re.compile(
+    r"\b(not|no|never|none|refus\w*|den(y|ies|ied)|declin\w*|without|lack\w*|fail(s|ed)?)\b"
+)
+
+
+def _is_negation_predicate(pred: str | None) -> bool:
+    return bool(_NEGATION_RE.search(_norm(pred)))
 
 
 class DocHit(BaseModel):
@@ -445,6 +533,19 @@ class CorpusQuery:
             for a, b in combinations(members, 2):
                 kind = _conflict_kind(a, b)
                 if kind is None:
+                    continue
+                # Precision guard (a): same document in different representations, or the
+                # identical quoted span — a transcription artifact, not a disagreement.
+                if _is_same_representation(a, b):
+                    continue
+                # Precision guard (b): a negation-bearing predicate with DIFFERENT objects
+                # is two distinct observations ("does not identify X" vs "…Y"), not an
+                # opposite-polarity contradiction.
+                if (
+                    kind == "opposite_polarity"
+                    and _is_negation_predicate(pred)
+                    and _norm(a.object) != _norm(b.object)
+                ):
                     continue
                 a_can = _canonical_speaker(a.asserted_by)
                 b_can = _canonical_speaker(b.asserted_by)
