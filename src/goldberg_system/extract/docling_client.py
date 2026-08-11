@@ -22,13 +22,13 @@ from typing import Any
 import requests
 
 # Extensions read as-is (already text / structured data Docling can't parse).
-# Subtitle formats (.vtt WebVTT, .srt SubRip) are plain UTF-8 text — the caption lines
-# ARE the transcript of a complained-of video, evidentially the point — but Docling
-# can't parse them and was failing every one. Read them as text so their spoken content
-# is indexed (timestamp/cue lines ride along harmlessly).
-_PASSTHROUGH = {
-    ".md", ".markdown", ".txt", ".text", ".json", ".tsv", ".csv", ".vtt", ".srt",
-}
+_PASSTHROUGH = {".md", ".markdown", ".txt", ".text", ".json", ".tsv", ".csv"}
+
+# Subtitle formats (.vtt WebVTT, .srt SubRip): plain text, but read through a cleaner
+# that strips cue timings/indices and inline word-timing tags so the indexed content is
+# the readable transcript (the spoken content of a complained-of video is the point),
+# not raw caption markup. Docling can't parse them and was failing every one.
+_SUBTITLE = {".vtt", ".srt"}
 
 
 class DoclingError(RuntimeError):
@@ -78,7 +78,12 @@ class DoclingClient:
     def convert_file(self, path: Path | str) -> str:
         """Return the markdown extraction for ``path`` (passthrough for text/data)."""
         path = Path(path)
-        if path.suffix.lower() in _PASSTHROUGH:
+        suffix = path.suffix.lower()
+        if suffix in _SUBTITLE:
+            from goldberg_system.extract.subtitles import subtitle_to_text
+
+            return subtitle_to_text(path.read_text(errors="replace"))
+        if suffix in _PASSTHROUGH:
             return path.read_text(errors="replace")
 
         # Wrap transient network errors (connection drop, timeout) as DoclingError so
