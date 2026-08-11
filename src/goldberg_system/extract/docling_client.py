@@ -9,8 +9,8 @@ purpose-built for OCR/layout; this bypasses Papra's broken extraction entirely
 Uses Docling's **async** convert flow (submit → poll → result) so large scanned
 PDFs aren't bounded by the server's synchronous ``DOCLING_SERVE_MAX_SYNC_WAIT`` (120s)
 — which was failing ~15% of the corpus's biggest evidence. Text/data files
-(``.md``/``.txt``/``.json``/``.tsv``/``.csv``) are passed through unchanged — Docling
-can't (and shouldn't) OCR them.
+(``.md``/``.txt``/``.json``/``.tsv``/``.csv`` and subtitle ``.vtt``/``.srt``) are passed
+through unchanged — Docling can't (and shouldn't) OCR them.
 """
 
 from __future__ import annotations
@@ -22,7 +22,13 @@ from typing import Any
 import requests
 
 # Extensions read as-is (already text / structured data Docling can't parse).
-_PASSTHROUGH = {".md", ".markdown", ".txt", ".text", ".json", ".tsv", ".csv"}
+# Subtitle formats (.vtt WebVTT, .srt SubRip) are plain UTF-8 text — the caption lines
+# ARE the transcript of a complained-of video, evidentially the point — but Docling
+# can't parse them and was failing every one. Read them as text so their spoken content
+# is indexed (timestamp/cue lines ride along harmlessly).
+_PASSTHROUGH = {
+    ".md", ".markdown", ".txt", ".text", ".json", ".tsv", ".csv", ".vtt", ".srt",
+}
 
 
 class DoclingError(RuntimeError):
